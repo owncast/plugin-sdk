@@ -1,0 +1,41 @@
+[
+  {
+    "name": "stream.started records timestamp and greets via action",
+    "events": [
+      {
+        "event": "stream.started",
+        "payload": { "startedAt": "2024-01-01T00:00:00Z", "title": "First show" }
+      }
+    ],
+    "expect": {
+      "kv": { "startedAt": "2024-01-01T00:00:00Z" },
+      "chatActions": ["is live: First show"]
+    }
+  },
+  {
+    "name": "stream.stopped clears the start timestamp",
+    "given": { "kv": { "startedAt": "2024-01-01T00:00:00Z" } },
+    "events": [
+      {
+        "event": "stream.stopped",
+        "payload": { "stoppedAt": "2024-01-01T01:00:00Z" }
+      }
+    ],
+    "expect": {
+      "kv": { "startedAt": "" },
+      "chatActions": ["stream ended at 2024-01-01T01:00:00Z"]
+    }
+  },
+  {
+    "name": "stream.title.changed announces the new title",
+    "events": [
+      {
+        "event": "stream.title.changed",
+        "payload": { "from": "Old", "to": "New" }
+      }
+    ],
+    "expect": {
+      "chatSends": ["title changed: \"Old\" → \"New\""]
+    }
+  }
+]

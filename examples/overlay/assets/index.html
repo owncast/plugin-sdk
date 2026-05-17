@@ -1,0 +1,26 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>chat overlay</title>
+  <style>
+    body { font-family: system-ui, sans-serif; background: rgba(0,0,0,0.6); color: #fff; padding: 1rem; margin: 0; }
+    .msg { padding: 0.25rem 0; }
+    .user { font-weight: 600; color: #7cf; }
+  </style>
+</head>
+<body>
+  <div id="messages"></div>
+  <script>
+    async function refresh() {
+      const res = await fetch("./api/messages");
+      const { messages } = await res.json();
+      document.getElementById("messages").innerHTML = messages
+        .map(m => `<div class="msg"><span class="user">${m.user}:</span> ${m.body}</div>`)
+        .join("");
+    }
+    refresh();
+    setInterval(refresh, 2000);
+  </script>
+</body>
+</html>

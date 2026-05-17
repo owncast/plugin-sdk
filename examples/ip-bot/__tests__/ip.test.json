@@ -1,0 +1,56 @@
+[
+  {
+    "name": "responds to !ip with the IP from the mocked API",
+    "given": {
+      "httpResponses": [
+        {
+          "url": "https://api.ipify.org*",
+          "status": 200,
+          "body": "{\"ip\":\"203.0.113.42\"}"
+        }
+      ]
+    },
+    "events": [
+      {
+        "event": "chat.message.received",
+        "payload": { "user": "alice", "body": "!ip", "timestamp": "2024-01-01T00:00:00Z" }
+      }
+    ],
+    "expect": {
+      "chatSends": ["server IP: 203.0.113.42"],
+      "httpRequests": [
+        { "url": "https://api.ipify.org?format=json", "method": "GET" }
+      ]
+    }
+  },
+  {
+    "name": "reports an error message on non-200 response",
+    "given": {
+      "httpResponses": [
+        { "url": "https://api.ipify.org*", "status": 503, "body": "" }
+      ]
+    },
+    "events": [
+      {
+        "event": "chat.message.received",
+        "payload": { "user": "alice", "body": "!ip", "timestamp": "2024-01-01T00:00:00Z" }
+      }
+    ],
+    "expect": {
+      "chatSends": ["couldn't fetch IP (status 503)"]
+    }
+  },
+  {
+    "name": "ignores messages that aren't !ip — no HTTP call",
+    "events": [
+      {
+        "event": "chat.message.received",
+        "payload": { "user": "alice", "body": "hello world", "timestamp": "2024-01-01T00:00:00Z" }
+      }
+    ],
+    "expect": {
+      "chatSends": [],
+      "httpRequests": []
+    }
+  }
+]

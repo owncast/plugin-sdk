@@ -1,0 +1,26 @@
+[
+  {
+    "name": "echoes the message back via chat.send",
+    "events": [
+      {
+        "event": "chat.message.received",
+        "payload": { "id": "1", "user": "alice", "body": "hi", "timestamp": "2024-01-01T00:00:00Z" }
+      }
+    ],
+    "expect": {
+      "chatSends": ["alice said: hi"]
+    }
+  },
+  {
+    "name": "echoes a different user/body",
+    "events": [
+      {
+        "event": "chat.message.received",
+        "payload": { "id": "2", "user": "bob", "body": "hello!", "timestamp": "2024-01-01T00:00:01Z" }
+      }
+    ],
+    "expect": {
+      "chatSends": ["bob said: hello!"]
+    }
+  }
+]

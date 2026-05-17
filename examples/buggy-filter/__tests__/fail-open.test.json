@@ -1,0 +1,12 @@
+[
+  {
+    "name": "throws but fail-open lets the payload through unchanged",
+    "events": [
+      {
+        "filter": "chat.message.received",
+        "payload": { "user": "alice", "body": "hi", "timestamp": "2024-01-01T00:00:00Z" },
+        "expect": { "action": "pass" }
+      }
+    ]
+  }
+]

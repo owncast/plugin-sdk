@@ -1,0 +1,48 @@
+[
+  {
+    "name": "redacts the word \"hell\"",
+    "events": [
+      {
+        "filter": "chat.message.received",
+        "payload": { "id": "1", "user": "alice", "body": "what the hell", "timestamp": "2024-01-01T00:00:00Z" },
+        "expect": {
+          "action": "modify",
+          "payload": { "body": "what the ****" }
+        }
+      }
+    ]
+  },
+  {
+    "name": "passes clean text through",
+    "events": [
+      {
+        "filter": "chat.message.received",
+        "payload": { "id": "1", "user": "alice", "body": "hello world", "timestamp": "2024-01-01T00:00:00Z" },
+        "expect": { "action": "pass" }
+      }
+    ]
+  },
+  {
+    "name": "uses word boundaries — does not match \"hell\" inside \"hello\"",
+    "events": [
+      {
+        "filter": "chat.message.received",
+        "payload": { "id": "1", "user": "alice", "body": "hello there", "timestamp": "2024-01-01T00:00:00Z" },
+        "expect": { "action": "pass" }
+      }
+    ]
+  },
+  {
+    "name": "redacts multiple words in one message",
+    "events": [
+      {
+        "filter": "chat.message.received",
+        "payload": { "id": "1", "user": "alice", "body": "damn hell crap", "timestamp": "2024-01-01T00:00:00Z" },
+        "expect": {
+          "action": "modify",
+          "payload": { "body": "**** **** ****" }
+        }
+      }
+    ]
+  }
+]

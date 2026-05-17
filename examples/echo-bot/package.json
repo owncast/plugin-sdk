@@ -1,0 +1,12 @@
+{
+  "name": "echo-bot",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "build": "owncast-plugin build",
+    "test": "owncast-plugin build && owncast-plugin test"
+  },
+  "dependencies": {
+    "@owncast/plugin-sdk": "file:../../sdk"
+  }
+}

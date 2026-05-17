@@ -1,0 +1,11 @@
+{
+  "name": "safeguard-stress",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "build": "owncast-plugin build"
+  },
+  "dependencies": {
+    "@owncast/plugin-sdk": "file:../../sdk"
+  }
+}

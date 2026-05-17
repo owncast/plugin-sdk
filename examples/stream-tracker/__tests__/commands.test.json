@@ -1,0 +1,76 @@
+[
+  {
+    "name": "!uptime answers with current stream state",
+    "given": {
+      "stream": {
+        "online": true,
+        "title": "Live show",
+        "viewers": 12,
+        "startedAt": "2024-01-01T00:00:00Z"
+      }
+    },
+    "events": [
+      {
+        "event": "chat.message.received",
+        "payload": { "id": "1", "user": "alice", "body": "!uptime", "timestamp": "2024-01-01T00:00:00Z" }
+      }
+    ],
+    "expect": {
+      "chatSends": ["uptime: 0s, 12 viewer(s) — \"Live show\""]
+    }
+  },
+  {
+    "name": "!uptime when offline reports so",
+    "events": [
+      {
+        "event": "chat.message.received",
+        "payload": { "id": "1", "user": "alice", "body": "!uptime", "timestamp": "2024-01-01T00:00:00Z" }
+      }
+    ],
+    "expect": {
+      "chatSends": ["stream is offline"]
+    }
+  },
+  {
+    "name": "!who lists everyone in chat",
+    "given": { "kv": { "users": "[\"alice\",\"bob\"]" } },
+    "events": [
+      {
+        "event": "chat.message.received",
+        "payload": { "id": "1", "user": "carol", "body": "!who", "timestamp": "2024-01-01T00:00:00Z" }
+      }
+    ],
+    "expect": {
+      "chatSends": ["in chat: alice, bob"]
+    }
+  },
+  {
+    "name": "!server reports configured server info",
+    "given": {
+      "server": {
+        "name": "Demo Owncast",
+        "version": "0.1.0",
+        "summary": "Plugin PoC"
+      }
+    },
+    "events": [
+      {
+        "event": "chat.message.received",
+        "payload": { "id": "1", "user": "alice", "body": "!server", "timestamp": "2024-01-01T00:00:00Z" }
+      }
+    ],
+    "expect": {
+      "chatSends": ["Demo Owncast v0.1.0 — Plugin PoC"]
+    }
+  },
+  {
+    "name": "ordinary message is ignored",
+    "events": [
+      {
+        "event": "chat.message.received",
+        "payload": { "id": "1", "user": "alice", "body": "hello", "timestamp": "2024-01-01T00:00:00Z" }
+      }
+    ],
+    "expect": { "chatSends": [], "chatActions": [] }
+  }
+]

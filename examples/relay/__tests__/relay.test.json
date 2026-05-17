@@ -1,0 +1,29 @@
+[
+  {
+    "name": "emits announcement.broadcast on /announce prefix",
+    "events": [
+      {
+        "event": "chat.message.received",
+        "payload": { "user": "alice", "body": "/announce stream is live", "timestamp": "2024-01-01T00:00:00Z" }
+      }
+    ],
+    "expect": {
+      "emits": [
+        {
+          "eventType": "announcement.broadcast",
+          "payload": { "text": "stream is live", "by": "alice" }
+        }
+      ]
+    }
+  },
+  {
+    "name": "regular messages do not produce an emit",
+    "events": [
+      {
+        "event": "chat.message.received",
+        "payload": { "user": "alice", "body": "just a regular message", "timestamp": "2024-01-01T00:00:00Z" }
+      }
+    ],
+    "expect": { "emits": [] }
+  }
+]

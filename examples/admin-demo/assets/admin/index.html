@@ -1,0 +1,21 @@
+<!doctype html>
+<html><body>
+  <h1>admin-demo settings</h1>
+  <p>Auth-gated by Owncast — if you can see this page, you're an admin.</p>
+  <form id="f">
+    <label>Greeting: <input name="greeting"></label>
+    <button>Save</button>
+  </form>
+  <script>
+    async function load() {
+      const s = await (await fetch("./api/settings")).json();
+      document.querySelector('[name=greeting]').value = s.greeting || "";
+    }
+    document.getElementById("f").onsubmit = async (e) => {
+      e.preventDefault();
+      const greeting = e.target.greeting.value;
+      await fetch("./api/settings", { method: "POST", body: JSON.stringify({greeting}) });
+    };
+    load();
+  </script>
+</body></html>

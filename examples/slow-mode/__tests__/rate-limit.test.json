@@ -1,0 +1,51 @@
+[
+  {
+    "name": "lone message passes",
+    "events": [
+      {
+        "filter": "chat.message.received",
+        "payload": { "user": "alice", "body": "hi", "timestamp": "2024-01-01T00:00:00Z" },
+        "expect": { "action": "pass" }
+      }
+    ]
+  },
+  {
+    "name": "rapid follow-up within 2s window is dropped",
+    "given": {
+      "kv": { "last:alice": "1704067200000" }
+    },
+    "events": [
+      {
+        "filter": "chat.message.received",
+        "payload": { "user": "alice", "body": "second", "timestamp": "2024-01-01T00:00:01Z" },
+        "expect": { "action": "drop", "reason": "slow-mode: alice must wait 2000ms between messages" }
+      }
+    ]
+  },
+  {
+    "name": "follow-up after 2s+ is allowed",
+    "given": {
+      "kv": { "last:alice": "1704067200000" }
+    },
+    "events": [
+      {
+        "filter": "chat.message.received",
+        "payload": { "user": "alice", "body": "second", "timestamp": "2024-01-01T00:00:03Z" },
+        "expect": { "action": "pass" }
+      }
+    ]
+  },
+  {
+    "name": "different users are tracked independently",
+    "given": {
+      "kv": { "last:alice": "1704067200000" }
+    },
+    "events": [
+      {
+        "filter": "chat.message.received",
+        "payload": { "user": "bob", "body": "first", "timestamp": "2024-01-01T00:00:01Z" },
+        "expect": { "action": "pass" }
+      }
+    ]
+  }
+]

@@ -1,0 +1,7 @@
+{
+  "api": "1",
+  "name": "overlay",
+  "version": "0.1.0",
+  "description": "Ships a static HTML overlay page and a JSON API at /api/messages backed by owncast.chat.history()",
+  "permissions": ["http.serve", "chat.history"]
+}

@@ -1,0 +1,7 @@
+{
+  "api": "1",
+  "name": "__PLUGIN_NAME__",
+  "version": "0.1.0",
+  "description": "An Owncast plugin",
+  "permissions": []
+}

@@ -1,0 +1,75 @@
+[
+  {
+    "name": "static index.html is served from assets/",
+    "events": [
+      { "http": { "method": "GET", "path": "/index.html", "expect": { "status": 200 } } }
+    ]
+  },
+  {
+    "name": "directory request serves index.html",
+    "events": [
+      { "http": { "method": "GET", "path": "/", "expect": { "status": 200 } } }
+    ]
+  },
+  {
+    "name": "GET /api/messages returns empty list when chat history is empty",
+    "events": [
+      {
+        "http": {
+          "method": "GET",
+          "path": "/api/messages",
+          "expect": {
+            "status": 200,
+            "headers": { "Content-Type": "application/json" },
+            "body": "{\"messages\":[]}"
+          }
+        }
+      }
+    ]
+  },
+  {
+    "name": "GET /api/messages returns messages from owncast.chat.history()",
+    "given": {
+      "chatHistory": [
+        { "id": "m1", "user": "alice", "body": "hello", "timestamp": "2024-01-01T00:00:00Z" },
+        { "id": "m2", "user": "bob",   "body": "world", "timestamp": "2024-01-01T00:00:01Z" }
+      ]
+    },
+    "events": [
+      {
+        "http": {
+          "method": "GET",
+          "path": "/api/messages",
+          "expect": {
+            "status": 200,
+            "body": "{\"messages\":[{\"id\":\"m1\",\"user\":\"alice\",\"body\":\"hello\",\"timestamp\":\"2024-01-01T00:00:00Z\"},{\"id\":\"m2\",\"user\":\"bob\",\"body\":\"world\",\"timestamp\":\"2024-01-01T00:00:01Z\"}]}"
+          }
+        }
+      }
+    ]
+  },
+  {
+    "name": "unknown API path returns 404",
+    "events": [
+      {
+        "http": {
+          "method": "GET",
+          "path": "/api/nope",
+          "expect": { "status": 404 }
+        }
+      }
+    ]
+  },
+  {
+    "name": "path traversal attempt is rejected",
+    "events": [
+      {
+        "http": {
+          "method": "GET",
+          "path": "/../../../etc/passwd",
+          "expect": { "status": 404 }
+        }
+      }
+    ]
+  }
+]

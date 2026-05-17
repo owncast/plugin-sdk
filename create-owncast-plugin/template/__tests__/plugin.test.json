@@ -1,0 +1,11 @@
+[
+  {
+    "name": "logs the chat message",
+    "events": [
+      {
+        "event": "chat.message.received",
+        "payload": { "id": "1", "user": "alice", "body": "hello", "timestamp": "2024-01-01T00:00:00Z" }
+      }
+    ]
+  }
+]

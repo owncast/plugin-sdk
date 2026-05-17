@@ -1,0 +1,7 @@
+{
+  "api": "1",
+  "name": "safeguard-stress",
+  "version": "0.1.0",
+  "description": "Misbehaves on demand — exists only to exercise host sandbox safeguards",
+  "permissions": ["http.serve"]
+}
