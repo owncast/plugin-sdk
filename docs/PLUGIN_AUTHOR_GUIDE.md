@@ -225,7 +225,7 @@ If you need multiple chat personas, **ship multiple plugins.** One identity per 
 | `users.moderate` | `owncast.users.setEnabled`, `.banIP` |
 | `storage.kv` | Per-plugin namespaced key/value store |
 | `storage.upload` | `owncast.storage.upload` — upload files, get a public URL |
-| `network.fetch` | Outbound HTTP to any host |
+| `network.fetch` | Outbound HTTP — also requires `network.allowedHosts` (see below) |
 | `events.emit` | Emit custom events for other plugins to subscribe to |
 | `http.serve` | Serve HTTP at `/plugins/<your-name>/*` |
 | `server.read` | Read stream state + server config |
@@ -233,6 +233,21 @@ If you need multiple chat personas, **ship multiple plugins.** One identity per 
 | `fediverse.post` | `owncast.fediverse.post(text)` — high-trust; admin should grant sparingly. Host rate-limits at ~5/hour per plugin. |
 
 Declare only what you need. Admins reviewing your manifest before install make trust decisions based on declared permissions.
+
+### Outbound HTTP — `network.allowedHosts`
+
+`network.fetch` is gated by an explicit allowlist of hostnames. The host rejects the load if `network.fetch` is granted without a corresponding `network.allowedHosts` entry:
+
+```json
+{
+  "permissions": ["network.fetch"],
+  "network": {
+    "allowedHosts": ["api.discord.com", "*.weather.com"]
+  }
+}
+```
+
+Entries are hostname globs — bare hostnames match exactly; `*` is a wildcard segment. The wildcard `"*"` matches any host but **must be written explicitly** (`"network": { "allowedHosts": ["*"] }`) so admins reviewing the manifest see the scope they're granting. Most plugins should list the specific hosts they actually call.
 
 ## Serving HTTP
 

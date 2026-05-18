@@ -392,3 +392,14 @@ export interface ActionButton {
   /** When true, open in a new tab instead of an in-page modal. */
   openExternally?: boolean;
 }
+
+/** `manifest.network` — narrows outbound HTTP scope for plugins that
+ *  declare the `network.fetch` permission. Required when that permission
+ *  is granted; the host rejects loads otherwise. */
+export interface NetworkConfig {
+  /** Hostname globs the plugin can reach via `owncast.http.fetch`.
+   *  Bare names match exactly (`"api.discord.com"`); `*` is a wildcard
+   *  segment (`"*.weather.com"`). The bare wildcard `"*"` matches any
+   *  host but must be written explicitly. */
+  allowedHosts: string[];
+}

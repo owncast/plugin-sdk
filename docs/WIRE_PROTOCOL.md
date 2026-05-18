@@ -70,7 +70,7 @@ Host functions are wired in conditionally based on the manifest's declared permi
 - `owncast_fediverse_post(textPtr: PTR): PTR` — JSON `{url}` or 0-offset on failure
 
 ### `network.fetch`
-- Not a custom host function — grants the plugin access to Extism's built-in `Http.request`. The host configures `AllowedHosts: ["*"]` when this permission is granted.
+- Not a custom host function — grants the plugin access to Extism's built-in `Http.request`. The host configures Extism's `AllowedHosts` from the manifest's `network.allowedHosts` (see [Manifest extensions](#manifest-extensions) below). Manifests granting `network.fetch` without `network.allowedHosts` are rejected at load.
 
 ### `http.serve`
 - Not a host function. Grants the host's HTTP server permission to route `/plugins/<name>/*` requests to this plugin's `on_http_request` export and to serve static assets from its `assets/` directory.
@@ -106,6 +106,10 @@ The host exposes the merged list as `GET /api/plugins/actions` (public). The Own
 ### `manifest.admin.pages[]`
 
 Glob-matched routes inside `/plugins/<name>/...` that the host auth-gates before reaching the plugin's `on_http_request`. See `manifest.go:AdminPage`.
+
+### `manifest.network.allowedHosts[]`
+
+Hostname globs the plugin is allowed to reach via `owncast.http.fetch`. Passed straight through to Extism's `AllowedHosts`. Required when `network.fetch` is granted; the wildcard `"*"` is permitted but must be written explicitly so the manifest reflects the granted scope.
 
 ## Payload types
 
