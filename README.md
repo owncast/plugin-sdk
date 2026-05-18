@@ -60,15 +60,19 @@ Layout mirrors the planned future repo split: `sdks/<lang>/` for author-facing S
 
 ## Run the demo
 
-Build all the example plugins and start the host:
-
 ```sh
-# Build each example into ./plugins/
+# Build the Go-side binaries this repo owns (one-time, after cloning)
+tools/bootstrap.sh
+
+# Build each example into ./plugins/  (npm install fetches extism-js et al.
+# via the SDK's postinstall on first run)
 for ex in examples/js/*/; do tools/build-plugin.sh "$ex"; done
 
 # Run the simulated chat stream
 cd host-runtime-poc && go run . ../plugins
 ```
+
+`tools/bootstrap.sh` compiles `owncast-plugin-test` and `owncast-plugin-serve` from `host-runtime-poc/cmd/`. End users installing the published SDK get these as per-platform release-asset downloads via the postinstall instead — `bootstrap.sh` is for repo developers running against a not-yet-released checkout.
 
 You should see the chat stream flow through the filter chain (slow-mode, buggy-filter, profanity-filter), then fan out to notification subscribers (chat-logger, echo-bot, message-counter, relay), with relay re-emitting `announcement.broadcast` events that announcer handles.
 

@@ -1,10 +1,15 @@
 #!/usr/bin/env node
-// Downloads extism-js + binaryen tools (wasm-merge, wasm-opt) for the
-// current platform into <sdk>/bin/.cache so the build CLI can find them
-// without polluting the user's system.
+// Downloads per-platform tooling into <sdk>/bin/.cache so the build CLI
+// finds it without polluting the user's system:
 //
-// PoC scope: linux-x86_64 + darwin-arm64 + darwin-x86_64 covered. We can
-// add windows / linux-arm64 later.
+//   - extism-js                  — JS → wasm compiler (extism/js-pdk releases)
+//   - wasm-merge, wasm-opt, lib  — binaryen post-processing (WebAssembly/binaryen releases)
+//   - owncast-plugin-test/serve  — scenario runner + dev server (this repo's releases)
+//
+// PoC scope: linux-x86_64 + darwin-arm64 + darwin-x86_64 covered.
+// owncast-plugin-test/serve downloads gracefully skip if the matching
+// release asset isn't published yet — dev builds can substitute their own
+// via tools/bootstrap.sh.
 
 const fs = require("fs");
 const path = require("path");
@@ -14,6 +19,10 @@ const { execFileSync } = require("child_process");
 
 const EXTISM_JS_VERSION = "v1.6.0";
 const BINARYEN_VERSION = "version_119";
+// Tracks the SDK version that the host binaries were cut for. Usually
+// matches the SDK's own version in package.json.
+const HOST_BINARIES_VERSION = require("../package.json").version;
+const HOST_BINARIES_REPO = "owncast/plugin-sdk";
 
 const platform = process.platform;
 const arch = process.arch;
@@ -47,6 +56,19 @@ function binaryenURL() {
   };
   const file = map[platformKey()];
   return `https://github.com/WebAssembly/binaryen/releases/download/${BINARYEN_VERSION}/${file}`;
+}
+
+function hostBinaryURL(name) {
+  // Per-platform asset naming matches Go's GOOS-GOARCH convention so the
+  // release CI can `go build` once per matrix entry without renaming.
+  const map = {
+    "linux-x86_64": "linux-amd64",
+    "linux-aarch64": "linux-arm64",
+    "darwin-x86_64": "darwin-amd64",
+    "darwin-arm64": "darwin-arm64"
+  };
+  const suffix = map[platformKey()];
+  return `https://github.com/${HOST_BINARIES_REPO}/releases/download/v${HOST_BINARIES_VERSION}/${name}-${suffix}`;
 }
 
 function download(url, dest) {
@@ -100,11 +122,29 @@ async function main() {
     fs.unlinkSync(tar);
   }
 
-  // owncast-plugin-test (the scenario test runner) would also be downloaded
-  // here in a real release. For this PoC the binary ships with the repo —
-  // build it once via:
-  //   cd owncast && go build -o ../tools/owncast-plugin-test ./cmd/owncast-plugin-test
-  // and the SDK's `test` subcommand will find it in tools/ via findCacheDir.
+  // owncast-plugin-test + owncast-plugin-serve — built from this repo's
+  // host-runtime-poc/ Go sources, published as release assets on
+  // github.com/owncast/plugin-sdk. Skip silently if the release doesn't
+  // exist yet (dev environments running against a not-yet-released SDK
+  // version can substitute their own via tools/bootstrap.sh).
+  for (const binary of ["owncast-plugin-test", "owncast-plugin-serve"]) {
+    const dest = path.join(cacheDir, binary);
+    if (fs.existsSync(dest)) continue;
+    try {
+      console.log(`[plugin-sdk] downloading ${binary} ${HOST_BINARIES_VERSION}...`);
+      await download(hostBinaryURL(binary), dest);
+      fs.chmodSync(dest, 0o755);
+    } catch (e) {
+      // 404 is expected before the first release; other errors get a soft
+      // warning so the user sees them but the install still succeeds.
+      console.warn(
+        `[plugin-sdk] could not fetch ${binary}: ${e.message}\n` +
+        `  Build locally via tools/bootstrap.sh, or use the latest GitHub release.`
+      );
+      // Make sure no partial file is left behind.
+      if (fs.existsSync(dest)) fs.unlinkSync(dest);
+    }
+  }
 
   console.log("[plugin-sdk] toolchain ready");
 }

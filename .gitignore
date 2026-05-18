@@ -26,6 +26,13 @@ plugin-data.db
 # tools/build-plugin.sh mkdir -p's it, so missing-dir-on-fresh-clone is fine.
 plugins/
 
+# Binaries in tools/: upstream tooling (extism-js, wasm-merge, wasm-opt, the
+# binaryen static lib) is fetched on `npm install` by the SDK postinstall.
+# Go binaries (owncast-plugin-test, owncast-plugin-serve) are built by
+# tools/bootstrap.sh. Scripts stay tracked.
+tools/*
+!tools/*.sh
+
 # Go test/build noise
 *.test
 *.prof
