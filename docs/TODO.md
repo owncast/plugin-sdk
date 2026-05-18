@@ -304,7 +304,7 @@ Each remaining item is mostly mechanical once Owncast integration is happening �
 
 ## Real Owncast integration
 
-The PoC's `owncast/main.go` and `owncast/cmd/owncast-plugin-serve` are stand-ins for the production host. Integration into real Owncast involves:
+The PoC's `host-runtime-poc/main.go` and `host-runtime-poc/cmd/owncast-plugin-serve` are stand-ins for the production host. Integration into real Owncast involves:
 
 ### Mount the plugin server in chi 🛠️
 

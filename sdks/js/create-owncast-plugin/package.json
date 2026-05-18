@@ -1,0 +1,32 @@
+{
+  "name": "create-owncast-plugin",
+  "version": "0.1.0",
+  "description": "Scaffold a new Owncast plugin — `npm create owncast-plugin <name>`",
+  "license": "MIT",
+  "author": "Owncast",
+  "homepage": "https://github.com/owncast/plugin-sdk#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/owncast/plugin-sdk.git",
+    "directory": "sdks/js/create-owncast-plugin"
+  },
+  "bugs": {
+    "url": "https://github.com/owncast/plugin-sdk/issues"
+  },
+  "keywords": [
+    "owncast",
+    "plugin",
+    "scaffolder",
+    "create"
+  ],
+  "bin": {
+    "create-owncast-plugin": "bin/index.js"
+  },
+  "files": [
+    "bin",
+    "template"
+  ],
+  "engines": {
+    "node": ">=18"
+  }
+}

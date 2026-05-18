@@ -1,4 +1,4 @@
-# owncast-plugins (PoC)
+# owncast-plugin-sdk (PoC)
 
 Standalone proof-of-concept exploring an in-process plugin system for [Owncast](https://owncast.online): JavaScript plugins compiled to WebAssembly, executed inside a Go host via [Extism](https://extism.org) (which uses [Wazero](https://wazero.io) — pure Go, no CGo).
 
@@ -7,34 +7,38 @@ This isn't part of Owncast yet. It's a sandbox to validate the architecture.
 ## Documentation
 
 - **[Plugin Author Guide](./docs/PLUGIN_AUTHOR_GUIDE.md)** — start-to-finish guide for writing, testing, and shipping a plugin
+- **[Wire Protocol](./docs/WIRE_PROTOCOL.md)** — the contract between the Owncast host and any language SDK; future SDKs and the eventual server-side host runtime both implement this
 - **[Host API Roadmap](./docs/HOST_API_ROADMAP.md)** — catalog of Owncast capabilities to expose to plugins (what's shipped, planned, deferred)
 - **[TODO / Open Ideas](./docs/TODO.md)** — design ideas and concrete work items still on the punch list
 
 ## What's here
 
+Layout mirrors the planned future repo split: `sdks/<lang>/` for author-facing SDKs that ship to package managers, `tools/` for binaries shipped via GitHub releases, `host-runtime-poc/` for the host code that will eventually move into the Owncast server repo.
+
 ```
 .
-├── owncast/               Go module — production plugin runtime + demo + tools
-│   ├── plugin/            runtime library: manager, dispatcher, server, host-fns, perms
+├── sdks/
+│   └── js/                @owncast/plugin-sdk — npm package for authors
+│       ├── index.js              runtime: definePlugin(), host.* wrappers
+│       ├── index.d.ts            TypeScript types for editor autocomplete
+│       ├── bin/                  owncast-plugin build CLI
+│       ├── scripts/              postinstall fetches extism-js + binaryen
+│       └── create-owncast-plugin/  npm initializer (`npm create owncast-plugin`)
+│
+├── host-runtime-poc/      Go: PoC host runtime — moves to the Owncast server
+│   │                              repo when integration lands
+│   ├── plugin/            runtime library: manager, dispatcher, server, host-fns
 │   │   └── testing/       scenario runner used by the test binary
 │   ├── kv/                Store interface + bbolt and in-memory impls
 │   ├── cmd/owncast-plugin-test/    standalone test runner CLI
 │   ├── cmd/owncast-plugin-serve/   localhost dev HTTP server CLI
 │   └── main.go            demo: simulated chat stream against the runtime
 │
-├── sdk/                   @owncast/plugin-sdk — npm package for authors
-│   ├── index.js           runtime: definePlugin(), host.* wrappers
-│   ├── index.d.ts         TypeScript types for editor autocomplete
-│   ├── bin/               owncast-plugin build CLI
-│   └── scripts/           postinstall fetches extism-js + binaryen
-│
-├── create-owncast-plugin/ npm initializer (`npm create owncast-plugin <name>`)
-│   ├── bin/               scaffolder
-│   └── template/          starter project
-│
-├── examples/              one example per architectural feature (see below)
-├── plugins/               built .wasm + .manifest.json pairs the host loads
-└── tools/                 prebuilt extism-js, wasm-merge, wasm-opt for dev
+├── examples/
+│   └── js/                one JS example per architectural feature (see below)
+├── plugins/               .ocpkg packages the demo host loads (build artifacts, gitignored)
+├── tools/                 prebuilt extism-js, wasm-merge, wasm-opt, Go binaries
+└── docs/                  guides + wire protocol + roadmap
 ```
 
 ## Architecture in one screen
@@ -60,10 +64,10 @@ Build all the example plugins and start the host:
 
 ```sh
 # Build each example into ./plugins/
-for ex in examples/*/; do tools/build-plugin.sh "$ex"; done
+for ex in examples/js/*/; do tools/build-plugin.sh "$ex"; done
 
 # Run the simulated chat stream
-cd owncast && go run . ../plugins
+cd host-runtime-poc && go run . ../plugins
 ```
 
 You should see the chat stream flow through the filter chain (slow-mode, buggy-filter, profanity-filter), then fan out to notification subscribers (chat-logger, echo-bot, message-counter, relay), with relay re-emitting `announcement.broadcast` events that announcer handles.
@@ -71,10 +75,10 @@ You should see the chat stream flow through the filter chain (slow-mode, buggy-f
 ## Run all example tests
 
 ```sh
-for ex in examples/*/; do tools/owncast-plugin-test "$ex"; done
+for ex in examples/js/*/; do tools/owncast-plugin-test "$ex"; done
 ```
 
-Or `cd examples/<name> && npm test` for a single plugin (which also rebuilds it first).
+Or `cd examples/js/<name> && npm test` for a single plugin (which also rebuilds it first).
 
 ## Authoring a plugin
 
@@ -157,36 +161,17 @@ module.exports = definePlugin({
 
 ## Examples
 
-All examples use `@owncast/plugin-sdk`. Each `examples/<name>/` is a self-contained npm project — `tools/build-plugin.sh` runs `npm install` + `npm run build` for each.
-
-| Plugin | Demonstrates |
-|---|---|
-| `hello-world` | Minimal — manifest + `register()` validation, no handlers |
-| `chat-logger` | `onEvent` notification fanout |
-| `echo-bot` | `owncast.chat.send` |
-| `message-counter` | `owncast.kv.get` / `set`, persistence across restarts |
-| `profanity-filter` | `onFilter` returning `filter.modify(...)` |
-| `slow-mode` | `onFilter` returning `filter.drop(reason)`, with KV-backed state |
-| `buggy-filter` | Fail-open: throws each call, chain continues unaffected |
-| `relay` + `announcer` | Plugin → plugin custom events via `owncast.events.emit` |
-| `ip-bot` | `owncast.http.fetch` — real HTTP, mocked in tests via `given.httpResponses` |
-| `overlay` | `http.serve` permission — static `assets/index.html` + dynamic `/api/messages` JSON endpoint, both at `/plugins/overlay/` |
-| `stream-tracker` | Every typed event handler (stream lifecycle + chat user join/part/rename), read APIs (`owncast.stream.current()`, `owncast.server.info()`), chat variants (`sendAction`, `sendAs`) |
-| `mod-bot` | Chat moderation (`owncast.chat.deleteMessage`), notifications (`owncast.notifications.discord`, `.browserPush`), fediverse events + outbound `owncast.fediverse.post(text)` |
-| `admin-demo` | Admin UI integration — `manifest.admin.pages` declares auth-gated routes; static settings page + JSON config API behind admin auth |
-
-Filter failures track strike counts: a plugin whose `filterChatMessage` throws 5 times in a row is auto-disabled for the rest of the session. A successful filter call resets the counter.
+See **[examples/js/README.md](./examples/js/README.md)** for the full catalog of plugin examples with one-line summaries. Each example has its own README inside its directory.
 
 ## Open items / not yet done
 
-- **HTTP allow-listing**: `network.fetch` currently grants any host (including localhost). For a marketplace-distribution future, a manifest field like `"network": { "allowedHosts": ["*.weather.com"] }` could narrow this for plugins that don't legitimately need full reach. Skipped for now — see the design discussion in commit history.
-- **First-class host functions for Owncast state**: plugins that want stream/user/chat-history data currently could only get it by calling `localhost`. Each common need should become a proper host function (`owncast.stream.current()`, etc.) over time.
-- **Per-route admin auth declarations**: HTTP endpoints default to public, with plugins gating admin features via `req.authenticated`. A manifest field like `"http": { "adminPaths": ["/admin/*"] }` could let the host enforce auth before the request reaches the plugin. Defer until a marketplace.
-- **Real Owncast auth integration**: `req.authenticated` is currently always `false` in the PoC because there's no auth in the demo binary. Wire to Owncast's existing session/admin-key machinery when integrating.
-- **Filter priority**: with subscriptions auto-derived, every filter currently runs at priority 0. The chain still works — filters just may run in alphabetical (plugin name) order rather than the most-efficient order. Need an API to set per-plugin filter priority (in `definePlugin({ filterPriority: 30, ... })` or in the manifest).
-- **Strike system**: design says repeatedly-failing plugins auto-disable. Today, a buggy filter logs every time it fails. Cheap to add (counter + threshold on `Loaded`).
-- **Filter timeouts**: 50ms per-plugin, 200ms chain budget per the design. Needs Wazero context-aware execution; deferred.
-- **Network host function**: `host.fetch()` for `network.fetch` permission. Not implemented.
-- **Config**: `manifest.config` schema is parsed but not exposed to plugins yet. Intent: typed config values per plugin, editable in the Owncast admin UI.
-- **Owncast integration**: this PoC simulates the chat stream in `host/main.go`. Wiring into real Owncast events comes after the design is validated.
-- **Drop-a-JS-file authoring** (the v1.0 dream from our design discussion): host embeds the JS-to-wasm compiler so authors don't run a build step. Step 6 here uses the npm path instead — still requires `npm run build`. Future work.
+- **Owncast integration**: the host runtime in `host-runtime-poc/` is PoC scaffolding. The real home is the Owncast server repo; the wire interface in [`docs/WIRE_PROTOCOL.md`](./docs/WIRE_PROTOCOL.md) is the contract between the two repos.
+- **Real auth wiring**: `req.authenticated` is always `false` in the demo binary because the demo doesn't have user sessions. The host's auth gate works (admin paths return 401 without it) but production needs hooking into Owncast's existing session / admin-key machinery.
+- **Manager persistence**: the enabled-plugin set is stored at `<pluginsDir>/.enabled.json` for the PoC. Real Owncast integration should write to its native config store.
+- **HTTP allow-listing**: `network.fetch` currently grants any host (including `localhost`, which is an SSRF risk against Owncast's own admin API). A manifest field like `"network": { "allowedHosts": ["*.weather.com"] }` would let admins narrow this per plugin. Worth doing before a marketplace.
+- **Config**: `manifest.config` schema is parsed but no host function exposes config values to plugin code. Intent is typed config values per plugin, editable from the Owncast admin UI.
+- **Strike system for notifications + HTTP**: the filter chain auto-disables a plugin after 5 consecutive failures. The notification and HTTP handler paths have per-call timeouts but don't count strikes — a permanently-broken `onChatMessage` keeps getting called forever.
+- **Action button HTML sanitization**: action buttons with an `html` field ship the HTML verbatim. The Owncast frontend renders trusted external-action HTML today; once these come from plugins, server-side sanitization (or a tighter allowlist) is worth considering.
+- **Bootstrap binaries via GitHub releases**: `owncast-plugin-test` and `owncast-plugin-serve` are committed in `tools/` for the PoC. Real distribution is GitHub releases of this repo, fetched by `sdks/js/scripts/postinstall.js` alongside `extism-js`.
+- **Additional language SDKs**: `sdks/go/` and `sdks/python/` are planned. They'll implement the same wire protocol and consume the shared scenario test corpus and release binaries.
+- **Drop-a-JS-file authoring**: the eventual dream is for the host to embed the JS-to-wasm compiler so authors can ship `.js` directly. Today the build step is mandatory.

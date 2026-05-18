@@ -1,7 +1,0 @@
-{
-  "api": "1",
-  "name": "profanity-filter",
-  "version": "0.1.0",
-  "description": "Redacts a hardcoded wordlist from chat",
-  "permissions": []
-}

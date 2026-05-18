@@ -1,7 +1,0 @@
-{
-  "api": "1",
-  "name": "ip-bot",
-  "version": "0.1.0",
-  "description": "Responds to !ip in chat by fetching the server's public IP",
-  "permissions": ["chat.send", "network.fetch"]
-}

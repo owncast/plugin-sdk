@@ -7,7 +7,7 @@
 #  - Raw: has plugin.js + index.d.ts at the example root. Runs extism-js
 #    directly. Kept for low-level demos.
 #
-# Usage: tools/build-plugin.sh examples/<name>
+# Usage: tools/build-plugin.sh examples/js/<name>
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
@@ -15,7 +15,7 @@ TOOLS="$ROOT/tools"
 PATH="$TOOLS:$PATH"
 
 if [ $# -ne 1 ]; then
-  echo "usage: $0 examples/<plugin-dir>" >&2
+  echo "usage: $0 examples/js/<plugin-dir>" >&2
   exit 1
 fi
 
@@ -35,20 +35,22 @@ if [ -f "$SRC/package.json" ]; then
     if [ ! -d node_modules ]; then
       npm install --no-audit --no-fund --silent
     fi
-    npm run --silent build
+    # `package` runs `build` if the wasm isn't there yet, then bundles
+    # manifest + wasm + assets/ into <name>.ocpkg.
+    npx --no-install owncast-plugin package >/dev/null
   )
 else
+  # Raw shape (low-level demos): build with extism-js directly, then hand-zip
+  # a minimal .ocpkg. Internal names inside the archive must be the canonical
+  # plugin.manifest.json + plugin.wasm regardless of plugin name.
   (
     cd "$SRC"
-    "$TOOLS/extism-js" plugin.js -i index.d.ts -o "$NAME.wasm"
+    "$TOOLS/extism-js" plugin.js -i index.d.ts -o plugin.wasm
+    rm -f "$NAME.ocpkg"
+    zip -q "$NAME.ocpkg" plugin.wasm plugin.manifest.json
+    rm -f plugin.wasm
   )
 fi
 
-cp "$SRC/$NAME.wasm" "$ROOT/plugins/$NAME.wasm"
-cp "$SRC/plugin.manifest.json" "$ROOT/plugins/$NAME.manifest.json"
-# Deploy static assets (canonical layout: <name>-assets/ next to wasm).
-if [ -d "$SRC/assets" ]; then
-  rm -rf "$ROOT/plugins/$NAME-assets"
-  cp -R "$SRC/assets" "$ROOT/plugins/$NAME-assets"
-fi
-echo "deployed: $NAME"
+cp "$SRC/$NAME.ocpkg" "$ROOT/plugins/$NAME.ocpkg"
+echo "deployed: $NAME.ocpkg"

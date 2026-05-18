@@ -16,6 +16,7 @@ How to write, test, and ship a plugin. Aimed at JavaScript developers. Write som
 - [Permissions](#permissions)
 - [Serving HTTP](#serving-http)
 - [Admin pages](#admin-pages)
+- [Action buttons](#action-buttons)
 - [Plugin-to-plugin events](#plugin-to-plugin-events)
 - [Testing](#testing)
   - [Step types](#step-types)
@@ -142,7 +143,7 @@ interface FediverseInboundPost {
 }
 ```
 
-`actor.handle` is the fully-qualified fediverse address (e.g. `@alice@mastodon.social`). Use `contentText` for analysis or display; use `content` if you need to render the original HTML formatting.
+`actor.handle` is the fully-qualified fediverse address (e.g. `@alice@fediverse.example`). Use `contentText` for analysis or display; use `content` if you need to render the original HTML formatting.
 
 ### Filter handlers
 
@@ -275,6 +276,44 @@ Author flow:
 3. Declare both globs (or just `"/admin/*"`) in `manifest.admin.pages[].path`
 4. Visit `/plugins/<your-name>/admin/` — Owncast challenges for admin auth, then renders your page
 
+## Action buttons
+
+Owncast surfaces a row of "external action" buttons in its UI — clickable entries that either open a URL (in a modal or new tab) or render raw HTML. Plugins can contribute their own. While the plugin is enabled, the host merges its action entries into the list Owncast already shows; when disabled, they disappear.
+
+Declare them in the manifest:
+
+```json
+{
+  "permissions": ["http.serve"],
+  "actions": [
+    {
+      "title": "Chat Overlay",
+      "description": "Open the live chat overlay",
+      "url": "/",
+      "icon": "/plugins/my-plugin/icon.svg",
+      "color": "#3b82f6"
+    },
+    {
+      "title": "Help",
+      "html": "<p>Visit our <a href='https://example.com/docs'>docs</a>.</p>"
+    },
+    {
+      "title": "Issue tracker",
+      "url": "https://github.com/example/my-plugin/issues",
+      "openExternally": true
+    }
+  ]
+}
+```
+
+- Exactly one of `url` or `html` is required per entry.
+- **Relative URLs auto-prefix.** `"url": "/"` becomes `/plugins/my-plugin/` at load time. `"/stats"` becomes `/plugins/my-plugin/stats`. Saves you from hard-coding your plugin name in your own manifest.
+- Absolute `https://...` URLs are accepted unchanged — use them for external links (set `openExternally: true` to open in a new tab).
+- If your URL resolves into your own `/plugins/<name>/` namespace, you must declare `http.serve` so the page actually serves. The host rejects the load with a clear error otherwise.
+- You can't point at another plugin's namespace (`/plugins/some-other-plugin/...`) — the host rejects that at load to catch typos.
+
+This pairs naturally with `http.serve`: ship a UI under `assets/` and declare an action button that opens it.
+
 ## Plugin-to-plugin events
 
 Plugins compose by emitting custom events:
@@ -389,7 +428,7 @@ Drop the resulting `my-plugin.ocpkg` into your Owncast server's `plugins/` direc
 
 ## Recipes
 
-Complete working plugins, also in `examples/`:
+Complete working plugins, also in `examples/js/`:
 
 ### Echo bot
 

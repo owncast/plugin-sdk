@@ -1,0 +1,13 @@
+{
+  "name": "overlay",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "build": "owncast-plugin build",
+    "test": "owncast-plugin build && owncast-plugin test",
+    "serve": "owncast-plugin build && owncast-plugin serve"
+  },
+  "dependencies": {
+    "@owncast/plugin-sdk": "file:../../../sdks/js"
+  }
+}

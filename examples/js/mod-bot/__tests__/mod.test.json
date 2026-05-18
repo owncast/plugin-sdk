@@ -1,0 +1,128 @@
+[
+  {
+    "name": "deletes messages containing spam keywords",
+    "events": [
+      {
+        "event": "chat.message.received",
+        "payload": { "id": "m-bad", "user": "spammer", "body": "free money click here", "timestamp": "2024-01-01T00:00:00Z" }
+      }
+    ],
+    "expect": {
+      "deletedMessages": ["m-bad"]
+    }
+  },
+  {
+    "name": "leaves clean messages alone",
+    "events": [
+      {
+        "event": "chat.message.received",
+        "payload": { "id": "m-ok", "user": "alice", "body": "hello world", "timestamp": "2024-01-01T00:00:00Z" }
+      }
+    ],
+    "expect": {
+      "deletedMessages": []
+    }
+  },
+  {
+    "name": "stream start fans out to Discord and the fediverse",
+    "events": [
+      {
+        "event": "stream.started",
+        "payload": { "startedAt": "2024-01-01T00:00:00Z", "title": "Friday show" }
+      }
+    ],
+    "expect": {
+      "discordPosts": ["Stream live: Friday show"],
+      "fediverseOutbox": ["🔴 Going live: Friday show"]
+    }
+  },
+  {
+    "name": "sends a browser push on fediverse follow",
+    "events": [
+      {
+        "event": "fediverse.follow",
+        "payload": {
+          "actor": {
+            "name": "Alice",
+            "handle": "@alice@fediverse.example",
+            "url": "https://fediverse.example/@alice"
+          }
+        }
+      }
+    ],
+    "expect": {
+      "browserPushes": [
+        {
+          "title": "New follower",
+          "body": "@alice@fediverse.example just followed",
+          "url": "https://fediverse.example/@alice"
+        }
+      ]
+    }
+  },
+  {
+    "name": "fediverse mention is forwarded to Discord with a snippet",
+    "events": [
+      {
+        "event": "fediverse.mention",
+        "payload": {
+          "actor": {
+            "name": "Alice",
+            "handle": "@alice@fediverse.example",
+            "url": "https://fediverse.example/@alice"
+          },
+          "content": "<p>great stream tonight!</p>",
+          "contentText": "great stream tonight!",
+          "url": "https://fediverse.example/@alice/123",
+          "postedAt": "2024-01-01T00:00:00Z"
+        }
+      }
+    ],
+    "expect": {
+      "discordPosts": [
+        "mention from @alice@fediverse.example: great stream tonight!\nhttps://fediverse.example/@alice/123"
+      ]
+    }
+  },
+  {
+    "name": "long fediverse mentions are truncated",
+    "events": [
+      {
+        "event": "fediverse.mention",
+        "payload": {
+          "actor": { "name": "Bob", "handle": "@bob@fediverse.example" },
+          "content": "<p>long</p>",
+          "contentText": "this mention has content that is over the 200 character limit so it should get truncated with an ellipsis at the end. lorem ipsum dolor sit amet, consectetur adipiscing elit. duis aute irure dolor in reprehenderit.",
+          "url": "https://fediverse.example/@bob/456",
+          "postedAt": "2024-01-01T00:00:00Z"
+        }
+      }
+    ],
+    "expect": {
+      "discordPosts": [
+        "mention from @bob@fediverse.example: this mention has content that is over the 200 character limit so it should get truncated with an ellipsis at the end. lorem ipsum dolor sit amet, consectetur adipiscing elit. duis aute irure dolor in …\nhttps://fediverse.example/@bob/456"
+      ]
+    }
+  },
+  {
+    "name": "fediverse reply is forwarded to Discord",
+    "events": [
+      {
+        "event": "fediverse.reply",
+        "payload": {
+          "actor": { "name": "Carol", "handle": "@carol@example.social" },
+          "content": "<p>hi there</p>",
+          "contentText": "hi there",
+          "url": "https://example.social/@carol/789",
+          "inReplyTo": "https://demo.owncast.example/@demo/100",
+          "postedAt": "2024-01-01T00:00:00Z"
+        }
+      }
+    ],
+    "expect": {
+      "discordPosts": [
+        "reply from @carol@example.social: hi there\nhttps://example.social/@carol/789"
+      ]
+    }
+  }
+]

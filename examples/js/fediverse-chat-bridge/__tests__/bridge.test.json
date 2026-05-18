@@ -1,0 +1,77 @@
+[
+  {
+    "name": "mention with avatar, name, handle, and permalink",
+    "events": [
+      {
+        "event": "fediverse.mention",
+        "payload": {
+          "actor": {
+            "name": "Alice",
+            "handle": "@alice@fediverse.example",
+            "url": "https://fediverse.example/@alice",
+            "image": "https://fediverse.example/avatars/alice.png"
+          },
+          "content": "<p>great stream!</p>",
+          "contentText": "great stream!",
+          "url": "https://fediverse.example/@alice/123",
+          "postedAt": "2026-05-17T18:00:00Z"
+        }
+      }
+    ],
+    "expect": {
+      "chatSystems": [
+        "<img src=\"https://fediverse.example/avatars/alice.png\" alt=\"\" width=\"32\" height=\"32\" style=\"vertical-align:middle;border-radius:50%;margin-right:8px\"><strong><a href=\"https://fediverse.example/@alice\" rel=\"noopener noreferrer\">Alice</a></strong> <span style=\"opacity:0.7\">@alice@fediverse.example</span> — <a href=\"https://fediverse.example/@alice/123\" rel=\"noopener noreferrer\">great stream!</a>"
+      ]
+    }
+  },
+  {
+    "name": "escapes HTML in the actor name and post text",
+    "events": [
+      {
+        "event": "fediverse.reply",
+        "payload": {
+          "actor": {
+            "name": "<script>alert(1)</script>",
+            "handle": "@evil@example.com",
+            "url": "https://example.com/@evil",
+            "image": "https://example.com/a.png"
+          },
+          "content": "<p>hi</p>",
+          "contentText": "<img onerror=alert(1)>",
+          "url": "https://example.com/@evil/9",
+          "postedAt": "2026-05-17T18:00:00Z"
+        }
+      }
+    ],
+    "expect": {
+      "chatSystems": [
+        "<img src=\"https://example.com/a.png\" alt=\"\" width=\"32\" height=\"32\" style=\"vertical-align:middle;border-radius:50%;margin-right:8px\"><strong><a href=\"https://example.com/@evil\" rel=\"noopener noreferrer\">&lt;script&gt;alert(1)&lt;/script&gt;</a></strong> <span style=\"opacity:0.7\">@evil@example.com</span> — <a href=\"https://example.com/@evil/9\" rel=\"noopener noreferrer\">&lt;img onerror=alert(1)&gt;</a>"
+      ]
+    }
+  },
+  {
+    "name": "rejects non-http URLs (no avatar, no link)",
+    "events": [
+      {
+        "event": "fediverse.mention",
+        "payload": {
+          "actor": {
+            "name": "Mallory",
+            "handle": "@m@x.example",
+            "url": "javascript:alert(1)",
+            "image": "data:image/png;base64,AAA"
+          },
+          "content": "<p>x</p>",
+          "contentText": "x",
+          "url": "ftp://x.example/post",
+          "postedAt": "2026-05-17T18:00:00Z"
+        }
+      }
+    ],
+    "expect": {
+      "chatSystems": [
+        "<strong>Mallory</strong> <span style=\"opacity:0.7\">@m@x.example</span> — x"
+      ]
+    }
+  }
+]

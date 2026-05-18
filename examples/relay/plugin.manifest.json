@@ -1,9 +1,0 @@
-{
-  "api": "1",
-  "name": "relay",
-  "version": "0.1.0",
-  "description": "Listens for /announce <text>, re-emits as announcement.broadcast",
-  "permissions": [
-    "events.emit"
-  ]
-}

@@ -1,7 +1,0 @@
-{
-  "api": "1",
-  "name": "hello-world",
-  "version": "0.1.0",
-  "description": "Minimal plugin proving the load path works",
-  "permissions": []
-}

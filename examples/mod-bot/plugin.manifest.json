@@ -1,7 +1,0 @@
-{
-  "api": "1",
-  "name": "mod-bot",
-  "version": "0.1.0",
-  "description": "Deletes spammy messages, notifies Discord on stream start, posts a browser push on fediverse follows, announces stream starts to the fediverse",
-  "permissions": ["chat.moderate", "notifications.send", "fediverse.post"]
-}

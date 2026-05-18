@@ -146,7 +146,7 @@ This is the wiring step when integrating with real Owncast — no new host funct
 
 ## 9. HTTP layer integration
 
-Real Owncast already mounts routes under `/api/` via chi. The plugin server (`owncast/plugin/server.go`) should be mounted at `/plugins/` in Owncast's existing chi router:
+Real Owncast already mounts routes under `/api/` via chi. The plugin server (`host-runtime-poc/plugin/server.go`) should be mounted at `/plugins/` in Owncast's existing chi router:
 
 ```go
 mux.Handle("/plugins/", pluginServer)

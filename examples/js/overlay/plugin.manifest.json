@@ -1,0 +1,15 @@
+{
+  "api": "1",
+  "name": "overlay",
+  "version": "0.1.0",
+  "description": "Ships a static HTML overlay page and a JSON API at /api/messages backed by owncast.chat.history()",
+  "permissions": ["http.serve", "chat.history"],
+  "actions": [
+    {
+      "title": "Chat Overlay",
+      "description": "Open the live chat overlay page",
+      "url": "/",
+      "color": "#3b82f6"
+    }
+  ]
+}

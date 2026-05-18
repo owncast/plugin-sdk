@@ -1,9 +1,0 @@
-{
-  "api": "1",
-  "name": "message-counter",
-  "version": "0.1.0",
-  "description": "Counts messages per user, persists across restarts",
-  "permissions": [
-    "storage.kv"
-  ]
-}
