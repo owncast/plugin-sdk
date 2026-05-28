@@ -1,5 +1,8 @@
-// mod-bot, exercises chat.moderate (deleteMessage, kick) and
-// notifications.send (Discord, browser push).
+// engagement-bot: pipes Owncast events out to the streamer's other
+// channels (Discord, browser push, fediverse). Exercises
+// notifications.send (Discord + browser push), fediverse.post (the
+// stream-start announcement), and chat.moderate (deleteMessage for the
+// inline spam filter).
 const { definePlugin, owncast } = require("@owncast/plugin-sdk");
 
 const SPAM_KEYWORDS = ["buy crypto", "free money", "click here"];

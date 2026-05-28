@@ -2,8 +2,8 @@
   "api": "1",
   "name": "slow-mode",
   "version": "0.1.0",
-  "description": "Drops messages from users posting faster than 2s apart",
+  "description": "Drops messages from users posting faster than 2s apart; rate-limit state lives in plugin memory",
   "permissions": [
-    "storage.kv"
+    "chat.filter"
   ]
 }

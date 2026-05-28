@@ -36,6 +36,7 @@ const Permissions = Object.freeze({
   ChatSend: "chat.send",
   ChatHistory: "chat.history",
   ChatModerate: "chat.moderate",
+  ChatFilter: "chat.filter",
   StorageKV: "storage.kv",
   StorageUpload: "storage.upload",
   EventsEmit: "events.emit",

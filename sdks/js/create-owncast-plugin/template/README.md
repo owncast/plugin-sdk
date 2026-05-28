@@ -6,7 +6,7 @@ An Owncast plugin scaffolded with `create-owncast-plugin`.
 
 ```sh
 npm install          # one-time, fetches the toolchain
-npm run build        # compile src/plugin.js → __PLUGIN_NAME__.wasm
+npm run build        # compile src/plugin.js into an intermediate build artifact
 npm test             # build, then run scenarios from __tests__/
 npm run serve        # build, then host the plugin on http://localhost:8080
 npm run package      # build, then bundle into __PLUGIN_NAME__.ocpkg for distribution
@@ -14,13 +14,14 @@ npm run package      # build, then bundle into __PLUGIN_NAME__.ocpkg for distrib
 
 ## Ship
 
-`npm run package` produces `__PLUGIN_NAME__.ocpkg`. Drop it into your Owncast server's `plugins/` directory and enable it from the admin.
+`npm run package` produces `__PLUGIN_NAME__.ocpkg`. Install it through the Owncast admin: open **Plugins**, click **Upload plugin**, and pick the file. (You can also copy it directly to the server's `data/plugins/` directory if the admin UI isn't an option.) Toggle **Enabled** to load it.
 
 ## Files
 
 - `src/plugin.js`, your handler code; edit this
 - `plugin.manifest.json`, name, version, permissions
 - `__tests__/plugin.test.js`, a sample scenario test; add more
+- `icon.png` (optional), drop a square PNG here and it bundles into the `.ocpkg` automatically. The admin uses it in the plugin list and sidebar; no permission required. Plugins without one fall back to a generic puzzle-piece glyph.
 
 ## Learn more
 

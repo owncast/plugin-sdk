@@ -182,6 +182,7 @@ func TestIsAllowedResponseHeader(t *testing.T) {
 		"Cache-Control", "ETag", "Last-Modified", "Location", "Vary",
 		"Access-Control-Allow-Origin", "Access-Control-Allow-Methods",
 		"Content-Encoding", "Content-Language", "Link",
+		"Set-Cookie", "set-cookie", // plugins can set cookies in their own namespace
 	}
 	for _, h := range allowed {
 		if !isAllowedResponseHeader(h) {
@@ -190,7 +191,6 @@ func TestIsAllowedResponseHeader(t *testing.T) {
 	}
 
 	denied := []string{
-		"Set-Cookie",
 		"Authorization",
 		"WWW-Authenticate",
 		"X-Custom-Plugin-Header",

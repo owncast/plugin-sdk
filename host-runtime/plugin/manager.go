@@ -168,10 +168,11 @@ type Manager struct {
 	enabledFile string
 	env         *HostEnv
 
-	mu         sync.RWMutex
-	discovered map[string]*DiscoveredEntry // keyed by manifest.name
-	loaded     map[string]*Loaded          // subset of discovered that's currently running
-	enabledSet map[string]bool             // names the admin has enabled
+	mu          sync.RWMutex
+	discovered  map[string]*DiscoveredEntry // keyed by manifest.name
+	loaded      map[string]*Loaded          // subset of discovered that's currently running
+	enabledSet  map[string]bool             // names the admin has enabled
+	approvedSet map[string][]string         // plugin name -> sorted approved permission set
 
 	scanInterval time.Duration
 	cancel       context.CancelFunc // stops the scan loop
@@ -181,15 +182,21 @@ type Manager struct {
 // DiscoveredEntry is the public view of a discovered plugin, what the
 // admin UI lists.
 type DiscoveredEntry struct {
-	Name         string    `json:"name"`
-	Version      string    `json:"version,omitempty"`
-	Description  string    `json:"description,omitempty"`
-	Permissions  []string  `json:"permissions,omitempty"`
-	Path         string    `json:"path"`
-	Enabled      bool      `json:"enabled"`
-	Loaded       bool      `json:"loaded"`
-	LastError    string    `json:"lastError,omitempty"`
-	DiscoveredAt time.Time `json:"discoveredAt"`
+	Name        string   `json:"name"`
+	Version     string   `json:"version,omitempty"`
+	Description string   `json:"description,omitempty"`
+	Permissions []string `json:"permissions,omitempty"`
+	Path        string   `json:"path"`
+	Enabled     bool     `json:"enabled"`
+	Loaded      bool     `json:"loaded"`
+	// PendingPermissions lists permissions the current manifest declares
+	// that the admin has not yet approved. Non-empty means the plugin
+	// was updated on disk to request more access than was originally
+	// granted; the plugin will not load until the admin re-enables it
+	// (which captures a fresh approval snapshot covering the new set).
+	PendingPermissions []string  `json:"pendingPermissions,omitempty"`
+	LastError          string    `json:"lastError,omitempty"`
+	DiscoveredAt       time.Time `json:"discoveredAt"`
 }
 
 // ScanInterval is how often the manager re-scans the plugins directory.
@@ -203,6 +210,7 @@ func NewManager(pluginsDir string, env *HostEnv) *Manager {
 		discovered:   make(map[string]*DiscoveredEntry),
 		loaded:       make(map[string]*Loaded),
 		enabledSet:   make(map[string]bool),
+		approvedSet:  make(map[string][]string),
 		scanInterval: ScanInterval,
 		scanCh:       make(chan struct{}, 1),
 	}
@@ -217,9 +225,18 @@ func (m *Manager) Start(ctx context.Context) error {
 	if err := m.scan(ctx); err != nil {
 		return fmt.Errorf("initial scan: %w", err)
 	}
-	// Auto-load anything in the enabled set that isn't already loaded.
+	if m.captureMissingApprovals() {
+		if err := m.saveEnabledSet(); err != nil {
+			fmt.Fprintf(os.Stderr, "persist enabled set: %v\n", err)
+		}
+	}
+	// Auto-load anything in the enabled set that isn't already loaded
+	// AND whose approved-permission set covers the current manifest.
 	for name, enabled := range m.enabledSet {
 		if !enabled {
+			continue
+		}
+		if pending := m.pendingForLocked(name); len(pending) > 0 {
 			continue
 		}
 		if _, err := m.loadInternal(ctx, name); err != nil {
@@ -274,11 +291,14 @@ func (m *Manager) Snapshot() []*Loaded {
 	return out
 }
 
-// Enable marks a discovered plugin as enabled, persists the choice, and
-// loads it. No-op if already loaded.
+// Enable marks a discovered plugin as enabled, captures the current
+// manifest's permission set as the approved baseline (so any later
+// expansion triggers a re-approval flow), persists the choice, and
+// loads the plugin. No-op if already loaded.
 func (m *Manager) Enable(ctx context.Context, name string) error {
 	m.mu.Lock()
-	if _, ok := m.discovered[name]; !ok {
+	d, ok := m.discovered[name]
+	if !ok {
 		m.mu.Unlock()
 		return fmt.Errorf("plugin %q not discovered", name)
 	}
@@ -290,6 +310,10 @@ func (m *Manager) Enable(ctx context.Context, name string) error {
 		}
 	}
 	m.enabledSet[name] = true
+	snapshot := append([]string(nil), d.Permissions...)
+	sort.Strings(snapshot)
+	m.approvedSet[name] = snapshot
+	d.PendingPermissions = nil
 	m.mu.Unlock()
 	if err := m.saveEnabledSet(); err != nil {
 		return fmt.Errorf("persist enabled set: %w", err)
@@ -344,12 +368,26 @@ func (m *Manager) Reload(ctx context.Context, name string) error {
 
 // loadInternal performs the actual load and inserts into m.loaded. Assumes
 // the caller has already verified the plugin is discovered + enabled.
+// Refuses to load a plugin whose current manifest declares permissions
+// the admin has not yet approved.
 func (m *Manager) loadInternal(ctx context.Context, name string) (*Loaded, error) {
 	m.mu.RLock()
 	d, ok := m.discovered[name]
+	approved := m.approvedSet[name]
 	m.mu.RUnlock()
 	if !ok {
 		return nil, fmt.Errorf("plugin %q not discovered", name)
+	}
+	if pending := pendingPermissions(d.Permissions, approved); len(pending) > 0 {
+		err := fmt.Errorf("plugin %q declares new permissions that need admin approval: %s",
+			name, strings.Join(pending, ", "))
+		m.mu.Lock()
+		if existing, ok := m.discovered[name]; ok {
+			existing.PendingPermissions = pending
+			existing.LastError = err.Error()
+		}
+		m.mu.Unlock()
+		return nil, err
 	}
 
 	loaded, err := loadByPath(ctx, m.env, d.Path)
@@ -420,14 +458,16 @@ func (m *Manager) scan(ctx context.Context) error {
 			existing.Description = manifest.Description
 			existing.Permissions = manifest.Permissions
 			existing.Path = path
+			existing.PendingPermissions = pendingPermissions(manifest.Permissions, m.approvedSet[manifest.Name])
 		} else {
 			m.discovered[manifest.Name] = &DiscoveredEntry{
-				Name:         manifest.Name,
-				Version:      manifest.Version,
-				Description:  manifest.Description,
-				Permissions:  manifest.Permissions,
-				Path:         path,
-				DiscoveredAt: time.Now(),
+				Name:               manifest.Name,
+				Version:            manifest.Version,
+				Description:        manifest.Description,
+				Permissions:        manifest.Permissions,
+				Path:               path,
+				DiscoveredAt:       time.Now(),
+				PendingPermissions: pendingPermissions(manifest.Permissions, m.approvedSet[manifest.Name]),
 			}
 		}
 		m.mu.Unlock()
@@ -490,11 +530,13 @@ func readManifestForPath(path string) (*Manifest, error) {
 	return nil, fmt.Errorf("unsupported file type: %s", path)
 }
 
-// Persistence, a tiny JSON file under the plugins directory listing the
-// names the admin has enabled. Survives restarts.
+// Persistence: a tiny JSON file under the plugins directory listing the
+// names the admin has enabled and the per-plugin permission set the
+// admin approved at enable time. Survives restarts.
 
 type enabledFile struct {
-	Enabled []string `json:"enabled"`
+	Enabled             []string            `json:"enabled"`
+	ApprovedPermissions map[string][]string `json:"approvedPermissions,omitempty"`
 }
 
 func (m *Manager) loadEnabledSet() error {
@@ -514,6 +556,11 @@ func (m *Manager) loadEnabledSet() error {
 	for _, name := range f.Enabled {
 		m.enabledSet[name] = true
 	}
+	for name, perms := range f.ApprovedPermissions {
+		clone := append([]string(nil), perms...)
+		sort.Strings(clone)
+		m.approvedSet[name] = clone
+	}
 	return nil
 }
 
@@ -525,14 +572,85 @@ func (m *Manager) saveEnabledSet() error {
 			names = append(names, name)
 		}
 	}
+	approvals := make(map[string][]string, len(m.approvedSet))
+	for name, perms := range m.approvedSet {
+		clone := append([]string(nil), perms...)
+		approvals[name] = clone
+	}
 	m.mu.RUnlock()
 	sort.Strings(names)
 
-	data, err := json.MarshalIndent(enabledFile{Enabled: names}, "", "  ")
+	out := enabledFile{Enabled: names, ApprovedPermissions: approvals}
+	data, err := json.MarshalIndent(out, "", "  ")
 	if err != nil {
 		return err
 	}
 	return os.WriteFile(m.enabledFile, data, 0o644)
+}
+
+// pendingForLocked returns the permissions the current manifest declares
+// that the admin has not yet approved. Caller need not hold the
+// manager's lock; this helper acquires its own RLock.
+func (m *Manager) pendingForLocked(name string) []string {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+	d, ok := m.discovered[name]
+	if !ok {
+		return nil
+	}
+	return pendingPermissions(d.Permissions, m.approvedSet[name])
+}
+
+// captureMissingApprovals fills in approval baselines for any plugin in
+// the enabled set that doesn't already have one. Used on startup so an
+// existing install (where the approved-permissions field didn't exist
+// in the persisted state) doesn't suddenly see every permission as
+// pending. After capturing, clears PendingPermissions on the affected
+// entries so List() reflects the silent baseline. Returns true when any
+// new baseline was captured (caller is expected to persist).
+func (m *Manager) captureMissingApprovals() bool {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	changed := false
+	for name, enabled := range m.enabledSet {
+		if !enabled {
+			continue
+		}
+		if _, hasApproval := m.approvedSet[name]; hasApproval {
+			continue
+		}
+		d, ok := m.discovered[name]
+		if !ok {
+			continue
+		}
+		snapshot := append([]string(nil), d.Permissions...)
+		sort.Strings(snapshot)
+		m.approvedSet[name] = snapshot
+		d.PendingPermissions = nil
+		changed = true
+	}
+	return changed
+}
+
+// pendingPermissions returns the permissions in manifestPerms that aren't
+// in approved. Both inputs are treated as case-sensitive strings; the
+// result is sorted and may be nil when there's no gap.
+func pendingPermissions(manifestPerms, approved []string) []string {
+	if len(manifestPerms) == 0 {
+		return nil
+	}
+	approvedIdx := make(map[string]bool, len(approved))
+	for _, p := range approved {
+		approvedIdx[p] = true
+	}
+	var pending []string
+	for _, p := range manifestPerms {
+		if !approvedIdx[p] {
+			pending = append(pending, p)
+		}
+	}
+	sort.Strings(pending)
+	return pending
 }
 
 // EnabledFilePath returns where the enabled-set is persisted. Exposed so
@@ -626,6 +744,10 @@ func loadFromBytes(ctx context.Context, env *HostEnv, manifestBytes, wasmBytes [
 		p.Close(ctx)
 		return nil, fmt.Errorf("manifest/runtime mismatch: %w", err)
 	}
+	if err := requireChatFilterPermission(manifest, runtime.Subscriptions); err != nil {
+		p.Close(ctx)
+		return nil, err
+	}
 	manifest.Subscriptions = runtime.Subscriptions
 
 	var adminGlobs []glob.Glob
@@ -639,4 +761,35 @@ func loadFromBytes(ctx context.Context, env *HostEnv, manifestBytes, wasmBytes [
 	}
 
 	return &Loaded{Manifest: manifest, plugin: p, adminGlobs: adminGlobs}, nil
+}
+
+// requireChatFilterPermission rejects a runtime registration that
+// subscribes to filterChatMessage (i.e. has a filter subscription on
+// chat.message.received) without declaring the chat.filter permission
+// in its manifest. Modifying or dropping chat is a meaningful side-
+// effect, so an admin must opt in by granting the permission.
+func requireChatFilterPermission(manifest *Manifest, subs Subscriptions) error {
+	hasChatFilter := false
+	for _, p := range manifest.Permissions {
+		if p == PermChatFilter {
+			hasChatFilter = true
+			break
+		}
+	}
+	for _, s := range subs.Filter {
+		if s.Event != EventChatMessageReceived {
+			continue
+		}
+		if hasChatFilter {
+			return nil
+		}
+		return fmt.Errorf(
+			"plugin subscribes to filterChatMessage but does not declare "+
+				"the %q permission. Add %q to the manifest's permissions "+
+				"so an admin can see at install time that this plugin "+
+				"reads or modifies every chat message",
+			PermChatFilter, PermChatFilter,
+		)
+	}
+	return nil
 }

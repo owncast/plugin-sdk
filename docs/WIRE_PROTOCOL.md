@@ -103,9 +103,25 @@ Host functions are wired in conditionally based on the manifest's declared permi
 - `owncast_sse_send(channelPtr: PTR, eventPtr: PTR, dataPtr: PTR): void`, push one Server-Sent-Events message to every browser connected to `(this plugin, channel)`. `channel` and `event` are plain strings; `data` is the message body (the SDK JSON-encodes non-string values). Fire-and-forget: the call returns immediately and never blocks on a slow or absent client.
 - Grants the host permission to serve the reserved `/plugins/<name>/_sse/<channel>` endpoint (see [Host-reserved endpoints](#host-reserved-endpoints)). Independent of `http.serve`: a plugin may stream events without serving any other routes.
 
+### `ui.modify`
+
+- Not a custom host function. Gates UI surfaces that place plugin-contributed elements inside Owncast's own chrome.
+- Required when the manifest declares `actions[]`, and required at runtime by `owncast_add_actions` / `owncast_clear_actions`. Manifests that declare `actions[]` without `ui.modify` are rejected at load; runtime calls return a permission error.
+- `owncast_add_actions(jsonPtr: PTR): u64`, append one or more `ActionButton` entries on top of `manifest.actions`. Argument is a JSON array; the host validates each entry with the same rules as the manifest (title required, exactly one of `url` / `html`, relative URLs and icons auto-prefixed to the plugin's namespace, cross-plugin paths rejected) and persists the merged set to the plugin's config. Returns the host call envelope (success indicator + optional error string).
+- `owncast_clear_actions(jsonPtr: PTR): u64`, drop every runtime addition. `manifest.actions` are untouched. Argument is an empty JSON object (`"{}"`) for API symmetry; returns the host call envelope.
+
+### `chat.filter`
+
+- Not a custom host function. Gates the `filter_chat_message` export: a plugin that registers a `filterChatMessage` handler must declare this permission at load time, otherwise the host rejects the manifest.
+- This is deliberately separate from `chat.send`, `chat.history`, and `chat.moderate`: filtering happens inline on every chat message before broadcast (modify the body, drop the message, or pass it through), so the manifest reviewer needs to see it called out explicitly.
+
 ## Host-reserved endpoints
 
 These paths under `/plugins/<name>/` are owned by the host. The plugin's `on_http_request` never sees them; they cannot be overridden by a plugin's own routes.
+
+### `GET /api/plugins/<name>/icon`
+
+Returns the raw bytes of the plugin's `icon.png` if one was bundled at the root of the `.ocpkg` (or sits next to the `.wasm` as `<base>.icon.png` for the loose-files layout). 404 when no icon is present. No `http.serve` permission required: this is a host endpoint, served independently of the plugin's own routes, so a plugin that ships an icon for the admin UI doesn't need any HTTP surface of its own. Returned with `Content-Type: image/png` and `Cache-Control: no-cache` so a swapped icon shows up on the next admin reload.
 
 ### `GET /plugins/<name>/_sse/<channel>`
 
@@ -135,7 +151,7 @@ An array of `ActionButton` entries the host merges into Owncast's external-actio
   "title": "string (required)",
   "url": "string (URL or relative path; mutually exclusive with html)",
   "html": "string (raw HTML; mutually exclusive with url)",
-  "icon": "string (URL)",
+  "icon": "string (URL or relative path)",
   "color": "string (hex)",
   "description": "string",
   "openExternally": false
@@ -145,9 +161,13 @@ An array of `ActionButton` entries the host merges into Owncast's external-actio
 Host validation:
 
 - `title` required; exactly one of `url` or `html` required.
-- Relative URLs starting with `/` but not `/plugins/` are rewritten to `/plugins/<plugin-name>/<path>`.
+- `ui.modify` permission required (see [`ui.modify`](#uimodify)).
+- Relative `url` paths starting with `/` but not `/plugins/` are rewritten to `/plugins/<plugin-name>/<path>`.
 - URLs resolving into the plugin's own namespace require `http.serve`; load fails otherwise.
 - URLs pointing at another plugin's namespace are rejected at load.
+- The `icon` field follows the same path-handling rules as `url`: relative paths auto-prefix into the plugin's namespace (and require `http.serve` to actually serve), absolute `https://...` URLs pass through, cross-plugin icon paths are rejected.
+
+Runtime additions go through `owncast_add_actions` / `owncast_clear_actions` (see [`ui.modify`](#uimodify)). The host validates each runtime entry with the same rules above and persists the merged set under the reserved `owncast.actions` key inside the plugin's config.
 
 The host exposes the merged list as `GET /api/plugins/actions` (public). The Owncast server is responsible for folding that into its existing `/api/externalactions` response.
 

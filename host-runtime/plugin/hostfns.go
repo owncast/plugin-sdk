@@ -22,6 +22,12 @@ const (
 	PermChatSend          = "chat.send"
 	PermChatHistory       = "chat.history"
 	PermChatModerate      = "chat.moderate"
+	// PermChatFilter is required for any plugin that subscribes to
+	// filterChatMessage. The host refuses to load a plugin whose
+	// runtime-declared filter subscriptions include the chat-message
+	// event without this permission, so a plugin can't silently start
+	// dropping or rewriting chat without the admin's consent.
+	PermChatFilter = "chat.filter"
 	PermNetworkFetch      = "network.fetch"
 	PermEmitEvent         = "events.emit"
 	PermHttpServe         = "http.serve"
@@ -1248,6 +1254,13 @@ func validateRuntimeActions(pluginName string, hasHTTPServe bool, actions []Acti
 		if strings.HasPrefix(a.Url, "/plugins/") && !strings.HasPrefix(a.Url, pluginPrefix) {
 			return nil, fmt.Errorf("actions[%d].url points at another plugin's namespace: %s", i, a.Url)
 		}
+	}
+	for i := range actions {
+		rewritten, err := rewriteActionIcon(pluginPrefix, hasHTTPServe, actions[i].Icon)
+		if err != nil {
+			return nil, fmt.Errorf("actions[%d].icon: %w", i, err)
+		}
+		actions[i].Icon = rewritten
 	}
 	return actions, nil
 }

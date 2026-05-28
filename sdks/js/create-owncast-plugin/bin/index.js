@@ -41,4 +41,4 @@ console.log("");
 console.log("Next steps:");
 console.log(`  cd ${target}`);
 console.log("  npm install");
-console.log("  npm run build");
+console.log("  npm run package");

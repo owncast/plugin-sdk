@@ -22,7 +22,7 @@ Layout mirrors the planned future repo split: `sdks/<lang>/` for author-facing S
 │       ├── index.d.ts            TypeScript types for editor autocomplete
 │       ├── bin/                  owncast-plugin build CLI
 │       ├── scripts/              postinstall fetches extism-js + binaryen
-│       └── create-owncast-plugin/  npm initializer (`npm create owncast-plugin`)
+│       └── create-owncast-plugin/  scaffolder (`npx create-owncast-plugin@latest`)
 │
 ├── host-runtime/      Go: PoC host runtime, moves to the Owncast server
 │   │                              repo when integration lands
@@ -48,14 +48,14 @@ Layout mirrors the planned future repo split: `sdks/<lang>/` for author-facing S
 - **Notifications vs filters**:
   - `on*` handlers, fire-and-forget, plugins run in parallel
   - `filter*` handlers, sequential, priority-ordered, return `filter.pass()` / `.modify(payload)` / `.drop(reason)`. Errors **fail open**.
-  - Plugin → host calls via `owncast.chat.send`, `owncast.kv.{get,set}`, `owncast.events.emit`, `owncast.http.fetch`, gated by declared permissions. For HTTP, `network.fetch` permission grants Extism's `AllowedHosts: ["*"]`; finer-grained allow-listing is deferred.
+  - Plugin → host calls via `owncast.chat.send`, `owncast.kv.{get,set}`, `owncast.events.emit`, `owncast.http.fetch`, gated by declared permissions. For HTTP, the manifest must declare `network.fetch` AND `network.allowedHosts` (a list of hostname globs); the host wires those straight into Extism's `AllowedHosts`. The wildcard `"*"` is permitted but must be written explicitly so the manifest reflects the granted scope.
 - **Plugins can serve HTTP**, under `/plugins/<name>/*`, static assets are served directly; unmatched paths fall through to the plugin's `onHttpRequest(req)` handler. Requires `http.serve` permission. Default-public; gate admin-only features on `req.authenticated`. Response headers are filtered through an allowlist (no `Set-Cookie` etc.); request and response bodies are size-capped.
 - **Two distribution formats:**
   - **Loose files**, `<name>.wasm` + `<name>.manifest.json` + optional `<name>-assets/` dropped into `plugins/`. Easy to inspect and iterate during dev.
-  - **Single-file `.ocpkg` packages**, a zip with `plugin.manifest.json` + `plugin.wasm` + optional `assets/`. Built via `owncast-plugin package`. Drop one file into `plugins/`, restart, done. Recommended for distribution.
+  - **Single-file `.ocpkg` packages**, bundling `plugin.manifest.json` + the compiled plugin + optional `assets/` into one file. Built via `owncast-plugin package`. The admin uploads it from the **Plugins** page (or drops it into `data/plugins/`) and enables it. Recommended for distribution.
 - **Plugin → plugin** via `owncast.events.emit(type, payload)`, the emitted event re-enters the dispatcher and fans out to subscribers. Recursion is capped at `MaxEmitDepth = 8`.
 - **Per-plugin instance**, Extism plugin instances are reused across calls. Calls into a single plugin are mutex-serialized; different plugins run concurrently.
-- **KV is namespaced per-plugin**, bbolt bucket per plugin name; plugins can't read each other's keys.
+- **Plugin config is namespaced per-plugin**, bbolt bucket per plugin name; plugins can't read each other's keys.
 
 ## Run the demo
 
@@ -86,13 +86,13 @@ Or `cd examples/js/<name> && npm test` for a single plugin (which also rebuilds 
 ## Authoring a plugin
 
 ```sh
-npx create-owncast-plugin my-plugin
+npx create-owncast-plugin@latest my-plugin
 cd my-plugin
 npm install                       # postinstall fetches extism-js + binaryen
 npm run build                     # produces my-plugin.wasm
 npm test                          # runs scenario tests in __tests__/
 npm run serve                     # localhost dev server at http://localhost:8080/plugins/my-plugin/
-npx owncast-plugin package        # produces my-plugin.ocpkg, single-file distributable
+npm run package                   # produces my-plugin.ocpkg, single-file distributable
 ```
 
 Author code goes in `src/plugin.js`. Edit `plugin.manifest.json` to declare permissions (subscriptions are derived from your handler methods). The TypeScript declarations in `@owncast/plugin-sdk` give editor autocomplete. Static assets, HTML pages, images, JS, go in `assets/`; they're served at `/plugins/<name>/...`.
@@ -143,7 +143,7 @@ Available assertions:
 
 - Per-step `expect.action` / `expect.payload` / `expect.reason` for filter steps; `http.expect` for HTTP steps
 - Final-state `expect.chatSends` (exact list), `expect.emits` (exact list of `{eventType, payload}`), `expect.kv` (partial map), `expect.httpRequests` (outbound HTTP from the plugin)
-- Pre-state `given.kv` (initial KV namespace), `given.httpResponses` (canned HTTP responses for outbound `owncast.http.fetch` calls)
+- Pre-state `given.kv` (initial plugin-config namespace), `given.httpResponses` (canned HTTP responses for outbound `owncast.http.fetch` calls)
 
 The runner is the `owncast-plugin-test` binary. For JS plugins, `npm test` invokes it via the SDK CLI. Non-JS plugin authors install the binary directly.
 
@@ -179,12 +179,9 @@ See **[examples/js/README.md](./examples/js/README.md)** for the full catalog of
 ## Open items / not yet done
 
 - **Owncast integration**: the host runtime in `host-runtime/` is PoC scaffolding. The real home is the Owncast server repo; the wire interface in [`docs/WIRE_PROTOCOL.md`](./docs/WIRE_PROTOCOL.md) is the contract between the two repos.
-- **Real auth wiring**: `req.authenticated` is always `false` in the demo binary because the demo doesn't have user sessions. The host's auth gate works (admin paths return 401 without it) but production needs hooking into Owncast's existing session / admin-key machinery.
-- **Manager persistence**: the enabled-plugin set is stored at `<pluginsDir>/.enabled.json` for the PoC. Real Owncast integration should write to its native config store.
-- **HTTP allow-listing**: `network.fetch` currently grants any host (including `localhost`, which is an SSRF risk against Owncast's own admin API). A manifest field like `"network": { "allowedHosts": ["*.weather.com"] }` would let admins narrow this per plugin. Worth doing before a marketplace.
-- **Config**: `manifest.config` schema is parsed but no host function exposes config values to plugin code. Intent is typed config values per plugin, editable from the Owncast admin UI.
-- **Strike system for notifications + HTTP**: the filter chain auto-disables a plugin after 5 consecutive failures. The notification and HTTP handler paths have per-call timeouts but don't count strikes, a permanently-broken `onChatMessage` keeps getting called forever.
+- **Manager persistence**: the enabled-plugin set and per-plugin approved-permission snapshots are stored at `<pluginsDir>/.enabled.json` for the PoC's standalone demo binary. Owncast already wires a config-store-backed implementation; the file-backed default exists only for the demo.
+- **Typed plugin config from the admin**: `manifest.config` schema is parsed but no host function exposes config values to plugin code. Intent is typed config values per plugin, editable from the Owncast admin UI (today plugins persist their own state via `owncast.kv.{get,set}`).
+- **Strike system for notifications + HTTP**: the filter chain auto-disables a plugin after consecutive failures. The notification and HTTP handler paths have per-call timeouts but don't count strikes, a permanently-broken `onChatMessage` keeps getting called forever.
 - **Action button HTML sanitization**: action buttons with an `html` field ship the HTML verbatim. The Owncast frontend renders trusted external-action HTML today; once these come from plugins, server-side sanitization (or a tighter allowlist) is worth considering.
-- **Bootstrap binaries via GitHub releases**: `owncast-plugin-test` and `owncast-plugin-serve` are committed in `tools/` for the PoC. Real distribution is GitHub releases of this repo, fetched by `sdks/js/scripts/postinstall.js` alongside `extism-js`.
 - **Additional language SDKs**: `sdks/go/` and `sdks/python/` are planned. They'll implement the same wire protocol and consume the shared scenario test corpus and release binaries.
 - **Drop-a-JS-file authoring**: the eventual dream is for the host to embed the JS-to-wasm compiler so authors can ship `.js` directly. Today the build step is mandatory.

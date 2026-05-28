@@ -3,5 +3,7 @@
   "name": "buggy-filter",
   "version": "0.1.0",
   "description": "Always throws, exercises fail-open behavior",
-  "permissions": []
+  "permissions": [
+    "chat.filter"
+  ]
 }

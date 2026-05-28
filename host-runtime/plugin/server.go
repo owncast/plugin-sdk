@@ -65,9 +65,12 @@ const (
 )
 
 // allowedResponseHeaders is the set of headers a plugin response is allowed
-// to set. We block Set-Cookie, Authorization, and anything that could
-// interfere with Owncast's auth or security context. CORS headers (Access-
-// Control-*) are matched via prefix below.
+// to set. We block headers that would let a plugin override Owncast's own
+// transport-security, CSP, or server-identification headers. Set-Cookie
+// is allowed: a plugin's response defaults to a Path scoped to its own
+// /plugins/<name>/ namespace, so cookies don't leak into the rest of
+// Owncast unless the plugin explicitly broadens them. CORS headers
+// (Access-Control-*) are matched via prefix below.
 var allowedResponseHeaders = map[string]bool{
 	"content-type":     true,
 	"content-encoding": true,
@@ -78,6 +81,7 @@ var allowedResponseHeaders = map[string]bool{
 	"location":         true,
 	"vary":             true,
 	"link":             true,
+	"set-cookie":       true,
 }
 
 func isAllowedResponseHeader(name string) bool {

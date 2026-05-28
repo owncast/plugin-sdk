@@ -42,10 +42,10 @@ How to write, test, and ship a plugin. Aimed at JavaScript developers. Write som
 ## Quick start
 
 ```sh
-npx create-owncast-plugin my-plugin
+npx create-owncast-plugin@latest my-plugin
 cd my-plugin
 npm install      # one-time toolchain fetch
-npm run build    # compile src/plugin.js to my-plugin.wasm
+npm run build    # compile src/plugin.js to an intermediate build artifact
 npm test         # build, then run scenarios from __tests__/
 npm run serve    # build, then host the plugin on http://localhost:8080
 npm run package  # build, then bundle into my-plugin.ocpkg for distribution
@@ -61,6 +61,7 @@ Edit `src/plugin.js` to handle events and call Owncast APIs. Edit `plugin.manife
 my-plugin/
 ├── package.json
 ├── plugin.manifest.json   # name, version, permissions, bots
+├── icon.png               # optional: shown in the admin plugin list
 ├── src/
 │   └── plugin.js          # your code
 ├── assets/                # optional: served at /plugins/<name>/...
@@ -68,6 +69,12 @@ my-plugin/
 └── __tests__/
     └── plugin.test.js    # scenarios
 ```
+
+### Plugin icon
+
+Drop an `icon.png` at the root of your project (alongside `plugin.manifest.json`) and the packager will bundle it into the `.ocpkg`. The admin UI fetches it from `/api/plugins/<name>/icon` and renders it in the plugin list and in the sidebar entry for any plugin that ships an admin page. No `http.serve` permission required: the host serves this path directly. There's no enforced size, but square images at 128×128 or so look clean at the rendered list (32×32) and sidebar (16×16) sizes. Plugins without an icon fall back to a generic puzzle-piece glyph.
+
+Per-button icons on action buttons are separate and live wherever you want in `assets/`; see the [Action buttons](#action-buttons) section.
 
 ## The manifest
 
@@ -81,7 +88,7 @@ my-plugin/
 }
 ```
 
-- `name` determines your plugin's URL prefix (`/plugins/<name>/`), KV namespace, and chat bot identity
+- `name` determines your plugin's URL prefix (`/plugins/<name>/`), plugin-config namespace, and chat bot identity
 - `permissions` is the list of capabilities your plugin needs (see below)
 
 ## Writing handlers
@@ -184,6 +191,8 @@ interface FediverseInboundPost {
 - `filter.modify(payload)`, replace the message (subsequent filters see your version)
 - `filter.drop(reason)`, drop the message; no later filters or notifications see it
 
+The manifest must declare the `chat.filter` permission, otherwise the host refuses to load the plugin at register time. Reading or rewriting every chat message is a meaningful side-effect, so the admin has to see the permission to grant it.
+
 Filter errors are treated as `filter.pass()` automatically, a buggy plugin can never block chat. Set `filterPriority` (lower = earlier) when order matters.
 
 ### HTTP handler
@@ -258,6 +267,7 @@ If you need multiple chat personas, **ship multiple plugins.** One identity per 
 | `chat.send`          | `owncast.chat.send`, `.sendAction`, `.sendTo`                                                                                                     |
 | `chat.history`       | `owncast.chat.history`, `.clients`                                                                                                                |
 | `chat.moderate`      | `owncast.chat.deleteMessage`, `.kick`                                                                                                             |
+| `chat.filter`        | Subscribe to `filterChatMessage` (read, modify, or drop every chat message). Required for any plugin that declares the handler.                   |
 | `users.read`         | `owncast.users.list`, `.get`                                                                                                                      |
 | `users.moderate`     | `owncast.users.setEnabled`, `.banIP`                                                                                                              |
 | `storage.kv`         | Per-plugin namespaced key/value store                                                                                                             |
@@ -303,7 +313,7 @@ my-plugin/
 
 A request to `/plugins/my-plugin/` serves `assets/index.html` automatically.
 
-For dynamic endpoints (JSON APIs, webhooks, etc.) write an `onHttpRequest`. Path traversal is blocked, response headers are filtered (no `Set-Cookie`, etc.), and body sizes are capped at 1 MB request / 10 MB response.
+For dynamic endpoints (JSON APIs, webhooks, etc.) write an `onHttpRequest`. Path traversal is blocked, response headers are filtered through an allowlist (allowed: `Content-Type`, `Cache-Control`, `Set-Cookie`, `Location`, `ETag`, `Last-Modified`, `Vary`, `Link`, and CORS headers; blocked: host-owned things like `Server`, CSP, HSTS), and body sizes are capped at 1 MB request / 10 MB response. Cookies you set default to a `Path` scoped to your plugin's namespace.
 
 ## Realtime updates (Server-Sent Events)
 
@@ -415,6 +425,7 @@ Declare them in the manifest:
 - Absolute `https://...` URLs are accepted unchanged, use them for external links (set `openExternally: true` to open in a new tab).
 - If your URL resolves into your own `/plugins/<name>/` namespace, you must also declare `http.serve` so the page actually serves. The host rejects the load with a clear error otherwise.
 - You can't point at another plugin's namespace (`/plugins/some-other-plugin/...`), the host rejects that at load to catch typos.
+- **Per-button icons** (`icon` field) follow the same rules as `url`. A relative path like `"/star.png"` auto-prefixes to `/plugins/my-plugin/star.png`, so ship the image under `assets/` and `http.serve` will route it. Absolute `https://cdn.example.com/...` URLs pass through unchanged (use these for external icons that don't need `http.serve`). Cross-plugin icon paths are rejected just like cross-plugin URLs.
 
 This pairs naturally with `http.serve`: ship a UI under `assets/` and declare an action button that opens it.
 
@@ -439,7 +450,7 @@ owncast.actions.add([
 owncast.actions.clear();
 ```
 
-The host validates each entry with the same rules as `manifest.actions` (title required, exactly one of `url` / `html`, relative URLs auto-prefixed, cross-plugin URLs rejected) and persists the result in the plugin's config so the additions survive a reload. The next viewer `/api/config` request returns `manifest.actions` ++ the runtime list. Requires `ui.modify`.
+The host validates each entry with the same rules as `manifest.actions` (title required, exactly one of `url` / `html`, relative URLs and icons auto-prefixed, cross-plugin URLs/icons rejected) and persists the result in the plugin's config so the additions survive a reload. The next viewer `/api/config` request returns `manifest.actions` ++ the runtime list. Requires `ui.modify`.
 
 A common pattern is an admin page that lets the streamer add a custom button (label + URL) on top of the plugin's defaults; the `action-buttons` example in the SDK ships a working version.
 
@@ -504,12 +515,12 @@ Final-state `expect` (on the whole scenario):
 - `chatSends`, `chatActions`, `chatAs`, exact-match lists of chat posts
 - `videoConfigWrites`, list of partial configs applied via `owncast.videoConfig.write()`
 - `emits`, list of `{eventType, payload}` for custom events
-- `kv`, partial map of KV state after the scenario
+- `kv`, partial map of plugin-config state after the scenario
 - `httpRequests`, outbound HTTP made by your plugin
 
 ### Seeding state with `given`
 
-- `given.kv`, pre-populate your plugin's KV
+- `given.kv`, pre-populate your plugin's config namespace
 - `given.stream`, what `owncast.stream.current()` returns
 - `given.broadcaster`, what `owncast.stream.broadcaster()` returns
 - `given.server`, what `owncast.server.info()` returns
@@ -567,7 +578,7 @@ For repeatable assertions use `npm test` (scenario tests); the dev server is for
 
 ## Deployment
 
-A `.ocpkg` is the distribution format: a single zip containing your `plugin.manifest.json`, the compiled `<name>.wasm`, and your `assets/` directory if you have one. It's what a server admin drops into Owncast, they don't see your `package.json`, `node_modules`, or anything else.
+A `.ocpkg` is the distribution format: a single file containing your `plugin.manifest.json`, the compiled plugin, and your `assets/` directory if you have one. It's what a server admin installs into Owncast; they don't see your `package.json`, `node_modules`, or anything else.
 
 Bundle the `.ocpkg`:
 
@@ -575,9 +586,16 @@ Bundle the `.ocpkg`:
 npm run package
 ```
 
-This compiles the wasm (if it's not already up to date) and zips manifest + wasm + `assets/` into `<name>.ocpkg` in the project root. The file is self-contained, share it however you like (release on GitHub, hand it to an admin over chat, host it somewhere). Drop it into your Owncast server's `data/plugins/` directory and enable it from the **Plugins** admin page. That's it.
+The file is self-contained. Share it however you like (release on GitHub, hand it to an admin over chat, host it somewhere). The admin has two ways to install it:
 
-`npm run build` produces only the intermediate `<name>.wasm` and is faster, useful while iterating. `npm run package` is the step you run when you're ready to ship.
+1. **Upload from the admin UI.** Open **Plugins** in the Owncast admin and click **Upload plugin**. The new entry appears in the list immediately.
+2. **Drop it into `data/plugins/`** on the server. The directory is scanned periodically; the plugin appears in the admin within a couple of seconds.
+
+Either way, the admin then reviews the **Permissions** tab on the plugin's detail page and toggles **Enabled** to load it. Subsequent updates (uploading a new `.ocpkg` with the same `name`) replace the existing entry and trigger the re-approval flow if the new manifest declares additional permissions.
+
+To remove a plugin, an admin clicks the trash icon on the plugin's row in the **Plugins** page and confirms.
+
+`npm run build` produces only the intermediate compiled output and is faster, useful while iterating. `npm run package` is the step you run when you're ready to ship.
 
 ## Recipes
 
@@ -630,7 +648,7 @@ module.exports = definePlugin({
 
 ### Slow mode
 
-Drops rapid follow-ups; uses KV for per-user state.
+Drops rapid follow-ups; uses plugin config for per-user state.
 
 ```js
 const { definePlugin, filter, owncast } = require("@owncast/plugin-sdk");
@@ -788,7 +806,7 @@ module.exports = definePlugin({
 - **`console.log`** in plugin code surfaces in the host log with a `[your-plugin]` prefix. Use it freely for debugging.
 - **One handler = one subscription.** Define `onChatMessage` → subscribed. Delete it → unsubscribed. Don't think about it.
 - **Mocked tests are fast** (3-5 s including rebuild). Run them on every save.
-- **State doesn't leak between scenarios.** Each test gets a fresh plugin instance and a clean in-memory KV.
+- **State doesn't leak between scenarios.** Each test gets a fresh plugin instance and a clean in-memory plugin config.
 
 ## Failure handling
 

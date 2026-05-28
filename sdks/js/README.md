@@ -2,19 +2,20 @@
 
 SDK for authoring [Owncast](https://owncast.online) plugins in JavaScript or TypeScript. Plugins compile to WebAssembly and run sandboxed inside the Owncast server.
 
-Most authors don't install this directly, instead, scaffold a new project with `npm create owncast-plugin <name>` and the generated `package.json` already lists it as a dependency.
+Most authors don't install this directly, instead, scaffold a new project with `npx create-owncast-plugin@latest <name>` and the generated `package.json` already lists it as a dependency.
 
 ## Quick start
 
 ```sh
-npm create owncast-plugin my-plugin
+npx create-owncast-plugin@latest my-plugin
 cd my-plugin
-npm install   # postinstall fetches the per-platform wasm toolchain
-npm run build # bundles src/plugin.js → my-plugin.wasm + my-plugin.ocpkg
-npm test      # runs scenarios from __tests__/
+npm install     # postinstall fetches the per-platform wasm toolchain
+npm run build   # compiles src/plugin.js into an intermediate build artifact
+npm run package # zips manifest + wasm + assets + icon.png into my-plugin.ocpkg
+npm test        # runs scenarios from __tests__/
 ```
 
-Then drop `my-plugin.ocpkg` into your Owncast server's `plugins/` directory and enable it from the admin.
+Then install `my-plugin.ocpkg` in Owncast. From the admin's **Plugins** page click **Upload plugin** and pick the file, or copy it directly to the server's `data/plugins/` directory. Toggle **Enabled** on the plugin's row to load it.
 
 ## Writing a plugin
 

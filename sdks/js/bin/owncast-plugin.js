@@ -236,6 +236,15 @@ async function packageMain() {
   zip.file("plugin.manifest.json", fs.readFileSync(manifestPath));
   zip.file("plugin.wasm", fs.readFileSync(wasmPath));
   let fileCount = 2;
+  // Bundle a top-level icon.png if the plugin source root has one.
+  // The host reads it from /api/plugins/<name>/icon to render in the
+  // admin list and sidebar (no manifest field, no http.serve
+  // permission required).
+  const iconPath = path.join(cwd, "icon.png");
+  if (fs.existsSync(iconPath) && fs.statSync(iconPath).isFile()) {
+    zip.file("icon.png", fs.readFileSync(iconPath));
+    fileCount++;
+  }
   if (fs.existsSync(assetsDir) && fs.statSync(assetsDir).isDirectory()) {
     for (const file of walkFiles(assetsDir)) {
       const rel = path.relative(assetsDir, file).split(path.sep).join("/");

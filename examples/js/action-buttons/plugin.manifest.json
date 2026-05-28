@@ -18,6 +18,7 @@
       "title": "Owncast",
       "description": "Visit the Owncast project home page",
       "url": "https://owncast.online",
+      "icon": "/star.png",
       "openExternally": true
     },
     {

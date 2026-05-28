@@ -27,7 +27,10 @@ Action buttons place UI inside Owncast's own viewer chrome, so the manifest must
       "url": "https://owncast.online",     // exactly one of url/html
       "openExternally": true,              // optional: new tab vs in-modal
       "color": "#24292e",                  // optional: button bg color
-      "icon": ""                           // optional: image URL
+      "icon": "/star.png"                  // optional: image URL; a relative path
+                                            //   ("/star.png") resolves to this
+                                            //   plugin's static assets, and any
+                                            //   "https://..." URL is left alone
     },
     {
       "title": "About this stream",
@@ -41,8 +44,8 @@ Action buttons place UI inside Owncast's own viewer chrome, so the manifest must
 
 This plugin's manifest also declares `admin.pages` and asks for `http.serve` + `storage.kv`. `src/plugin.js` handles two endpoints:
 
-- `GET /admin/api/custom-button` — returns the streamer's saved title + url from plugin config (or empty strings if none).
-- `POST /admin/api/custom-button` — accepts `{ title, url }`, persists the value to plugin config, then publishes it to the host via `owncast.actions.clear()` followed by `owncast.actions.add({ title, url, ... })`.
+- `GET /admin/api/custom-button` returns the streamer's saved title + url from plugin config (or empty strings if none).
+- `POST /admin/api/custom-button` accepts `{ title, url }`, persists the value to plugin config, then publishes it to the host via `owncast.actions.clear()` followed by `owncast.actions.add({ title, url, ... })`.
 
 The admin form (`assets/admin/index.html`) is auto-themed by the host's plugin-iframe stylesheet, so plain `<input>` and `<button>` controls look like the surrounding Owncast admin without any plugin-side CSS.
 

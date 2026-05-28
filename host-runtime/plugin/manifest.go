@@ -183,8 +183,37 @@ func (m *Manifest) Validate() error {
 				return fmt.Errorf("manifest.actions[%d].url points at another plugin's namespace: %s", i, a.Url)
 			}
 		}
+		rewritten, err := rewriteActionIcon(pluginPrefix, hasHttpServe, a.Icon)
+		if err != nil {
+			return fmt.Errorf("manifest.actions[%d].icon: %w", i, err)
+		}
+		a.Icon = rewritten
 	}
 	return nil
+}
+
+// rewriteActionIcon applies the same path-handling rules to a button's
+// icon URL as we do to the button's url: a same-origin relative path is
+// rewritten into this plugin's namespace; an http(s) URL is left alone;
+// a cross-plugin path is rejected. Empty input passes through, icons
+// are optional.
+func rewriteActionIcon(pluginPrefix string, hasHttpServe bool, icon string) (string, error) {
+	if icon == "" {
+		return "", nil
+	}
+	if strings.HasPrefix(icon, "http://") || strings.HasPrefix(icon, "https://") {
+		return icon, nil
+	}
+	if strings.HasPrefix(icon, "/") && !strings.HasPrefix(icon, "/plugins/") {
+		icon = pluginPrefix + strings.TrimPrefix(icon, "/")
+	}
+	if strings.HasPrefix(icon, pluginPrefix) && !hasHttpServe {
+		return "", fmt.Errorf("targets this plugin (%s) but http.serve permission is not declared", icon)
+	}
+	if strings.HasPrefix(icon, "/plugins/") && !strings.HasPrefix(icon, pluginPrefix) {
+		return "", fmt.Errorf("points at another plugin's namespace: %s", icon)
+	}
+	return icon, nil
 }
 
 // AgreesWith reports whether the runtime registration `other` is consistent

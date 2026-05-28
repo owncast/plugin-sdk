@@ -1,7 +1,8 @@
 // stream-tracker, exercises every typed event and read API.
 //
 // On stream lifecycle / chat user activity, it persists a small running
-// state in KV (when the stream started; who's currently in chat). When a
+// state in plugin config (when the stream started; who's currently in
+// chat). When a
 // viewer types !uptime, !who, or !server, it answers via owncast.chat.send
 //, posting as the plugin's own bot ("stream-tracker") which the host
 // provisions automatically. Action-style messages announce stream start /

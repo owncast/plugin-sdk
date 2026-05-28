@@ -7,9 +7,9 @@ One self-contained npm project per directory. Each has its own `README.md` with 
 | [hello-world](./hello-world/)                     | Minimum viable plugin, proves the load + `register()` path works.                                       |
 | [chat-logger](./chat-logger/)                     | Logs every chat message; the simplest notification handler.                                             |
 | [echo-bot](./echo-bot/)                           | Posts a reply to every chat message via `owncast.chat.send`.                                            |
-| [message-counter](./message-counter/)             | Per-user message counter persisted in the plugin's namespaced KV.                                       |
+| [message-counter](./message-counter/)             | Per-user message counter persisted in the plugin's namespaced config.                                   |
 | [profanity-filter](./profanity-filter/)           | `filter.modify(payload)`, rewrites flagged words to asterisks.                                          |
-| [slow-mode](./slow-mode/)                         | `filter.drop(reason)`, rate-limits per user, with KV-backed state.                                      |
+| [slow-mode](./slow-mode/)                         | `filter.drop(reason)`, rate-limits per user, with plugin-config-backed state.                           |
 | [buggy-filter](./buggy-filter/)                   | Always throws, exercises the host's fail-open + strike system.                                          |
 | [relay](./relay/)                                 | Emits a custom `announcement.broadcast` event (plugin → plugin).                                        |
 | [announcer](./announcer/)                         | Subscribes to `announcement.broadcast` via the `on: { ... }` map.                                       |
@@ -17,8 +17,9 @@ One self-contained npm project per directory. Each has its own `README.md` with 
 | [overlay](./overlay/)                             | `http.serve`, static `assets/` + dynamic JSON endpoint.                                                 |
 | [stream-tracker](./stream-tracker/)               | Every typed lifecycle / chat-user handler + read APIs.                                                  |
 | [stream-ops](./stream-ops/)                       | Broadcast telemetry (`server.read`) + video config read/write (`videoconfig.read`/`videoconfig.write`). |
-| [mod-bot](./mod-bot/)                             | Chat moderation, Discord/browser-push notifications, fediverse post.                                    |
+| [engagement-bot](./engagement-bot/)               | Discord + browser-push + fediverse notifier on stream / fediverse events; small inline spam filter.     |
 | [admin-demo](./admin-demo/)                       | `manifest.admin.pages`, host-gated admin routes.                                                        |
+| [action-buttons](./action-buttons/)               | `manifest.actions` + runtime `owncast.actions.add` (ui.modify), with an admin page that adds buttons.   |
 | [fediverse-chat-bridge](./fediverse-chat-bridge/) | Inbound fediverse mentions → HTML chat system messages with avatars.                                    |
 | [safeguard-stress](./safeguard-stress/)           | Test fixture, misbehaves on demand to verify host sandbox caps.                                         |
 

@@ -158,6 +158,7 @@ export const Permissions: {
   readonly ChatSend: "chat.send";
   readonly ChatHistory: "chat.history";
   readonly ChatModerate: "chat.moderate";
+  readonly ChatFilter: "chat.filter";
   readonly StorageKV: "storage.kv";
   readonly StorageUpload: "storage.upload";
   readonly EventsEmit: "events.emit";

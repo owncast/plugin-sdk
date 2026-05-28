@@ -1,0 +1,7 @@
+{
+  "api": "1",
+  "name": "engagement-bot",
+  "version": "0.1.0",
+  "description": "Cross-platform notifier: pings Discord on stream start, posts a fediverse announcement, browser-pushes on new fediverse followers, and forwards fediverse mentions/replies to Discord. Also deletes obvious spam from chat.",
+  "permissions": ["chat.moderate", "notifications.send", "fediverse.post"]
+}
