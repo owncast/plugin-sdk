@@ -15,6 +15,7 @@ How to write, test, and ship a plugin. Aimed at JavaScript developers. Write som
   - [Chat identity](#chat-identity)
 - [Permissions](#permissions)
 - [Serving HTTP](#serving-http)
+- [Realtime updates (Server-Sent Events)](#realtime-updates-server-sent-events)
 - [Admin pages](#admin-pages)
 - [Action buttons](#action-buttons)
 - [Plugin-to-plugin events](#plugin-to-plugin-events)
@@ -197,14 +198,19 @@ Each method requires the matching permission in your manifest:
 | `owncast.http.fetch(url, opts?)` | `network.fetch` |
 | `owncast.events.emit(eventType, payload)` | `events.emit` |
 | `owncast.stream.current()` — live stream state | `server.read` |
+| `owncast.stream.broadcaster()` — inbound encode telemetry (read-only) | `server.read` |
 | `owncast.server.info()` — server name, version, etc. | `server.read` |
 | `owncast.server.socials()` — `[{platform, url, icon}]` | `server.read` |
 | `owncast.server.federation()` — `{enabled, username, isPrivate}` | `server.read` |
+| `owncast.server.tags()` — `[string]` | `server.read` |
+| `owncast.videoConfig.read()` — `{latencyLevel, codec, variants}` | `videoconfig.read` |
+| `owncast.videoConfig.write({latencyLevel?, codec?, variants?})` — partial update | `videoconfig.write` |
 | `owncast.notifications.discord(text)` | `notifications.send` |
 | `owncast.notifications.browserPush({title, body, url?})` | `notifications.send` |
 | `owncast.notifications.fediverse({type, body, image?, link?})` | `notifications.send` |
 | `owncast.fediverse.post(text)` — public post to the fediverse | `fediverse.post` |
 | `onHttpRequest` + static `assets/` | `http.serve` |
+| `owncast.sse.send(channel, event, data)` — push to browsers | `http.sse` |
 
 Calling an API without its permission throws a clear error.
 
@@ -228,7 +234,10 @@ If you need multiple chat personas, **ship multiple plugins.** One identity per 
 | `network.fetch` | Outbound HTTP — also requires `network.allowedHosts` (see below) |
 | `events.emit` | Emit custom events for other plugins to subscribe to |
 | `http.serve` | Serve HTTP at `/plugins/<your-name>/*` |
-| `server.read` | Read stream state + server config |
+| `http.sse` | Push realtime events to browsers via `owncast.sse.send` + the `/_sse/` endpoint |
+| `server.read` | Read stream state, server config, and read-only broadcast telemetry (`stream.broadcaster`) |
+| `videoconfig.read` | `owncast.videoConfig.read()` — read the output/transcoding config |
+| `videoconfig.write` | `owncast.videoConfig.write()` — change video config; high-trust. Changes apply on the next stream start (the host does not restart a live stream). |
 | `notifications.send` | `owncast.notifications.discord`, `.browserPush` |
 | `fediverse.post` | `owncast.fediverse.post(text)` — high-trust; admin should grant sparingly. Host rate-limits at ~5/hour per plugin. |
 
@@ -263,6 +272,47 @@ my-plugin/
 A request to `/plugins/my-plugin/` serves `assets/index.html` automatically.
 
 For dynamic endpoints (JSON APIs, webhooks, etc.) write an `onHttpRequest`. Path traversal is blocked, response headers are filtered (no `Set-Cookie`, etc.), and body sizes are capped at 1 MB request / 10 MB response.
+
+## Realtime updates (Server-Sent Events)
+
+For pushing live updates to a browser — an overlay that reacts to chat, a dashboard that ticks viewer counts, an alert widget — declare `http.sse` and use `owncast.sse.send`.
+
+You do **not** open or hold the connection yourself. Your `onHttpRequest` handler can't stream: each call is a single buffered request/response. Instead, the host owns the long-lived connection and exposes a ready-made endpoint at `/plugins/<your-name>/_sse/<channel>`. Your plugin just pushes; the host fans each message out to every connected browser.
+
+**Plugin side** — push whenever you have something to send (from an event handler, an HTTP handler, anywhere):
+
+```js
+// src/plugin.js
+export function onChatMessage(msg) {
+  // Notify every browser watching the "overlay" stream.
+  host.sse.send("overlay", "chat", { from: msg.user.displayName, body: msg.body });
+}
+```
+
+`send(channel, event, data)`:
+- `channel` — which stream to push to. Browsers subscribe per channel, so you can run several independent streams (`"overlay"`, `"admin-stats"`) from one plugin. Use `""` for a single default channel.
+- `event` — the event name the browser listens for (`addEventListener("chat", …)`). Pass `""` for the browser's default `message` event.
+- `data` — the payload. Strings are sent as-is; anything else is JSON-encoded for you.
+
+Sends are fire-and-forget: the call returns immediately and never blocks, even if no one is connected or a client is slow (slow clients drop frames rather than stall your plugin).
+
+**Browser side** — connect with the standard `EventSource` API, no library needed:
+
+```html
+<!-- assets/index.html, served at /plugins/my-plugin/ -->
+<script>
+  const events = new EventSource("/plugins/my-plugin/_sse/overlay");
+  events.addEventListener("chat", (e) => {
+    const { from, body } = JSON.parse(e.data);
+    document.getElementById("feed").textContent = `${from}: ${body}`;
+  });
+</script>
+```
+
+Notes:
+- Up to 64 simultaneous connections per plugin; over that the endpoint returns 503. `EventSource` reconnects automatically.
+- If the channel matches one of your `admin.pages[]` globs it's auth-gated like any admin route — handy for an admin-only stats stream.
+- The endpoint is host-owned and reserved: your `onHttpRequest` never sees `/_sse/...` requests, and you can't serve your own route there.
 
 ## Admin pages
 
@@ -378,6 +428,7 @@ Per-step `expect` (on filter and http steps):
 
 Final-state `expect` (on the whole scenario):
 - `chatSends`, `chatActions`, `chatAs` — exact-match lists of chat posts
+- `videoConfigWrites` — list of partial configs applied via `owncast.videoConfig.write()`
 - `emits` — list of `{eventType, payload}` for custom events
 - `kv` — partial map of KV state after the scenario
 - `httpRequests` — outbound HTTP made by your plugin
@@ -386,7 +437,10 @@ Final-state `expect` (on the whole scenario):
 
 - `given.kv` — pre-populate your plugin's KV
 - `given.stream` — what `owncast.stream.current()` returns
+- `given.broadcaster` — what `owncast.stream.broadcaster()` returns
 - `given.server` — what `owncast.server.info()` returns
+- `given.socials` / `given.federation` / `given.tags` — what the matching `owncast.server.*` reads return
+- `given.videoConfig` — what `owncast.videoConfig.read()` returns
 - `given.chatHistory` — what `owncast.chat.history()` returns
 - `given.chatClients` — what `owncast.chat.clients()` returns
 - `given.users` — what `owncast.users.list()` / `.get(id)` returns
@@ -429,7 +483,13 @@ npm run serve
 
 Loads your plugin and serves it on `http://localhost:8080/plugins/<your-name>/`. Useful for browser-testing static pages and curl-ing HTTP endpoints. Override the port with `PORT=8765 npm run serve`.
 
-The dev server doesn't simulate chat events — use `npm test` for handler iteration. Many authors run both in parallel: dev server in one terminal, test watcher in another.
+It also exposes dev-only endpoints to drive your event and filter handlers (which a plain HTTP server can't reach), and host reads (server info, video config, etc.) return sample dev data:
+
+- `POST /_dev/chat` with `{"user":"alice","body":"hi"}` — runs your `filterChatMessage` chain, then fires `chat.message.received` (`onChatMessage`). The JSON response shows what your filter did.
+- `GET /_dev/chat` — the chat log so far, including anything your plugin posted.
+- `POST /_dev/event` with `{"type":"stream.started","payload":{}}` — dispatch an arbitrary event to your `onEvent` handlers.
+
+For repeatable assertions use `npm test` (scenario tests); the dev server is for interactive iteration. Many authors run both: dev server in one terminal, test watcher in another.
 
 ## Deployment
 
@@ -655,8 +715,7 @@ Disabled plugins are silently skipped by the filter chain. A successful filter c
 
 ## What's coming
 
-Capabilities planned for future releases (see [HOST_API_ROADMAP.md](./HOST_API_ROADMAP.md) for status):
+Capabilities planned for future releases:
 
-- `owncast.server.streamConfig()` — read transcoding variants, codecs, latency
-- Filter timeouts — per-plugin and per-chain budget on the chat hot path
 - Plugin install/uninstall flow from the admin UI
+- `owncast.config.*` — typed, admin-set per-plugin config

@@ -123,7 +123,7 @@ async function main() {
   }
 
   // owncast-plugin-test + owncast-plugin-serve — built from this repo's
-  // host-runtime-poc/ Go sources, published as release assets on
+  // host-runtime/ Go sources, published as release assets on
   // github.com/owncast/plugin-sdk. Skip silently if the release doesn't
   // exist yet (dev environments running against a not-yet-released SDK
   // version can substitute their own via tools/bootstrap.sh).

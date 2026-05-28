@@ -49,9 +49,17 @@ Host functions are wired in conditionally based on the manifest's declared permi
 
 ### `server.read`
 - `owncast_stream_current(): PTR` — JSON `StreamInfo`
+- `owncast_stream_broadcaster(): PTR` — JSON `StreamBroadcaster` (read-only inbound-feed telemetry)
 - `owncast_server_info(): PTR` — JSON `ServerInfo`
 - `owncast_server_socials(): PTR` — JSON `SocialHandle[]`
 - `owncast_server_federation(): PTR` — JSON `FederationInfo`
+- `owncast_server_tags(): PTR` — JSON `string[]`
+
+### `videoconfig.read`
+- `owncast_video_config_read(): PTR` — JSON `VideoConfig` (`{latencyLevel, codec, variants}`)
+
+### `videoconfig.write`
+- `owncast_video_config_write(configPtr: PTR): PTR` — applies a partial `VideoConfigUpdate`; returns JSON `{ok, error?}`
 
 ### `notifications.send`
 - `owncast_notify_discord(textPtr: PTR): void`
@@ -74,6 +82,28 @@ Host functions are wired in conditionally based on the manifest's declared permi
 
 ### `http.serve`
 - Not a host function. Grants the host's HTTP server permission to route `/plugins/<name>/*` requests to this plugin's `on_http_request` export and to serve static assets from its `assets/` directory.
+
+### `http.sse`
+- `owncast_sse_send(channelPtr: PTR, eventPtr: PTR, dataPtr: PTR): void` — push one Server-Sent-Events message to every browser connected to `(this plugin, channel)`. `channel` and `event` are plain strings; `data` is the message body (the SDK JSON-encodes non-string values). Fire-and-forget: the call returns immediately and never blocks on a slow or absent client.
+- Grants the host permission to serve the reserved `/plugins/<name>/_sse/<channel>` endpoint (see [Host-reserved endpoints](#host-reserved-endpoints)). Independent of `http.serve`: a plugin may stream events without serving any other routes.
+
+## Host-reserved endpoints
+
+These paths under `/plugins/<name>/` are owned by the host. The plugin's `on_http_request` never sees them; they cannot be overridden by a plugin's own routes.
+
+### `GET /plugins/<name>/_sse/<channel>`
+
+A long-lived [Server-Sent-Events](https://developer.mozilla.org/en-US/docs/Web/API/Server-sent_events) stream. The browser opens it with `EventSource`; the host holds the connection open and writes each frame the plugin pushes via `owncast.sse.send(channel, …)`. The segment after `_sse/` is the channel name (empty selects the default channel), letting one plugin run several independent streams (e.g. `overlay` and `admin-stats`).
+
+The plugin process is **not** involved in serving the connection — no wasm call is made per request and the per-plugin call mutex is never held, so an idle stream costs only a goroutine. This is the supported way to do realtime push: a plugin's own `on_http_request` cannot stream, because each call is a single buffered request/response bounded by the HTTP handler timeout.
+
+Host behavior:
+- Requires the `http.sse` permission; 404 otherwise.
+- A channel that matches a `manifest.admin.pages[]` glob is auth-gated like any other admin path (401 if not authenticated).
+- Connections are capped per-plugin (default 64); over the cap returns 503.
+- Idle streams get a `: keep-alive` comment line every 15s so proxies don't drop them.
+- Delivery is best-effort: each client has a small send buffer, and frames are dropped for a client that can't keep up rather than blocking the publishing plugin.
+- Frame format: an `event: <name>` line when the event is non-empty, one `data: <line>` per newline in the body, terminated by a blank line.
 
 ## Manifest extensions
 
@@ -126,4 +156,4 @@ The Owncast server repo's plugin runtime is responsible for:
 - Registering each host function under the right Extism namespace and permission gate.
 - Calling exports with the right input shapes and observing the documented timeout / size caps.
 
-A drift test in each repo asserts its host-fn registrations match the names in this doc. See `host-runtime-poc/plugin/sdk_drift_test.go` for the PoC version.
+A drift test in each repo asserts its host-fn registrations match the names in this doc. See `host-runtime/plugin/sdk_drift_test.go` for the PoC version.

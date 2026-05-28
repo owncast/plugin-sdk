@@ -6,14 +6,13 @@ This isn't part of Owncast yet. It's a sandbox to validate the architecture.
 
 ## Documentation
 
+- **[SDK Architecture](./docs/ARCHITECTURE.md)** — system-level tour of the runtime, toolchain, contract, and how the pieces fit together
 - **[Plugin Author Guide](./docs/PLUGIN_AUTHOR_GUIDE.md)** — start-to-finish guide for writing, testing, and shipping a plugin
 - **[Wire Protocol](./docs/WIRE_PROTOCOL.md)** — the contract between the Owncast host and any language SDK; future SDKs and the eventual server-side host runtime both implement this
-- **[Host API Roadmap](./docs/HOST_API_ROADMAP.md)** — catalog of Owncast capabilities to expose to plugins (what's shipped, planned, deferred)
-- **[TODO / Open Ideas](./docs/TODO.md)** — design ideas and concrete work items still on the punch list
 
 ## What's here
 
-Layout mirrors the planned future repo split: `sdks/<lang>/` for author-facing SDKs that ship to package managers, `tools/` for binaries shipped via GitHub releases, `host-runtime-poc/` for the host code that will eventually move into the Owncast server repo.
+Layout mirrors the planned future repo split: `sdks/<lang>/` for author-facing SDKs that ship to package managers, `tools/` for binaries shipped via GitHub releases, `host-runtime/` for the host code that will eventually move into the Owncast server repo.
 
 ```
 .
@@ -25,7 +24,7 @@ Layout mirrors the planned future repo split: `sdks/<lang>/` for author-facing S
 │       ├── scripts/              postinstall fetches extism-js + binaryen
 │       └── create-owncast-plugin/  npm initializer (`npm create owncast-plugin`)
 │
-├── host-runtime-poc/      Go: PoC host runtime — moves to the Owncast server
+├── host-runtime/      Go: PoC host runtime — moves to the Owncast server
 │   │                              repo when integration lands
 │   ├── plugin/            runtime library: manager, dispatcher, server, host-fns
 │   │   └── testing/       scenario runner used by the test binary
@@ -69,10 +68,10 @@ tools/bootstrap.sh
 for ex in examples/js/*/; do tools/build-plugin.sh "$ex"; done
 
 # Run the simulated chat stream
-cd host-runtime-poc && go run . ../plugins
+cd host-runtime && go run . ../plugins
 ```
 
-`tools/bootstrap.sh` compiles `owncast-plugin-test` and `owncast-plugin-serve` from `host-runtime-poc/cmd/`. End users installing the published SDK get these as per-platform release-asset downloads via the postinstall instead — `bootstrap.sh` is for repo developers running against a not-yet-released checkout.
+`tools/bootstrap.sh` compiles `owncast-plugin-test` and `owncast-plugin-serve` from `host-runtime/cmd/`. End users installing the published SDK get these as per-platform release-asset downloads via the postinstall instead — `bootstrap.sh` is for repo developers running against a not-yet-released checkout.
 
 You should see the chat stream flow through the filter chain (slow-mode, buggy-filter, profanity-filter), then fan out to notification subscribers (chat-logger, echo-bot, message-counter, relay), with relay re-emitting `announcement.broadcast` events that announcer handles.
 
@@ -169,7 +168,7 @@ See **[examples/js/README.md](./examples/js/README.md)** for the full catalog of
 
 ## Open items / not yet done
 
-- **Owncast integration**: the host runtime in `host-runtime-poc/` is PoC scaffolding. The real home is the Owncast server repo; the wire interface in [`docs/WIRE_PROTOCOL.md`](./docs/WIRE_PROTOCOL.md) is the contract between the two repos.
+- **Owncast integration**: the host runtime in `host-runtime/` is PoC scaffolding. The real home is the Owncast server repo; the wire interface in [`docs/WIRE_PROTOCOL.md`](./docs/WIRE_PROTOCOL.md) is the contract between the two repos.
 - **Real auth wiring**: `req.authenticated` is always `false` in the demo binary because the demo doesn't have user sessions. The host's auth gate works (admin paths return 401 without it) but production needs hooking into Owncast's existing session / admin-key machinery.
 - **Manager persistence**: the enabled-plugin set is stored at `<pluginsDir>/.enabled.json` for the PoC. Real Owncast integration should write to its native config store.
 - **HTTP allow-listing**: `network.fetch` currently grants any host (including `localhost`, which is an SSRF risk against Owncast's own admin API). A manifest field like `"network": { "allowedHosts": ["*.weather.com"] }` would let admins narrow this per plugin. Worth doing before a marketplace.
