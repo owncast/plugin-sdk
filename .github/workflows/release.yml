@@ -7,6 +7,12 @@
 # The tag must match the SDK package version: postinstall fetches
 # v${require("sdks/js/package.json").version}. Cut the tag accordingly
 # (e.g. package.json 0.1.0 -> tag v0.1.0).
+#
+# Layout: a per-platform build matrix uploads its binaries as workflow
+# artifacts, then a single release job collects all of them and creates the
+# GitHub release in one shot. (An earlier matrix-only design had every job
+# call softprops in parallel, racing to create the same release — which is
+# how v0.1.0's linux-arm64 assets first went missing.)
 name: Release host binaries
 
 on:
@@ -19,7 +25,7 @@ permissions:
 
 jobs:
   build:
-    name: ${{ matrix.goos }}-${{ matrix.goarch }}
+    name: build ${{ matrix.goos }}-${{ matrix.goarch }}
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
@@ -53,12 +59,37 @@ jobs:
           suffix="${GOOS}-${GOARCH}"
           mkdir -p "${GITHUB_WORKSPACE}/dist"
           for bin in owncast-plugin-serve owncast-plugin-test; do
+            out="${GITHUB_WORKSPACE}/dist/${bin}-${suffix}"
             go build -trimpath \
               -ldflags="-s -w -X main.version=${GITHUB_REF_NAME}" \
-              -o "${GITHUB_WORKSPACE}/dist/${bin}-${suffix}" "./cmd/${bin}"
+              -o "${out}" "./cmd/${bin}"
+            # Gzip to roughly halve download size; matches how extism-js ships
+            # and postinstall already gunzips it on the fly.
+            gzip -9 -f "${out}"
           done
 
-      - name: Upload to release
+      - name: Upload binaries as artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: host-binaries-${{ matrix.goos }}-${{ matrix.goarch }}
+          path: dist/*
+          if-no-files-found: error
+
+  release:
+    name: publish release
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download all build artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: dist
+          # All matrix uploads land directly under dist/ rather than each in
+          # its own subdir, so softprops's `files: dist/*` picks them up.
+          merge-multiple: true
+          pattern: host-binaries-*
+
+      - name: Create GitHub release and upload assets
         uses: softprops/action-gh-release@v2
         with:
           files: dist/*

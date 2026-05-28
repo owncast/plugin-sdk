@@ -123,17 +123,21 @@ async function main() {
   }
 
   // owncast-plugin-test + owncast-plugin-serve — built from this repo's
-  // host-runtime/ Go sources, published as release assets on
-  // github.com/owncast/plugin-sdk. Skip silently if the release doesn't
-  // exist yet (dev environments running against a not-yet-released SDK
-  // version can substitute their own via tools/bootstrap.sh).
+  // host-runtime/ Go sources, published as gzipped release assets on
+  // github.com/owncast/plugin-sdk (roughly halves the download). Skip silently
+  // if the release doesn't exist yet (dev environments running against a
+  // not-yet-released SDK version can substitute their own via
+  // tools/bootstrap.sh).
   for (const binary of ["owncast-plugin-test", "owncast-plugin-serve"]) {
     const dest = path.join(cacheDir, binary);
     if (fs.existsSync(dest)) continue;
+    const gz = dest + ".gz";
     try {
       console.log(`[plugin-sdk] downloading ${binary} ${HOST_BINARIES_VERSION}...`);
-      await download(hostBinaryURL(binary), dest);
+      await download(hostBinaryURL(binary) + ".gz", gz);
+      fs.writeFileSync(dest, zlib.gunzipSync(fs.readFileSync(gz)));
       fs.chmodSync(dest, 0o755);
+      fs.unlinkSync(gz);
     } catch (e) {
       // 404 is expected before the first release; other errors get a soft
       // warning so the user sees them but the install still succeeds.
@@ -141,8 +145,8 @@ async function main() {
         `[plugin-sdk] could not fetch ${binary}: ${e.message}\n` +
         `  Build locally via tools/bootstrap.sh, or use the latest GitHub release.`
       );
-      // Make sure no partial file is left behind.
-      if (fs.existsSync(dest)) fs.unlinkSync(dest);
+      // Make sure no partial files are left behind.
+      for (const p of [gz, dest]) if (fs.existsSync(p)) fs.unlinkSync(p);
     }
   }
 
