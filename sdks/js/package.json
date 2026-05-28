@@ -1,10 +1,10 @@
 {
   "name": "@owncast/plugin-sdk",
   "version": "0.1.0",
-  "description": "SDK for authoring Owncast plugins in JavaScript/TypeScript",
+  "description": "SDK for authoring Owncast plugins in JavaScript",
   "license": "MIT",
   "author": "Owncast",
-  "homepage": "https://github.com/owncast/plugin-sdk#readme",
+  "homepage": "https://owncast.online/docs/plugins",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/owncast/plugin-sdk.git",
@@ -18,8 +18,7 @@
     "plugin",
     "sdk",
     "webassembly",
-    "wasm",
-    "extism"
+    "wasm"
   ],
   "main": "index.js",
   "types": "index.d.ts",
