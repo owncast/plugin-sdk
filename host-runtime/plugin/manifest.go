@@ -91,7 +91,6 @@ type AdminPage struct {
 	Icon string `json:"icon,omitempty"`
 }
 
-
 func ParseManifest(b []byte) (*Manifest, error) {
 	var m Manifest
 	if err := json.Unmarshal(b, &m); err != nil {
@@ -171,7 +170,6 @@ func (m *Manifest) Validate() error {
 	}
 	return nil
 }
-
 
 // AgreesWith reports whether the runtime registration `other` is consistent
 // with the sidecar manifest. The sidecar declares identity and permissions;

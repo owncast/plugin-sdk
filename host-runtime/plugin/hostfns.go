@@ -30,6 +30,8 @@ const (
 	PermUsersRead         = "users.read"
 	PermUsersModerate     = "users.moderate"
 	PermFediversePost     = "fediverse.post"
+	PermVideoConfigRead   = "videoconfig.read"
+	PermVideoConfigWrite  = "videoconfig.write"
 )
 
 // ChatSendKind distinguishes how a plugin asked to post to chat. All sends
@@ -72,6 +74,47 @@ type ServerInfo struct {
 	Summary        string `json:"summary,omitempty"`
 	WelcomeMessage string `json:"welcomeMessage,omitempty"`
 	Version        string `json:"version,omitempty"`
+}
+
+// StreamBroadcaster is what owncast.stream.broadcaster() returns — details
+// about the currently-connected inbound broadcast. Zero-valued when offline.
+type StreamBroadcaster struct {
+	RemoteAddr string   `json:"remoteAddr,omitempty"`
+	Codecs     []string `json:"codecs,omitempty"`
+	Resolution string   `json:"resolution,omitempty"`
+	Framerate  int      `json:"framerate,omitempty"`
+	Bitrates   []int    `json:"bitrates,omitempty"`
+}
+
+// StreamVariant is one configured output rendition, part of the VideoConfig
+// returned/accepted by owncast.videoConfig.read()/write().
+type StreamVariant struct {
+	Width         int  `json:"width"`
+	Height        int  `json:"height"`
+	Framerate     int  `json:"framerate"`
+	VideoBitrate  int  `json:"videoBitrate"`
+	AudioBitrate  int  `json:"audioBitrate"`
+	IsPassthrough bool `json:"isPassthrough"`
+}
+
+// VideoConfig is the current output/transcoding configuration returned by
+// owncast.videoConfig.read(). These are settable knobs (see VideoConfigUpdate),
+// as opposed to read-only inbound-broadcast telemetry (StreamBroadcaster).
+// Requires the videoconfig.read permission.
+type VideoConfig struct {
+	LatencyLevel int             `json:"latencyLevel"`
+	Codec        string          `json:"codec"`
+	Variants     []StreamVariant `json:"variants"`
+}
+
+// VideoConfigUpdate is a partial change passed to owncast.videoConfig.write().
+// Nil/omitted fields are left unchanged, so a plugin can set just the latency
+// level without disturbing the configured output variants. Requires the
+// videoconfig.write permission.
+type VideoConfigUpdate struct {
+	LatencyLevel *int            `json:"latencyLevel,omitempty"`
+	Codec        *string         `json:"codec,omitempty"`
+	Variants     []StreamVariant `json:"variants,omitempty"`
 }
 
 // SocialHandle is one entry returned by owncast.server.socials().
@@ -153,6 +196,9 @@ type HostEnv struct {
 	Emit            func(ctx context.Context, eventType string, payload any)
 	StreamCurrent   func() StreamInfo
 	ServerInfo      func() ServerInfo
+	Broadcaster     func() StreamBroadcaster // server.read (read-only telemetry)
+	Tags            func() []string          // server.read
+	VideoConfig     func() VideoConfig       // videoconfig.read
 	ChatHistory     func(limit int) []HostChatMessage
 	ChatClients     func() []HostChatClient                  // chat.history
 	DeleteMessage   func(pluginName, messageID string)       // chat.moderate
@@ -166,8 +212,12 @@ type HostEnv struct {
 	UploadStorage   func(pluginName, name string, data []byte) (string, error)   // storage.upload
 	Socials         func() []SocialHandle                                        // server.read
 	Federation      func() FederationInfo                                        // server.read
-	SendFediverse   func(pluginName string, p FediversePayload)                  // notifications.send
-	SendChatTo      func(pluginName string, clientID uint64, text string)        // chat.send
+	// WriteVideoConfig applies a partial video/transcoding configuration
+	// change. Returns an error the plugin can see if the host rejects the
+	// config (e.g. an invalid variant). videoconfig.write permission required.
+	WriteVideoConfig func(pluginName string, u VideoConfigUpdate) error
+	SendFediverse    func(pluginName string, p FediversePayload)           // notifications.send
+	SendChatTo       func(pluginName string, clientID uint64, text string) // chat.send
 	// PostFediverse publishes a public, text-only note to the fediverse
 	// on the streamer's behalf. Returns the resulting post URL. The host is
 	// responsible for rate-limiting (max 5/hour per plugin by default) and
@@ -219,6 +269,8 @@ func BuildHostFunctions(env *HostEnv, manifest *Manifest) []extism.HostFunction 
 			hostServerInfo(env),
 			hostServerSocials(env),
 			hostServerFederation(env),
+			hostStreamBroadcaster(env),
+			hostServerTags(env),
 		)
 	}
 	if granted[PermChatHistory] {
@@ -258,7 +310,57 @@ func BuildHostFunctions(env *HostEnv, manifest *Manifest) []extism.HostFunction 
 	if granted[PermHttpSSE] {
 		fns = append(fns, hostSSESend(env, manifest.Name))
 	}
+	if granted[PermVideoConfigRead] {
+		fns = append(fns, hostVideoConfigRead(env))
+	}
+	if granted[PermVideoConfigWrite] {
+		fns = append(fns, hostVideoConfigWrite(env, manifest.Name))
+	}
 	return fns
+}
+
+// hostVideoConfigWrite backs owncast.videoConfig.write(config). It applies a
+// partial video/transcoding configuration change via the host. Returns a
+// JSON {ok, error?} result so the plugin can react to a rejected config.
+// Requires the videoconfig.write permission.
+func hostVideoConfigWrite(env *HostEnv, pluginName string) extism.HostFunction {
+	fn := extism.NewHostFunctionWithStack(
+		"owncast_video_config_write",
+		func(ctx context.Context, p *extism.CurrentPlugin, stack []uint64) {
+			payloadBytes, err := p.ReadBytes(stack[0])
+			if err != nil {
+				stack[0] = 0
+				return
+			}
+			var update VideoConfigUpdate
+			if err := json.Unmarshal(payloadBytes, &update); err != nil {
+				fmt.Fprintf(os.Stderr, "owncast_video_config_write from %s: invalid JSON: %v\n", pluginName, err)
+				stack[0] = 0
+				return
+			}
+			result := map[string]any{"ok": true}
+			if env.WriteVideoConfig != nil {
+				if err := env.WriteVideoConfig(pluginName, update); err != nil {
+					result = map[string]any{"ok": false, "error": err.Error()}
+				}
+			}
+			data, err := json.Marshal(result)
+			if err != nil {
+				stack[0] = 0
+				return
+			}
+			offset, err := p.WriteBytes(data)
+			if err != nil {
+				stack[0] = 0
+				return
+			}
+			stack[0] = offset
+		},
+		[]extism.ValueType{extism.ValueTypePTR},
+		[]extism.ValueType{extism.ValueTypePTR},
+	)
+	fn.SetNamespace("extism:host/user")
+	return fn
 }
 
 // hostSSESend backs owncast.sse.send(channel, event, data). It publishes a
@@ -851,6 +953,93 @@ func hostServerInfo(env *HostEnv) extism.HostFunction {
 				info = env.ServerInfo()
 			}
 			data, err := json.Marshal(info)
+			if err != nil {
+				stack[0] = 0
+				return
+			}
+			offset, err := p.WriteBytes(data)
+			if err != nil {
+				stack[0] = 0
+				return
+			}
+			stack[0] = offset
+		},
+		[]extism.ValueType{},
+		[]extism.ValueType{extism.ValueTypePTR},
+	)
+	fn.SetNamespace("extism:host/user")
+	return fn
+}
+
+func hostStreamBroadcaster(env *HostEnv) extism.HostFunction {
+	fn := extism.NewHostFunctionWithStack(
+		"owncast_stream_broadcaster",
+		func(ctx context.Context, p *extism.CurrentPlugin, stack []uint64) {
+			var info StreamBroadcaster
+			if env.Broadcaster != nil {
+				info = env.Broadcaster()
+			}
+			data, err := json.Marshal(info)
+			if err != nil {
+				stack[0] = 0
+				return
+			}
+			offset, err := p.WriteBytes(data)
+			if err != nil {
+				stack[0] = 0
+				return
+			}
+			stack[0] = offset
+		},
+		[]extism.ValueType{},
+		[]extism.ValueType{extism.ValueTypePTR},
+	)
+	fn.SetNamespace("extism:host/user")
+	return fn
+}
+
+func hostVideoConfigRead(env *HostEnv) extism.HostFunction {
+	fn := extism.NewHostFunctionWithStack(
+		"owncast_video_config_read",
+		func(ctx context.Context, p *extism.CurrentPlugin, stack []uint64) {
+			var cfg VideoConfig
+			if env.VideoConfig != nil {
+				cfg = env.VideoConfig()
+			}
+			if cfg.Variants == nil {
+				cfg.Variants = []StreamVariant{}
+			}
+			data, err := json.Marshal(cfg)
+			if err != nil {
+				stack[0] = 0
+				return
+			}
+			offset, err := p.WriteBytes(data)
+			if err != nil {
+				stack[0] = 0
+				return
+			}
+			stack[0] = offset
+		},
+		[]extism.ValueType{},
+		[]extism.ValueType{extism.ValueTypePTR},
+	)
+	fn.SetNamespace("extism:host/user")
+	return fn
+}
+
+func hostServerTags(env *HostEnv) extism.HostFunction {
+	fn := extism.NewHostFunctionWithStack(
+		"owncast_server_tags",
+		func(ctx context.Context, p *extism.CurrentPlugin, stack []uint64) {
+			var tags []string
+			if env.Tags != nil {
+				tags = env.Tags()
+			}
+			if tags == nil {
+				tags = []string{}
+			}
+			data, err := json.Marshal(tags)
 			if err != nil {
 				stack[0] = 0
 				return

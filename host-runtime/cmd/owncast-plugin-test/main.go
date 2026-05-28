@@ -20,9 +20,16 @@ import (
 	"github.com/owncast/owncast-plugin-sdk/host-runtime/plugin/testing"
 )
 
+// version is stamped at release time via -ldflags "-X main.version=v1.2.3".
+var version = "dev"
+
 func main() {
 	projectDir := "."
 	if len(os.Args) > 1 {
+		if isVersionArg(os.Args[1]) {
+			fmt.Println("owncast-plugin-test", version)
+			return
+		}
 		projectDir = os.Args[1]
 	}
 	abs, err := filepath.Abs(projectDir)
@@ -103,6 +110,10 @@ func readManifestName(path string) (string, error) {
 		return "", fmt.Errorf("manifest.name is empty")
 	}
 	return m.Name, nil
+}
+
+func isVersionArg(arg string) bool {
+	return arg == "--version" || arg == "-version" || arg == "version"
 }
 
 func exists(path string) bool {

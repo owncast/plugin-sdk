@@ -60,6 +60,40 @@ export interface ServerInfo {
   version?: string;
 }
 
+/** What owncast.stream.broadcaster() returns. Empty when offline. */
+export interface StreamBroadcaster {
+  remoteAddr?: string;
+  codecs?: string[];
+  resolution?: string;
+  framerate?: number;
+  bitrates?: number[];
+}
+
+/** One configured output rendition, part of VideoConfig (owncast.videoConfig). */
+export interface StreamVariant {
+  width: number;
+  height: number;
+  framerate: number;
+  videoBitrate: number;
+  audioBitrate: number;
+  isPassthrough: boolean;
+}
+
+/** The current video/transcoding config returned by owncast.videoConfig.read(). */
+export interface VideoConfig {
+  latencyLevel: number;
+  codec: string;
+  variants: StreamVariant[];
+}
+
+/** Partial video config passed to owncast.videoConfig.write(). Omitted fields
+ *  are left unchanged. */
+export interface VideoConfigUpdate {
+  latencyLevel?: number;
+  codec?: string;
+  variants?: StreamVariant[];
+}
+
 export const FilterAction: {
   readonly Pass: "pass";
   readonly Modify: "modify";
@@ -134,6 +168,9 @@ export const Permissions: {
   readonly UsersRead: "users.read";
   readonly UsersModerate: "users.moderate";
   readonly FediversePost: "fediverse.post";
+  readonly HttpSSE: "http.sse";
+  readonly VideoConfigRead: "videoconfig.read";
+  readonly VideoConfigWrite: "videoconfig.write";
 };
 
 export interface BrowserPushPayload {
@@ -335,18 +372,35 @@ export const owncast: {
   events: {
     emit(eventType: string, payload: unknown): void;
   };
+  sse: {
+    /** Push one Server-Sent-Event to every browser connected to this
+     *  plugin's `/plugins/<name>/_sse/<channel>` stream. `event` is the SSE
+     *  event name (`""` → the default "message" event); `data` is sent as-is
+     *  if a string, otherwise JSON-stringified. Fire-and-forget; frames to a
+     *  slow client are dropped rather than blocking the plugin. Requires the
+     *  `http.sse` permission. */
+    send(channel: string, event: string, data: unknown): void;
+  };
   http: {
     fetch(url: string, opts?: HttpRequestOpts): HttpResponse;
   };
-  /** Read live stream state. Requires `server.read` permission. */
+  /** Read live stream state + read-only broadcast telemetry. Requires `server.read`. */
   stream: {
     current(): StreamInfo;
+    broadcaster(): StreamBroadcaster;
   };
   /** Read server config. Requires `server.read` permission. */
   server: {
     info(): ServerInfo;
     socials(): SocialHandle[];
     federation(): FederationInfo;
+    tags(): string[];
+  };
+  /** Read/change video/transcoding configuration. read() requires
+   *  `videoconfig.read`; write() requires `videoconfig.write`. */
+  videoConfig: {
+    read(): VideoConfig;
+    write(config: VideoConfigUpdate): void;
   };
 };
 

@@ -181,14 +181,14 @@ type Manager struct {
 // DiscoveredEntry is the public view of a discovered plugin — what the
 // admin UI lists.
 type DiscoveredEntry struct {
-	Name        string    `json:"name"`
-	Version     string    `json:"version,omitempty"`
-	Description string    `json:"description,omitempty"`
-	Permissions []string  `json:"permissions,omitempty"`
-	Path        string    `json:"path"`
-	Enabled     bool      `json:"enabled"`
-	Loaded      bool      `json:"loaded"`
-	LastError   string    `json:"lastError,omitempty"`
+	Name         string    `json:"name"`
+	Version      string    `json:"version,omitempty"`
+	Description  string    `json:"description,omitempty"`
+	Permissions  []string  `json:"permissions,omitempty"`
+	Path         string    `json:"path"`
+	Enabled      bool      `json:"enabled"`
+	Loaded       bool      `json:"loaded"`
+	LastError    string    `json:"lastError,omitempty"`
 	DiscoveredAt time.Time `json:"discoveredAt"`
 }
 
@@ -581,9 +581,9 @@ func loadFromBytes(ctx context.Context, env *HostEnv, manifestBytes, wasmBytes [
 		// next Call; the host stays up. Defaults are generous enough for
 		// realistic plugins; per-plugin manifest overrides are a future TODO.
 		Memory: &extism.ManifestMemory{
-			MaxPages:             MaxWasmPages,             // wasm linear memory cap
+			MaxPages:             MaxWasmPages,               // wasm linear memory cap
 			MaxHttpResponseBytes: MaxExtismHTTPResponseBytes, // outbound http body cap
-			MaxVarBytes:          MaxExtismVarBytes,         // extism's internal Var KV
+			MaxVarBytes:          MaxExtismVarBytes,          // extism's internal Var KV
 		},
 	}
 	for _, p := range manifest.Permissions {

@@ -77,6 +77,15 @@ func runOne(ctx context.Context, wasmPath, manifestPath, file string, sc Scenari
 	if sc.Given.Federation != nil {
 		mock.SetFederation(*sc.Given.Federation)
 	}
+	if sc.Given.Broadcaster != nil {
+		mock.SetBroadcaster(*sc.Given.Broadcaster)
+	}
+	if sc.Given.Tags != nil {
+		mock.SetTags(sc.Given.Tags)
+	}
+	if sc.Given.VideoConfig != nil {
+		mock.SetVideoConfig(*sc.Given.VideoConfig)
+	}
 	http.DefaultClient.Transport = mock.HTTPTransport()
 	defer func() { http.DefaultClient.Transport = origTransport }()
 
@@ -321,6 +330,12 @@ func checkExpectations(res *Result, e *ScenarioExpect, mock *MockHost, pluginNam
 		got := mock.FediverseOutbox()
 		if !(len(e.FediverseOutbox) == 0 && len(got) == 0) && !reflect.DeepEqual(e.FediverseOutbox, got) {
 			res.Errors = append(res.Errors, fmt.Sprintf("fediverseOutbox mismatch:\n  want %v\n  got  %v", e.FediverseOutbox, got))
+		}
+	}
+	if e.VideoConfigWrites != nil {
+		got := mock.VideoConfigWrites()
+		if !(len(e.VideoConfigWrites) == 0 && len(got) == 0) && !reflect.DeepEqual(e.VideoConfigWrites, got) {
+			res.Errors = append(res.Errors, fmt.Sprintf("videoConfigWrites mismatch:\n  want %v\n  got  %v", e.VideoConfigWrites, got))
 		}
 	}
 	if e.Emits != nil {

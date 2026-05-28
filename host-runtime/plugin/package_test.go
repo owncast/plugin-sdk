@@ -124,10 +124,10 @@ func TestLoadPackage_AssetsExposedAsFS(t *testing.T) {
 		t.Fatalf("read example wasm: %v", err)
 	}
 	path := buildPkg(t, map[string][]byte{
-		pkgManifestFilename:                 validManifestBytes(),
-		pkgWasmFilename:                     wasmBytes,
-		pkgAssetsPrefix + "index.html":      []byte("<h1>hi</h1>"),
-		pkgAssetsPrefix + "sub/style.css":   []byte("body{}"),
+		pkgManifestFilename:               validManifestBytes(),
+		pkgWasmFilename:                   wasmBytes,
+		pkgAssetsPrefix + "index.html":    []byte("<h1>hi</h1>"),
+		pkgAssetsPrefix + "sub/style.css": []byte("body{}"),
 	})
 
 	loaded, err := LoadPackage(context.Background(), &HostEnv{}, path)
@@ -184,9 +184,9 @@ func TestLoadPackage_BinaryAssetsIntact(t *testing.T) {
 	// Random-ish binary payload — a sentinel image-like byte sequence.
 	binary := []byte{0x89, 'P', 'N', 'G', 0x0d, 0x0a, 0x1a, 0x0a, 0x00, 0x01, 0x02, 0x03}
 	path := buildPkg(t, map[string][]byte{
-		pkgManifestFilename:               validManifestBytes(),
-		pkgWasmFilename:                   wasmBytes,
-		pkgAssetsPrefix + "logo.png":      binary,
+		pkgManifestFilename:          validManifestBytes(),
+		pkgWasmFilename:              wasmBytes,
+		pkgAssetsPrefix + "logo.png": binary,
 	})
 
 	loaded, err := LoadPackage(context.Background(), &HostEnv{}, path)

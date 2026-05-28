@@ -43,6 +43,9 @@ const defaultPort = "8080"
 // doesn't grow unbounded. Plenty for exercising chat.history().
 const devChatLogLimit = 500
 
+// version is stamped at release time via -ldflags "-X main.version=v1.2.3".
+var version = "dev"
+
 func main() {
 	target := "."
 	port := os.Getenv("PORT")
@@ -50,6 +53,10 @@ func main() {
 		port = defaultPort
 	}
 	if len(os.Args) > 1 {
+		if isVersionArg(os.Args[1]) {
+			fmt.Println("owncast-plugin-serve", version)
+			return
+		}
 		target = os.Args[1]
 	}
 	abs, err := filepath.Abs(target)
@@ -94,6 +101,28 @@ func main() {
 		},
 		Federation: func() plugin.FederationInfo {
 			return plugin.FederationInfo{Enabled: true, Username: "dev"}
+		},
+		Broadcaster: func() plugin.StreamBroadcaster {
+			return plugin.StreamBroadcaster{
+				RemoteAddr: "127.0.0.1",
+				Codecs:     []string{"h264", "aac"},
+				Resolution: "1920x1080",
+				Framerate:  30,
+				Bitrates:   []int{6000},
+			}
+		},
+		Tags: func() []string {
+			return []string{"dev", "owncast"}
+		},
+		VideoConfig: func() plugin.VideoConfig {
+			return plugin.VideoConfig{
+				LatencyLevel: 2,
+				Codec:        "h264",
+				Variants: []plugin.StreamVariant{
+					{Width: 1920, Height: 1080, Framerate: 30, VideoBitrate: 6000, AudioBitrate: 160},
+					{Width: 1280, Height: 720, Framerate: 30, VideoBitrate: 3000, AudioBitrate: 128},
+				},
+			}
 		},
 
 		// Chat reads. ChatHistory is backed by the dev log; ChatClients is a
@@ -145,6 +174,11 @@ func main() {
 		},
 		SendFediverse: func(pluginName string, p plugin.FediversePayload) {
 			logHostCall("notify.fediverse", pluginName, "%s: %s", p.Type, p.Body)
+		},
+		WriteVideoConfig: func(pluginName string, u plugin.VideoConfigUpdate) error {
+			data, _ := json.Marshal(u)
+			logHostCall("videoConfig.write", pluginName, "%s", string(data))
+			return nil
 		},
 		SendChatTo: func(pluginName string, clientID uint64, text string) {
 			logHostCall("chat.sendTo", pluginName, "client %d: %s", clientID, text)
@@ -470,6 +504,10 @@ func readManifestName(path string) (string, error) {
 		return "", fmt.Errorf("manifest.name is empty")
 	}
 	return m.Name, nil
+}
+
+func isVersionArg(arg string) bool {
+	return arg == "--version" || arg == "-version" || arg == "version"
 }
 
 func exists(path string) bool {

@@ -13,9 +13,9 @@ import (
 // The .ocpkg ("Owncast plugin package") format is a zip archive with three
 // well-known entries:
 //
-//   plugin.manifest.json    — required; the sidecar manifest
-//   plugin.wasm             — required; the compiled plugin module
-//   assets/...              — optional; static files served at /plugins/<name>/
+//	plugin.manifest.json    — required; the sidecar manifest
+//	plugin.wasm             — required; the compiled plugin module
+//	assets/...              — optional; static files served at /plugins/<name>/
 //
 // File names inside the archive are canonical regardless of the plugin's name
 // so the host doesn't have to read the manifest to discover the wasm path.

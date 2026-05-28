@@ -79,32 +79,36 @@ type RecordedChatTo struct {
 }
 
 type MockHost struct {
-	store           kv.Store
-	mu              sync.Mutex
-	chatSends       []string
-	chatActions     []string
-	chatSystems     []string
-	emits           []EmittedEvent
-	httpFixtures    []HTTPFixture
-	httpRecords     []RecordedHTTPRequest
-	deletedMessages []string
-	kickedClients   []uint64
-	discordPosts    []string
-	browserPushes   []RecordedBrowserPush
-	userMods        []RecordedUserModeration
-	bannedIPs       []string
-	uploads         []RecordedUpload
-	fediversePosts  []RecordedFediverse
-	fediverseOutbox []string
-	chatTo          []RecordedChatTo
-	socials         []plugin.SocialHandle
-	federation      plugin.FederationInfo
+	store             kv.Store
+	mu                sync.Mutex
+	chatSends         []string
+	chatActions       []string
+	chatSystems       []string
+	emits             []EmittedEvent
+	httpFixtures      []HTTPFixture
+	httpRecords       []RecordedHTTPRequest
+	deletedMessages   []string
+	kickedClients     []uint64
+	discordPosts      []string
+	browserPushes     []RecordedBrowserPush
+	userMods          []RecordedUserModeration
+	bannedIPs         []string
+	uploads           []RecordedUpload
+	fediversePosts    []RecordedFediverse
+	fediverseOutbox   []string
+	chatTo            []RecordedChatTo
+	socials           []plugin.SocialHandle
+	federation        plugin.FederationInfo
+	videoConfigWrites []plugin.VideoConfigUpdate
 
 	// Test-supplied stream / server / chat-history state. If unset, the
 	// host functions return zero values (plugins see "offline" / empty
 	// server info / no history).
 	streamCurrent plugin.StreamInfo
 	serverInfo    plugin.ServerInfo
+	broadcaster   plugin.StreamBroadcaster
+	videoConfig   plugin.VideoConfig
+	tags          []string
 	chatHistory   []plugin.HostChatMessage
 	chatClients   []plugin.HostChatClient
 	users         []plugin.HostUser
@@ -172,6 +176,21 @@ func (m *MockHost) HostEnv() *plugin.HostEnv {
 			m.mu.Lock()
 			defer m.mu.Unlock()
 			return m.serverInfo
+		},
+		Broadcaster: func() plugin.StreamBroadcaster {
+			m.mu.Lock()
+			defer m.mu.Unlock()
+			return m.broadcaster
+		},
+		VideoConfig: func() plugin.VideoConfig {
+			m.mu.Lock()
+			defer m.mu.Unlock()
+			return m.videoConfig
+		},
+		Tags: func() []string {
+			m.mu.Lock()
+			defer m.mu.Unlock()
+			return append([]string(nil), m.tags...)
 		},
 		ChatHistory: func(limit int) []plugin.HostChatMessage {
 			m.mu.Lock()
@@ -245,6 +264,12 @@ func (m *MockHost) HostEnv() *plugin.HostEnv {
 			m.mu.Lock()
 			defer m.mu.Unlock()
 			return m.federation
+		},
+		WriteVideoConfig: func(_ string, u plugin.VideoConfigUpdate) error {
+			m.mu.Lock()
+			defer m.mu.Unlock()
+			m.videoConfigWrites = append(m.videoConfigWrites, u)
+			return nil
 		},
 		SendFediverse: func(_ string, p plugin.FediversePayload) {
 			m.mu.Lock()
@@ -330,6 +355,14 @@ func (m *MockHost) FediverseOutbox() []string {
 	return append([]string(nil), m.fediverseOutbox...)
 }
 
+// VideoConfigWrites returns the partial video-config changes a plugin applied
+// via owncast.videoConfig.write(), in call order.
+func (m *MockHost) VideoConfigWrites() []plugin.VideoConfigUpdate {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	return append([]plugin.VideoConfigUpdate(nil), m.videoConfigWrites...)
+}
+
 func (m *MockHost) SetSocials(s []plugin.SocialHandle) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
@@ -379,6 +412,24 @@ func (m *MockHost) SetServerInfo(info plugin.ServerInfo) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	m.serverInfo = info
+}
+
+func (m *MockHost) SetBroadcaster(b plugin.StreamBroadcaster) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	m.broadcaster = b
+}
+
+func (m *MockHost) SetVideoConfig(c plugin.VideoConfig) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	m.videoConfig = c
+}
+
+func (m *MockHost) SetTags(t []string) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	m.tags = append([]string(nil), t...)
 }
 
 func (m *MockHost) SetChatHistory(msgs []plugin.HostChatMessage) {

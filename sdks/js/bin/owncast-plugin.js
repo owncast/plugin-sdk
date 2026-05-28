@@ -291,11 +291,20 @@ function generateInterface(manifest) {
     imports.push("owncast_kv_set(keyPtr: PTR, valPtr: PTR): void");
   }
   if (perms.has("events.emit")) imports.push("owncast_emit_event(eventTypePtr: PTR, payloadPtr: PTR): void");
+  if (perms.has("http.sse")) imports.push("owncast_sse_send(channelPtr: PTR, eventPtr: PTR, dataPtr: PTR): void");
   if (perms.has("server.read")) {
     imports.push("owncast_stream_current(): PTR");
     imports.push("owncast_server_info(): PTR");
     imports.push("owncast_server_socials(): PTR");
     imports.push("owncast_server_federation(): PTR");
+    imports.push("owncast_stream_broadcaster(): PTR");
+    imports.push("owncast_server_tags(): PTR");
+  }
+  if (perms.has("videoconfig.read")) {
+    imports.push("owncast_video_config_read(): PTR");
+  }
+  if (perms.has("videoconfig.write")) {
+    imports.push("owncast_video_config_write(configPtr: PTR): PTR");
   }
 
   let out = `declare module 'main' {\n`;

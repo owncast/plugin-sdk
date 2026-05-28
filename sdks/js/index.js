@@ -45,7 +45,10 @@ const Permissions = Object.freeze({
   NotificationsSend: "notifications.send",
   UsersRead:         "users.read",
   UsersModerate:     "users.moderate",
-  FediversePost:     "fediverse.post"
+  FediversePost:     "fediverse.post",
+  HttpSSE:           "http.sse",
+  VideoConfigRead:   "videoconfig.read",
+  VideoConfigWrite:  "videoconfig.write"
 });
 
 const filter = Object.freeze({
@@ -299,6 +302,13 @@ const owncast = {
       const offset = fns.owncast_stream_current();
       if (offset == 0) return { online: false, viewers: 0 };
       return JSON.parse(Memory.find(offset).readString());
+    },
+    broadcaster() {
+      const fns = Host.getFunctions();
+      if (!fns.owncast_stream_broadcaster) throw new Error(`permission '${Permissions.ServerRead}' not granted`);
+      const offset = fns.owncast_stream_broadcaster();
+      if (offset == 0) return {};
+      return JSON.parse(Memory.find(offset).readString());
     }
   },
   server: {
@@ -322,6 +332,35 @@ const owncast = {
       const offset = fns.owncast_server_federation();
       if (offset == 0) return { enabled: false };
       return JSON.parse(Memory.find(offset).readString());
+    },
+    tags() {
+      const fns = Host.getFunctions();
+      if (!fns.owncast_server_tags) throw new Error(`permission '${Permissions.ServerRead}' not granted`);
+      const offset = fns.owncast_server_tags();
+      if (offset == 0) return [];
+      return JSON.parse(Memory.find(offset).readString());
+    }
+  },
+  videoConfig: {
+    /** Read the current video/transcoding config: { latencyLevel, codec,
+     *  variants }. Requires `videoconfig.read`. */
+    read() {
+      const fns = Host.getFunctions();
+      if (!fns.owncast_video_config_read) throw new Error(`permission '${Permissions.VideoConfigRead}' not granted`);
+      const offset = fns.owncast_video_config_read();
+      if (offset == 0) return { latencyLevel: 0, codec: "", variants: [] };
+      return JSON.parse(Memory.find(offset).readString());
+    },
+    /** Apply a partial video config change. Pass any of { latencyLevel, codec,
+     *  variants }; omitted fields are left unchanged. Throws if the host
+     *  rejects the config. Requires `videoconfig.write`. */
+    write(config) {
+      const fns = Host.getFunctions();
+      if (!fns.owncast_video_config_write) throw new Error(`permission '${Permissions.VideoConfigWrite}' not granted`);
+      const offset = fns.owncast_video_config_write(Memory.fromString(JSON.stringify(config || {})).offset);
+      if (offset == 0) throw new Error('videoConfig.write failed');
+      const result = JSON.parse(Memory.find(offset).readString());
+      if (!result.ok) throw new Error(result.error || 'videoConfig.write failed');
     }
   },
   kv: {
@@ -348,6 +387,26 @@ const owncast = {
       fns.owncast_emit_event(
         Memory.fromString(eventType).offset,
         Memory.fromString(JSON.stringify(payload)).offset
+      );
+    }
+  },
+  sse: {
+    // send(channel, event, data) pushes one Server-Sent-Event to every
+    // browser connected to this plugin's /plugins/<name>/_sse/<channel>
+    // stream. `event` is the SSE event name (browser side:
+    // source.addEventListener(event, ...)); pass "" for the default
+    // "message" event. `data` is sent as-is if it's a string, otherwise
+    // JSON-stringified. Fire-and-forget: returns immediately, and frames to
+    // a slow client are dropped rather than blocking the plugin. Requires
+    // the 'http.sse' permission.
+    send(channel, event, data) {
+      const fns = Host.getFunctions();
+      if (!fns.owncast_sse_send) throw new Error(`permission '${Permissions.HttpSSE}' not granted`);
+      const payload = typeof data === "string" ? data : JSON.stringify(data);
+      fns.owncast_sse_send(
+        Memory.fromString(channel || "").offset,
+        Memory.fromString(event || "").offset,
+        Memory.fromString(payload).offset
       );
     }
   },

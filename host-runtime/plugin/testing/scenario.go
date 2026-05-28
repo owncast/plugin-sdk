@@ -42,6 +42,12 @@ type ScenarioGiven struct {
 	Socials []plugin.SocialHandle `json:"socials,omitempty"`
 	// Federation pre-seeds owncast.server.federation().
 	Federation *plugin.FederationInfo `json:"federation,omitempty"`
+	// Broadcaster pre-seeds owncast.stream.broadcaster().
+	Broadcaster *plugin.StreamBroadcaster `json:"broadcaster,omitempty"`
+	// Tags pre-seeds owncast.server.tags().
+	Tags []string `json:"tags,omitempty"`
+	// VideoConfig pre-seeds owncast.videoConfig.read().
+	VideoConfig *plugin.VideoConfig `json:"videoConfig,omitempty"`
 }
 
 type ScenarioHTTPFixture struct {
@@ -58,11 +64,11 @@ type ScenarioStep struct {
 	// - Filter: filter chain — Expect asserts on the FilterResult
 	// - HTTP:   sends an HTTP request through plugin.Server — HTTPExpect
 	//           asserts on the response
-	Event   string         `json:"event,omitempty"`
-	Filter  string         `json:"filter,omitempty"`
-	Payload any            `json:"payload,omitempty"`
-	HTTP    *HTTPStep      `json:"http,omitempty"`
-	Expect  *FilterExpect  `json:"expect,omitempty"`
+	Event   string        `json:"event,omitempty"`
+	Filter  string        `json:"filter,omitempty"`
+	Payload any           `json:"payload,omitempty"`
+	HTTP    *HTTPStep     `json:"http,omitempty"`
+	Expect  *FilterExpect `json:"expect,omitempty"`
 }
 
 // HTTPStep is an inbound request sent at the plugin via plugin.Server.
@@ -74,7 +80,7 @@ type HTTPStep struct {
 	// Authenticated marks the request as coming from an authenticated
 	// Owncast admin. Sets the test-only X-Test-Admin header that the mock
 	// host's IsAuthenticated callback honors.
-	Authenticated bool             `json:"authenticated,omitempty"`
+	Authenticated bool `json:"authenticated,omitempty"`
 	// User marks the request as coming with a user-token; the user's
 	// identity is forwarded to the plugin as req.user. Setting user also
 	// implies authenticated=true.
@@ -121,22 +127,23 @@ type FilterExpect struct {
 
 // ScenarioExpect asserts on side effects accumulated across all steps.
 type ScenarioExpect struct {
-	ChatSends       []string                    `json:"chatSends,omitempty"`
-	ChatActions     []string                    `json:"chatActions,omitempty"`
-	ChatSystems     []string                    `json:"chatSystems,omitempty"`
-	DeletedMessages []string                    `json:"deletedMessages,omitempty"`
-	KickedClients   []uint64                    `json:"kickedClients,omitempty"`
-	DiscordPosts    []string                    `json:"discordPosts,omitempty"`
-	BrowserPushes   []ScenarioBrowserPushExpect `json:"browserPushes,omitempty"`
-	UserModerations []ScenarioUserModerationExpect `json:"userModerations,omitempty"`
-	BannedIPs       []string                    `json:"bannedIPs,omitempty"`
-	Uploads         []ScenarioUploadExpect      `json:"uploads,omitempty"`
-	FediversePosts  []ScenarioFediverseExpect   `json:"fediversePosts,omitempty"`
-	FediverseOutbox []string                    `json:"fediverseOutbox,omitempty"`
-	ChatTo          []ScenarioChatToExpect      `json:"chatTo,omitempty"`
-	Emits           []EmitExpect                `json:"emits,omitempty"`
-	KV              map[string]string           `json:"kv,omitempty"`
-	HTTPRequests    []ScenarioHTTPRequestExpect `json:"httpRequests,omitempty"`
+	ChatSends         []string                       `json:"chatSends,omitempty"`
+	ChatActions       []string                       `json:"chatActions,omitempty"`
+	ChatSystems       []string                       `json:"chatSystems,omitempty"`
+	DeletedMessages   []string                       `json:"deletedMessages,omitempty"`
+	KickedClients     []uint64                       `json:"kickedClients,omitempty"`
+	DiscordPosts      []string                       `json:"discordPosts,omitempty"`
+	BrowserPushes     []ScenarioBrowserPushExpect    `json:"browserPushes,omitempty"`
+	UserModerations   []ScenarioUserModerationExpect `json:"userModerations,omitempty"`
+	BannedIPs         []string                       `json:"bannedIPs,omitempty"`
+	Uploads           []ScenarioUploadExpect         `json:"uploads,omitempty"`
+	FediversePosts    []ScenarioFediverseExpect      `json:"fediversePosts,omitempty"`
+	FediverseOutbox   []string                       `json:"fediverseOutbox,omitempty"`
+	ChatTo            []ScenarioChatToExpect         `json:"chatTo,omitempty"`
+	VideoConfigWrites []plugin.VideoConfigUpdate     `json:"videoConfigWrites,omitempty"`
+	Emits             []EmitExpect                   `json:"emits,omitempty"`
+	KV                map[string]string              `json:"kv,omitempty"`
+	HTTPRequests      []ScenarioHTTPRequestExpect    `json:"httpRequests,omitempty"`
 }
 
 type ScenarioBrowserPushExpect struct {
