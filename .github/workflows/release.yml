@@ -1,0 +1,65 @@
+# Publishes the host-side Go binaries (owncast-plugin-serve, owncast-plugin-test)
+# as release assets when a v* tag is pushed. The SDK's npm postinstall
+# (sdks/js/scripts/postinstall.js) downloads them from
+#   https://github.com/owncast/plugin-sdk/releases/download/v<version>/<binary>-<goos>-<goarch>
+# so the asset names below must stay in lockstep with hostBinaryURL() there.
+#
+# The tag must match the SDK package version: postinstall fetches
+# v${require("sdks/js/package.json").version}. Cut the tag accordingly
+# (e.g. package.json 0.1.0 -> tag v0.1.0).
+name: Release host binaries
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    name: ${{ matrix.goos }}-${{ matrix.goarch }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - goos: linux
+            goarch: amd64
+          - goos: linux
+            goarch: arm64
+          - goos: darwin
+            goarch: amd64
+          - goos: darwin
+            goarch: arm64
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: host-runtime/go.mod
+          cache-dependency-path: host-runtime/go.sum
+
+      # Pure-Go (wazero) runtime, so every target cross-compiles from the
+      # ubuntu runner with CGO disabled — no per-OS runner needed.
+      - name: Build host binaries
+        working-directory: host-runtime
+        env:
+          GOOS: ${{ matrix.goos }}
+          GOARCH: ${{ matrix.goarch }}
+          CGO_ENABLED: '0'
+        run: |
+          suffix="${GOOS}-${GOARCH}"
+          mkdir -p "${GITHUB_WORKSPACE}/dist"
+          for bin in owncast-plugin-serve owncast-plugin-test; do
+            go build -trimpath \
+              -ldflags="-s -w -X main.version=${GITHUB_REF_NAME}" \
+              -o "${GITHUB_WORKSPACE}/dist/${bin}-${suffix}" "./cmd/${bin}"
+          done
+
+      - name: Upload to release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: dist/*
+          fail_on_unmatched_files: true

@@ -33,6 +33,11 @@ plugins/
 tools/*
 !tools/*.sh
 
+# Release build output — the host-binary release workflow
+# (.github/workflows/release.yml) cross-compiles into here; CI-only, but the
+# steps run the same way locally.
+dist/
+
 # Go test/build noise
 *.test
 *.prof

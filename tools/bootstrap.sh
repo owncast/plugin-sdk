@@ -4,12 +4,12 @@
 # wasm-merge, wasm-opt) is fetched separately by the SDK's npm postinstall,
 # so this only covers what comes from this repo's own Go sources.
 #
-# Run this once after cloning, and again whenever host-runtime-poc/ changes:
+# Run this once after cloning, and again whenever host-runtime/ changes:
 #   tools/bootstrap.sh
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
-cd "$ROOT/host-runtime-poc"
+cd "$ROOT/host-runtime"
 
 echo "→ building owncast-plugin-test"
 go build -o "$ROOT/tools/owncast-plugin-test" ./cmd/owncast-plugin-test
