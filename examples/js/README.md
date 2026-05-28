@@ -16,6 +16,7 @@ One self-contained npm project per directory. Each has its own `README.md` with 
 | [ip-bot](./ip-bot/) | Outbound HTTP via `owncast.http.fetch`; mocked in tests. |
 | [overlay](./overlay/) | `http.serve` — static `assets/` + dynamic JSON endpoint. |
 | [stream-tracker](./stream-tracker/) | Every typed lifecycle / chat-user handler + read APIs. |
+| [stream-ops](./stream-ops/) | Broadcast telemetry (`server.read`) + video config read/write (`videoconfig.read`/`videoconfig.write`). |
 | [mod-bot](./mod-bot/) | Chat moderation, Discord/browser-push notifications, fediverse post. |
 | [admin-demo](./admin-demo/) | `manifest.admin.pages` — host-gated admin routes. |
 | [fediverse-chat-bridge](./fediverse-chat-bridge/) | Inbound fediverse mentions → HTML chat system messages with avatars. |

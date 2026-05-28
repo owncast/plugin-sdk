@@ -1,0 +1,22 @@
+[
+  {
+    "name": "!latency applies a partial video config change (videoConfig.write)",
+    "events": [
+      { "event": "chat.message.received", "payload": { "id": "1", "user": "admin", "body": "!latency 3", "timestamp": "2024-01-01T00:00:00Z" } }
+    ],
+    "expect": {
+      "videoConfigWrites": [ { "latencyLevel": 3 } ],
+      "chatSends": ["latency set to 3"]
+    }
+  },
+  {
+    "name": "a non-command message changes nothing",
+    "events": [
+      { "event": "chat.message.received", "payload": { "id": "1", "user": "bob", "body": "hello", "timestamp": "2024-01-01T00:00:00Z" } }
+    ],
+    "expect": {
+      "videoConfigWrites": [],
+      "chatSends": []
+    }
+  }
+]

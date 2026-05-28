@@ -1,0 +1,35 @@
+[
+  {
+    "name": "!broadcaster reports the inbound encode (stream.broadcaster, server.read)",
+    "given": {
+      "broadcaster": {
+        "remoteAddr": "10.0.0.5",
+        "codecs": ["h264", "aac"],
+        "resolution": "1920x1080",
+        "framerate": 30,
+        "bitrates": [6000]
+      }
+    },
+    "events": [
+      { "event": "chat.message.received", "payload": { "id": "1", "user": "alice", "body": "!broadcaster", "timestamp": "2024-01-01T00:00:00Z" } }
+    ],
+    "expect": { "chatSends": ["broadcaster: 1920x1080 via h264/aac"] }
+  },
+  {
+    "name": "!videoconfig reports the output config (videoConfig.read, videoconfig.read)",
+    "given": {
+      "videoConfig": {
+        "latencyLevel": 2,
+        "codec": "h264",
+        "variants": [
+          { "width": 1920, "height": 1080, "framerate": 30, "videoBitrate": 6000, "audioBitrate": 160, "isPassthrough": false },
+          { "width": 1280, "height": 720, "framerate": 30, "videoBitrate": 3000, "audioBitrate": 128, "isPassthrough": false }
+        ]
+      }
+    },
+    "events": [
+      { "event": "chat.message.received", "payload": { "id": "1", "user": "alice", "body": "!videoconfig", "timestamp": "2024-01-01T00:00:00Z" } }
+    ],
+    "expect": { "chatSends": ["latency 2, codec h264, 2 variant(s)"] }
+  }
+]
