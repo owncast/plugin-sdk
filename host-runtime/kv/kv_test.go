@@ -161,7 +161,7 @@ func TestBolt_PersistenceAcrossOpen(t *testing.T) {
 }
 
 func TestMemory_ConcurrentAccess(t *testing.T) {
-	// Smoke test for the mutex — race detector should catch issues.
+	// Smoke test for the mutex, race detector should catch issues.
 	s := NewMemory()
 	ns := s.Namespace("p1")
 	var wg sync.WaitGroup

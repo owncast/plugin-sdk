@@ -61,8 +61,8 @@ type ScenarioHTTPFixture struct {
 type ScenarioStep struct {
 	// Exactly one of Event, Filter, or HTTP must be set.
 	// - Event:  notification dispatch
-	// - Filter: filter chain — Expect asserts on the FilterResult
-	// - HTTP:   sends an HTTP request through plugin.Server — HTTPExpect
+	// - Filter: filter chain, Expect asserts on the FilterResult
+	// - HTTP:   sends an HTTP request through plugin.Server, HTTPExpect
 	//           asserts on the response
 	Event   string        `json:"event,omitempty"`
 	Filter  string        `json:"filter,omitempty"`
@@ -160,7 +160,7 @@ type ScenarioUserModerationExpect struct {
 
 type ScenarioUploadExpect struct {
 	Name string `json:"name"`
-	Body string `json:"body,omitempty"` // string form of bytes; for binary use base64 — future
+	Body string `json:"body,omitempty"` // string form of bytes; for binary use base64, future
 }
 
 type ScenarioFediverseExpect struct {

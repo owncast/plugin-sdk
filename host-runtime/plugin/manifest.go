@@ -44,14 +44,14 @@ type Manifest struct {
 // "api.discord.com", "*.weather.com", "*").
 //
 // Plugins that declare `network.fetch` MUST declare a non-empty
-// AllowedHosts list — the wildcard "*" is allowed but has to be written
+// AllowedHosts list, the wildcard "*" is allowed but has to be written
 // out so admins reviewing the manifest see the scope they're granting.
 type NetworkConfig struct {
 	AllowedHosts []string `json:"allowedHosts,omitempty"`
 }
 
 // ActionButton declares an entry the Owncast UI surfaces as an external
-// action — a clickable button that loads a URL (in a modal or new tab) or
+// action, a clickable button that loads a URL (in a modal or new tab) or
 // shows raw HTML when pressed. Buttons declared here are merged with the
 // admin-configured external actions while the plugin is enabled; when the
 // plugin is disabled they disappear.
@@ -76,7 +76,7 @@ type ActionButton struct {
 // AdminConfig declares admin-only surfaces a plugin exposes. The Owncast
 // admin web UI lists these in the "Plugins" section; each page renders the
 // plugin's content at /plugins/<name>/<path>. Paths declared here are
-// auth-gated by the host — unauthenticated requests get 401 before
+// auth-gated by the host, unauthenticated requests get 401 before
 // reaching the plugin.
 type AdminConfig struct {
 	Pages []AdminPage `json:"pages,omitempty"`
@@ -112,22 +112,38 @@ func (m *Manifest) Validate() error {
 	if m.Version == "" {
 		return errors.New("manifest.version is required")
 	}
-	for i, page := range m.Admin.Pages {
-		if page.Title == "" {
-			return fmt.Errorf("manifest.admin.pages[%d].title is required", i)
-		}
-		if page.Path == "" {
-			return fmt.Errorf("manifest.admin.pages[%d].path is required", i)
-		}
-	}
 	hasHttpServe := false
 	hasNetworkFetch := false
+	hasUIModify := false
 	for _, p := range m.Permissions {
 		if p == PermHttpServe {
 			hasHttpServe = true
 		}
 		if p == PermNetworkFetch {
 			hasNetworkFetch = true
+		}
+		if p == PermUIModify {
+			hasUIModify = true
+		}
+	}
+	// Action buttons are the only UI surface a plugin can place inside
+	// Owncast's own chrome (the viewer action bar). Self-contained admin
+	// pages and static content served under /plugins/<name>/ are baseline
+	// plugin functionality and don't gate on this.
+	if len(m.Actions) > 0 && !hasUIModify {
+		return errors.New(
+			"manifest.actions is set but the manifest does not declare " +
+				"the \"ui.modify\" permission. Plugins that contribute viewer " +
+				"action buttons must opt in to ui.modify so it's visible to " +
+				"anyone reviewing the manifest that the plugin places UI " +
+				"inside Owncast's chrome.")
+	}
+	for i, page := range m.Admin.Pages {
+		if page.Title == "" {
+			return fmt.Errorf("manifest.admin.pages[%d].title is required", i)
+		}
+		if page.Path == "" {
+			return fmt.Errorf("manifest.admin.pages[%d].path is required", i)
 		}
 	}
 	if hasNetworkFetch && len(m.Network.AllowedHosts) == 0 {
@@ -161,7 +177,7 @@ func (m *Manifest) Validate() error {
 				return fmt.Errorf("manifest.actions[%d].url targets this plugin (%s) but http.serve permission is not declared",
 					i, a.Url)
 			}
-			// Paths in other plugins' namespaces aren't allowed — catches typos
+			// Paths in other plugins' namespaces aren't allowed, catches typos
 			// and prevents one plugin from advertising another's UI.
 			if strings.HasPrefix(a.Url, "/plugins/") && !strings.HasPrefix(a.Url, pluginPrefix) {
 				return fmt.Errorf("manifest.actions[%d].url points at another plugin's namespace: %s", i, a.Url)

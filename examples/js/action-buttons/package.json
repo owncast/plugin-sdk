@@ -1,0 +1,10 @@
+{
+  "name": "action-buttons",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "build": "owncast-plugin build",
+    "package": "owncast-plugin build && owncast-plugin package"
+  },
+  "dependencies": { "@owncast/plugin-sdk": "file:../../../sdks/js" }
+}

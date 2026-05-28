@@ -2,12 +2,22 @@
   "api": "1",
   "name": "admin-demo",
   "version": "0.1.0",
-  "description": "Demonstrates admin UI integration — a public landing page plus an admin-gated settings panel and API",
-  "permissions": ["http.serve", "storage.kv"],
+  "description": "Demonstrates admin UI integration, a public landing page plus an admin-gated settings panel and API",
+  "permissions": [
+    "http.serve",
+    "storage.kv"
+  ],
   "admin": {
     "pages": [
-      { "title": "Settings", "path": "/admin", "icon": "gear" },
-      { "title": "Settings", "path": "/admin/*" }
+      {
+        "title": "Example Page 1",
+        "path": "/admin",
+        "icon": "gear"
+      },
+      {
+        "title": "Example Page 2",
+        "path": "/admin/anotherpage.html"
+      }
     ]
   }
 }

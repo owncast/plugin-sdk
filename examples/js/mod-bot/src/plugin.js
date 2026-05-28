@@ -1,4 +1,4 @@
-// mod-bot — exercises chat.moderate (deleteMessage, kick) and
+// mod-bot, exercises chat.moderate (deleteMessage, kick) and
 // notifications.send (Discord, browser push).
 const { definePlugin, owncast } = require("@owncast/plugin-sdk");
 
@@ -7,7 +7,7 @@ const SPAM_KEYWORDS = ["buy crypto", "free money", "click here"];
 module.exports = definePlugin({
   onChatMessage(msg) {
     const body = msg.body.toLowerCase();
-    if (SPAM_KEYWORDS.some(k => body.includes(k))) {
+    if (SPAM_KEYWORDS.some((k) => body.includes(k))) {
       owncast.chat.deleteMessage(msg.id);
     }
   },
@@ -26,23 +26,29 @@ module.exports = definePlugin({
     owncast.notifications.browserPush({
       title: "New follower",
       body: `${event.actor.handle} just followed`,
-      url: event.actor.url
+      url: event.actor.url,
     });
   },
 
   // Mentions and replies carry content; echo a short summary to Discord
   // so the streamer sees off-platform engagement in their normal channel.
   onFediverseMention(post) {
-    const snippet = post.contentText.length > 200
-      ? post.contentText.slice(0, 200) + "…"
-      : post.contentText;
-    owncast.notifications.discord(`mention from ${post.actor.handle}: ${snippet}\n${post.url}`);
+    const snippet =
+      post.contentText.length > 200
+        ? post.contentText.slice(0, 200) + "…"
+        : post.contentText;
+    owncast.notifications.discord(
+      `mention from ${post.actor.handle}: ${snippet}\n${post.url}`,
+    );
   },
 
   onFediverseReply(post) {
-    const snippet = post.contentText.length > 200
-      ? post.contentText.slice(0, 200) + "…"
-      : post.contentText;
-    owncast.notifications.discord(`reply from ${post.actor.handle}: ${snippet}\n${post.url}`);
-  }
+    const snippet =
+      post.contentText.length > 200
+        ? post.contentText.slice(0, 200) + "…"
+        : post.contentText;
+    owncast.notifications.discord(
+      `reply from ${post.actor.handle}: ${snippet}\n${post.url}`,
+    );
+  },
 });

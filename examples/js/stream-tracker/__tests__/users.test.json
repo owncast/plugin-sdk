@@ -4,45 +4,85 @@
     "events": [
       {
         "event": "chat.user.joined",
-        "payload": { "id": "u1", "displayName": "alice" }
+        "payload": {
+          "id": "u1",
+          "displayName": "alice"
+        }
       }
     ],
-    "expect": { "kv": { "users": "[\"alice\"]" } }
+    "expect": {
+      "kv": {
+        "users": "[\"alice\"]"
+      }
+    }
   },
   {
     "name": "user part is removed",
-    "given": { "kv": { "users": "[\"alice\",\"bob\"]" } },
+    "given": {
+      "kv": {
+        "users": "[\"alice\",\"bob\"]"
+      }
+    },
     "events": [
       {
         "event": "chat.user.parted",
-        "payload": { "id": "u2", "displayName": "bob" }
+        "payload": {
+          "id": "u2",
+          "displayName": "bob"
+        }
       }
     ],
-    "expect": { "kv": { "users": "[\"alice\"]" } }
+    "expect": {
+      "kv": {
+        "users": "[\"alice\"]"
+      }
+    }
   },
   {
     "name": "user rename updates the list in place",
-    "given": { "kv": { "users": "[\"alice\",\"bob\"]" } },
+    "given": {
+      "kv": {
+        "users": "[\"alice\",\"bob\"]"
+      }
+    },
     "events": [
       {
         "event": "chat.user.renamed",
         "payload": {
-          "user": { "id": "u2", "displayName": "robert" },
+          "user": {
+            "id": "u2",
+            "displayName": "robert"
+          },
           "previousName": "bob"
         }
       }
     ],
-    "expect": { "kv": { "users": "[\"alice\",\"robert\"]" } }
+    "expect": {
+      "kv": {
+        "users": "[\"alice\",\"robert\"]"
+      }
+    }
   },
   {
-    "name": "join idempotent — same user joining twice is recorded once",
-    "given": { "kv": { "users": "[\"alice\"]" } },
+    "name": "join idempotent, same user joining twice is recorded once",
+    "given": {
+      "kv": {
+        "users": "[\"alice\"]"
+      }
+    },
     "events": [
       {
         "event": "chat.user.joined",
-        "payload": { "id": "u1", "displayName": "alice" }
+        "payload": {
+          "id": "u1",
+          "displayName": "alice"
+        }
       }
     ],
-    "expect": { "kv": { "users": "[\"alice\"]" } }
+    "expect": {
+      "kv": {
+        "users": "[\"alice\"]"
+      }
+    }
   }
 ]

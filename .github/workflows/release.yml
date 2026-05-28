@@ -11,14 +11,14 @@
 # Layout: a per-platform build matrix uploads its binaries as workflow
 # artifacts, then a single release job collects all of them and creates the
 # GitHub release in one shot. (An earlier matrix-only design had every job
-# call softprops in parallel, racing to create the same release — which is
+# call softprops in parallel, racing to create the same release, which is
 # how v0.1.0's linux-arm64 assets first went missing.)
 name: Release host binaries
 
 on:
   push:
     tags:
-      - 'v*'
+      - "v*"
 
 permissions:
   contents: write
@@ -48,13 +48,13 @@ jobs:
           cache-dependency-path: host-runtime/go.sum
 
       # Pure-Go (wazero) runtime, so every target cross-compiles from the
-      # ubuntu runner with CGO disabled — no per-OS runner needed.
+      # ubuntu runner with CGO disabled, no per-OS runner needed.
       - name: Build host binaries
         working-directory: host-runtime
         env:
           GOOS: ${{ matrix.goos }}
           GOARCH: ${{ matrix.goarch }}
-          CGO_ENABLED: '0'
+          CGO_ENABLED: "0"
         run: |
           suffix="${GOOS}-${GOARCH}"
           mkdir -p "${GITHUB_WORKSPACE}/dist"

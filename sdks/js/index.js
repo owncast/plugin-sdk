@@ -10,45 +10,46 @@ let registered = null;
 const FilterAction = Object.freeze({
   Pass: "pass",
   Modify: "modify",
-  Drop: "drop"
+  Drop: "drop",
 });
 
 const Events = Object.freeze({
   // Chat events
-  ChatMessageReceived:  "chat.message.received",
-  ChatUserJoined:       "chat.user.joined",
-  ChatUserParted:       "chat.user.parted",
-  ChatUserRenamed:      "chat.user.renamed",
+  ChatMessageReceived: "chat.message.received",
+  ChatUserJoined: "chat.user.joined",
+  ChatUserParted: "chat.user.parted",
+  ChatUserRenamed: "chat.user.renamed",
   ChatMessageModerated: "chat.message.moderated",
   // Stream lifecycle
-  StreamStarted:        "stream.started",
-  StreamStopped:        "stream.stopped",
-  StreamTitleChanged:   "stream.title.changed",
-  // Fediverse — engagement (metadata only) + inbound posts (with content)
-  FediverseFollow:      "fediverse.follow",
-  FediverseLike:        "fediverse.like",
-  FediverseRepost:      "fediverse.repost",
-  FediverseMention:     "fediverse.mention",
-  FediverseReply:       "fediverse.reply"
+  StreamStarted: "stream.started",
+  StreamStopped: "stream.stopped",
+  StreamTitleChanged: "stream.title.changed",
+  // Fediverse, engagement (metadata only) + inbound posts (with content)
+  FediverseFollow: "fediverse.follow",
+  FediverseLike: "fediverse.like",
+  FediverseRepost: "fediverse.repost",
+  FediverseMention: "fediverse.mention",
+  FediverseReply: "fediverse.reply",
 });
 
 const Permissions = Object.freeze({
-  ChatSend:          "chat.send",
-  ChatHistory:       "chat.history",
-  ChatModerate:      "chat.moderate",
-  StorageKV:         "storage.kv",
-  StorageUpload:     "storage.upload",
-  EventsEmit:        "events.emit",
-  NetworkFetch:      "network.fetch",
-  HttpServe:         "http.serve",
-  ServerRead:        "server.read",
+  ChatSend: "chat.send",
+  ChatHistory: "chat.history",
+  ChatModerate: "chat.moderate",
+  StorageKV: "storage.kv",
+  StorageUpload: "storage.upload",
+  EventsEmit: "events.emit",
+  NetworkFetch: "network.fetch",
+  HttpServe: "http.serve",
+  ServerRead: "server.read",
   NotificationsSend: "notifications.send",
-  UsersRead:         "users.read",
-  UsersModerate:     "users.moderate",
-  FediversePost:     "fediverse.post",
-  HttpSSE:           "http.sse",
-  VideoConfigRead:   "videoconfig.read",
-  VideoConfigWrite:  "videoconfig.write"
+  UsersRead: "users.read",
+  UsersModerate: "users.moderate",
+  FediversePost: "fediverse.post",
+  HttpSSE: "http.sse",
+  VideoConfigRead: "videoconfig.read",
+  VideoConfigWrite: "videoconfig.write",
+  UIModify: "ui.modify",
 });
 
 const filter = Object.freeze({
@@ -60,14 +61,14 @@ const filter = Object.freeze({
   },
   drop(reason) {
     return { action: FilterAction.Drop, reason: reason || "" };
-  }
+  },
 });
 
 // Distinguishes notification handlers from filter handlers in the HANDLERS
-// map below. Internal — not part of the public API.
+// map below. Internal, not part of the public API.
 const HandlerKind = Object.freeze({
   Notify: "notify",
-  Filter: "filter"
+  Filter: "filter",
 });
 
 // Maps a built-in handler method name to the event type it subscribes to and
@@ -75,30 +76,54 @@ const HandlerKind = Object.freeze({
 // new built-in Owncast events.
 const HANDLERS = Object.freeze({
   // Chat
-  onChatMessage:        { event: Events.ChatMessageReceived,  kind: HandlerKind.Notify },
-  filterChatMessage:    { event: Events.ChatMessageReceived,  kind: HandlerKind.Filter },
-  onChatUserJoined:     { event: Events.ChatUserJoined,       kind: HandlerKind.Notify },
-  onChatUserParted:     { event: Events.ChatUserParted,       kind: HandlerKind.Notify },
-  onChatUserRenamed:    { event: Events.ChatUserRenamed,      kind: HandlerKind.Notify },
-  onMessageModerated:   { event: Events.ChatMessageModerated, kind: HandlerKind.Notify },
+  onChatMessage: {
+    event: Events.ChatMessageReceived,
+    kind: HandlerKind.Notify,
+  },
+  filterChatMessage: {
+    event: Events.ChatMessageReceived,
+    kind: HandlerKind.Filter,
+  },
+  onChatUserJoined: { event: Events.ChatUserJoined, kind: HandlerKind.Notify },
+  onChatUserParted: { event: Events.ChatUserParted, kind: HandlerKind.Notify },
+  onChatUserRenamed: {
+    event: Events.ChatUserRenamed,
+    kind: HandlerKind.Notify,
+  },
+  onMessageModerated: {
+    event: Events.ChatMessageModerated,
+    kind: HandlerKind.Notify,
+  },
   // Stream lifecycle
-  onStreamStarted:      { event: Events.StreamStarted,        kind: HandlerKind.Notify },
-  onStreamStopped:      { event: Events.StreamStopped,        kind: HandlerKind.Notify },
-  onStreamTitleChanged: { event: Events.StreamTitleChanged,   kind: HandlerKind.Notify },
+  onStreamStarted: { event: Events.StreamStarted, kind: HandlerKind.Notify },
+  onStreamStopped: { event: Events.StreamStopped, kind: HandlerKind.Notify },
+  onStreamTitleChanged: {
+    event: Events.StreamTitleChanged,
+    kind: HandlerKind.Notify,
+  },
   // Fediverse engagement (actor + target metadata)
-  onFediverseFollow:    { event: Events.FediverseFollow,      kind: HandlerKind.Notify },
-  onFediverseLike:      { event: Events.FediverseLike,        kind: HandlerKind.Notify },
-  onFediverseRepost:    { event: Events.FediverseRepost,      kind: HandlerKind.Notify },
+  onFediverseFollow: {
+    event: Events.FediverseFollow,
+    kind: HandlerKind.Notify,
+  },
+  onFediverseLike: { event: Events.FediverseLike, kind: HandlerKind.Notify },
+  onFediverseRepost: {
+    event: Events.FediverseRepost,
+    kind: HandlerKind.Notify,
+  },
   // Fediverse inbound posts (with content)
-  onFediverseMention:   { event: Events.FediverseMention,     kind: HandlerKind.Notify },
-  onFediverseReply:     { event: Events.FediverseReply,       kind: HandlerKind.Notify }
+  onFediverseMention: {
+    event: Events.FediverseMention,
+    kind: HandlerKind.Notify,
+  },
+  onFediverseReply: { event: Events.FediverseReply, kind: HandlerKind.Notify },
 });
 
 // typeof comparisons in well-known categories. JS guarantees these strings,
 // but we go through named constants so a stray typo can't pass silently.
 const JsType = Object.freeze({
   Function: "function",
-  Object: "object"
+  Object: "object",
 });
 const isFn = (x) => typeof x === JsType.Function;
 const isObj = (x) => x !== null && typeof x === JsType.Object;
@@ -115,7 +140,10 @@ function describeSubscriptions() {
   const notify = [];
   const filterSubs = [];
   if (registered) {
-    const priority = typeof registered.filterPriority === "number" ? registered.filterPriority : 100;
+    const priority =
+      typeof registered.filterPriority === "number"
+        ? registered.filterPriority
+        : 100;
     for (const [method, info] of Object.entries(HANDLERS)) {
       if (!isFn(registered[method])) continue;
       if (info.kind === HandlerKind.Notify) {
@@ -137,7 +165,11 @@ function dispatchEvent(envelope) {
   if (!registered) return;
   const { eventType, payload } = envelope;
   for (const [method, info] of Object.entries(HANDLERS)) {
-    if (info.kind === HandlerKind.Notify && info.event === eventType && isFn(registered[method])) {
+    if (
+      info.kind === HandlerKind.Notify &&
+      info.event === eventType &&
+      isFn(registered[method])
+    ) {
       registered[method](payload);
       return;
     }
@@ -151,7 +183,11 @@ function dispatchFilter(envelope) {
   if (!registered) return filter.pass();
   const { eventType, payload } = envelope;
   for (const [method, info] of Object.entries(HANDLERS)) {
-    if (info.kind === HandlerKind.Filter && info.event === eventType && isFn(registered[method])) {
+    if (
+      info.kind === HandlerKind.Filter &&
+      info.event === eventType &&
+      isFn(registered[method])
+    ) {
       return registered[method](payload) || filter.pass();
     }
   }
@@ -169,101 +205,140 @@ function dispatchHttp(request) {
   return {
     status: out.status || 200,
     headers: out.headers || {},
-    body: out.body == null ? "" : String(out.body)
+    body: out.body == null ? "" : String(out.body),
   };
+}
+
+// permError builds an actionable Error and logs it to stderr (which the
+// host runtime captures), so a plugin author running `owncast-plugin
+// serve` or hitting the host's logs sees exactly which permission to
+// add to their manifest. apiName is the SDK call the author wrote
+// (e.g. "owncast.actions.set"); perm is the manifest permission string.
+function permError(apiName, perm) {
+  const msg = `${apiName} requires the '${perm}' permission. Add it to your plugin.manifest.json's "permissions" array.`;
+  console.error(`[owncast-plugin] ${msg}`);
+  return new Error(msg);
 }
 
 const owncast = {
   chat: {
     send(text) {
       const fns = Host.getFunctions();
-      if (!fns.owncast_send_chat) throw new Error(`permission '${Permissions.ChatSend}' not granted`);
+      if (!fns.owncast_send_chat)
+        throw new Error(`permission '${Permissions.ChatSend}' not granted`);
       fns.owncast_send_chat(Memory.fromString(text).offset);
     },
     sendAction(text) {
       const fns = Host.getFunctions();
-      if (!fns.owncast_send_chat_action) throw new Error(`permission '${Permissions.ChatSend}' not granted`);
+      if (!fns.owncast_send_chat_action)
+        throw new Error(`permission '${Permissions.ChatSend}' not granted`);
       fns.owncast_send_chat_action(Memory.fromString(text).offset);
     },
     system(body) {
       const fns = Host.getFunctions();
-      if (!fns.owncast_send_chat_system) throw new Error(`permission '${Permissions.ChatSend}' not granted`);
+      if (!fns.owncast_send_chat_system)
+        throw new Error(`permission '${Permissions.ChatSend}' not granted`);
       fns.owncast_send_chat_system(Memory.fromString(body).offset);
     },
     history(limit) {
       const fns = Host.getFunctions();
-      if (!fns.owncast_chat_history) throw new Error(`permission '${Permissions.ChatHistory}' not granted`);
+      if (!fns.owncast_chat_history)
+        throw new Error(`permission '${Permissions.ChatHistory}' not granted`);
       const offset = fns.owncast_chat_history(limit || 0);
       if (offset == 0) return [];
       return JSON.parse(Memory.find(offset).readString());
     },
     deleteMessage(messageId) {
       const fns = Host.getFunctions();
-      if (!fns.owncast_delete_message) throw new Error(`permission '${Permissions.ChatModerate}' not granted`);
+      if (!fns.owncast_delete_message)
+        throw new Error(`permission '${Permissions.ChatModerate}' not granted`);
       fns.owncast_delete_message(Memory.fromString(String(messageId)).offset);
     },
     kick(clientId) {
       const fns = Host.getFunctions();
-      if (!fns.owncast_kick_client) throw new Error(`permission '${Permissions.ChatModerate}' not granted`);
+      if (!fns.owncast_kick_client)
+        throw new Error(`permission '${Permissions.ChatModerate}' not granted`);
       fns.owncast_kick_client(BigInt(clientId));
     },
     sendTo(clientId, text) {
       const fns = Host.getFunctions();
-      if (!fns.owncast_send_chat_to) throw new Error(`permission '${Permissions.ChatSend}' not granted`);
-      fns.owncast_send_chat_to(BigInt(clientId), Memory.fromString(text).offset);
+      if (!fns.owncast_send_chat_to)
+        throw new Error(`permission '${Permissions.ChatSend}' not granted`);
+      fns.owncast_send_chat_to(
+        BigInt(clientId),
+        Memory.fromString(text).offset,
+      );
     },
     clients() {
       const fns = Host.getFunctions();
-      if (!fns.owncast_chat_clients) throw new Error(`permission '${Permissions.ChatHistory}' not granted`);
+      if (!fns.owncast_chat_clients)
+        throw new Error(`permission '${Permissions.ChatHistory}' not granted`);
       const offset = fns.owncast_chat_clients();
       if (offset == 0) return [];
       return JSON.parse(Memory.find(offset).readString());
-    }
+    },
   },
   users: {
     list() {
       const fns = Host.getFunctions();
-      if (!fns.owncast_users_list) throw new Error(`permission '${Permissions.UsersRead}' not granted`);
+      if (!fns.owncast_users_list)
+        throw new Error(`permission '${Permissions.UsersRead}' not granted`);
       const offset = fns.owncast_users_list();
       if (offset == 0) return [];
       return JSON.parse(Memory.find(offset).readString());
     },
     get(id) {
       const fns = Host.getFunctions();
-      if (!fns.owncast_user_get) throw new Error(`permission '${Permissions.UsersRead}' not granted`);
+      if (!fns.owncast_user_get)
+        throw new Error(`permission '${Permissions.UsersRead}' not granted`);
       const offset = fns.owncast_user_get(Memory.fromString(id).offset);
       if (offset == 0) return null;
       return JSON.parse(Memory.find(offset).readString());
     },
     setEnabled(id, enabled, reason) {
       const fns = Host.getFunctions();
-      if (!fns.owncast_user_set_enabled) throw new Error(`permission '${Permissions.UsersModerate}' not granted`);
+      if (!fns.owncast_user_set_enabled)
+        throw new Error(
+          `permission '${Permissions.UsersModerate}' not granted`,
+        );
       fns.owncast_user_set_enabled(
         Memory.fromString(id).offset,
         enabled ? 1 : 0,
-        Memory.fromString(reason || "").offset
+        Memory.fromString(reason || "").offset,
       );
     },
     banIP(ip) {
       const fns = Host.getFunctions();
-      if (!fns.owncast_ban_ip) throw new Error(`permission '${Permissions.UsersModerate}' not granted`);
+      if (!fns.owncast_ban_ip)
+        throw new Error(
+          `permission '${Permissions.UsersModerate}' not granted`,
+        );
       fns.owncast_ban_ip(Memory.fromString(ip).offset);
-    }
+    },
   },
   storage: {
     upload(name, data) {
       const fns = Host.getFunctions();
-      if (!fns.owncast_storage_upload) throw new Error(`permission '${Permissions.StorageUpload}' not granted`);
-      const dataMem = data instanceof Uint8Array
-        ? Memory.fromBuffer(data.buffer.slice(data.byteOffset, data.byteOffset + data.byteLength))
-        : Memory.fromString(String(data));
+      if (!fns.owncast_storage_upload)
+        throw new Error(
+          `permission '${Permissions.StorageUpload}' not granted`,
+        );
+      const dataMem =
+        data instanceof Uint8Array
+          ? Memory.fromBuffer(
+              data.buffer.slice(
+                data.byteOffset,
+                data.byteOffset + data.byteLength,
+              ),
+            )
+          : Memory.fromString(String(data));
       const offset = fns.owncast_storage_upload(
         Memory.fromString(name).offset,
-        dataMem.offset
+        dataMem.offset,
       );
       if (offset == 0) return null;
       return JSON.parse(Memory.find(offset).readString());
-    }
+    },
   },
   fediverse: {
     /** Publish a public text-only post to the fediverse on the streamer's
@@ -271,82 +346,107 @@ const owncast = {
      *  disabled by admin, etc.). Requires `fediverse.post`. */
     post(text) {
       const fns = Host.getFunctions();
-      if (!fns.owncast_fediverse_post) throw new Error(`permission '${Permissions.FediversePost}' not granted`);
+      if (!fns.owncast_fediverse_post)
+        throw new Error(
+          `permission '${Permissions.FediversePost}' not granted`,
+        );
       const offset = fns.owncast_fediverse_post(Memory.fromString(text).offset);
       if (offset == 0) return null;
       return JSON.parse(Memory.find(offset).readString());
-    }
+    },
   },
   notifications: {
     discord(text) {
       const fns = Host.getFunctions();
-      if (!fns.owncast_notify_discord) throw new Error(`permission '${Permissions.NotificationsSend}' not granted`);
+      if (!fns.owncast_notify_discord)
+        throw new Error(
+          `permission '${Permissions.NotificationsSend}' not granted`,
+        );
       fns.owncast_notify_discord(Memory.fromString(text).offset);
     },
     browserPush(payload) {
       const fns = Host.getFunctions();
-      if (!fns.owncast_notify_browser_push) throw new Error(`permission '${Permissions.NotificationsSend}' not granted`);
+      if (!fns.owncast_notify_browser_push)
+        throw new Error(
+          `permission '${Permissions.NotificationsSend}' not granted`,
+        );
       const obj = typeof payload === "string" ? { title: payload } : payload;
-      fns.owncast_notify_browser_push(Memory.fromString(JSON.stringify(obj)).offset);
+      fns.owncast_notify_browser_push(
+        Memory.fromString(JSON.stringify(obj)).offset,
+      );
     },
     fediverse(payload) {
       const fns = Host.getFunctions();
-      if (!fns.owncast_notify_fediverse) throw new Error(`permission '${Permissions.NotificationsSend}' not granted`);
-      fns.owncast_notify_fediverse(Memory.fromString(JSON.stringify(payload)).offset);
-    }
+      if (!fns.owncast_notify_fediverse)
+        throw new Error(
+          `permission '${Permissions.NotificationsSend}' not granted`,
+        );
+      fns.owncast_notify_fediverse(
+        Memory.fromString(JSON.stringify(payload)).offset,
+      );
+    },
   },
   stream: {
     current() {
       const fns = Host.getFunctions();
-      if (!fns.owncast_stream_current) throw new Error(`permission '${Permissions.ServerRead}' not granted`);
+      if (!fns.owncast_stream_current)
+        throw new Error(`permission '${Permissions.ServerRead}' not granted`);
       const offset = fns.owncast_stream_current();
       if (offset == 0) return { online: false, viewers: 0 };
       return JSON.parse(Memory.find(offset).readString());
     },
     broadcaster() {
       const fns = Host.getFunctions();
-      if (!fns.owncast_stream_broadcaster) throw new Error(`permission '${Permissions.ServerRead}' not granted`);
+      if (!fns.owncast_stream_broadcaster)
+        throw new Error(`permission '${Permissions.ServerRead}' not granted`);
       const offset = fns.owncast_stream_broadcaster();
       if (offset == 0) return {};
       return JSON.parse(Memory.find(offset).readString());
-    }
+    },
   },
   server: {
     info() {
       const fns = Host.getFunctions();
-      if (!fns.owncast_server_info) throw new Error(`permission '${Permissions.ServerRead}' not granted`);
+      if (!fns.owncast_server_info)
+        throw new Error(`permission '${Permissions.ServerRead}' not granted`);
       const offset = fns.owncast_server_info();
       if (offset == 0) return {};
       return JSON.parse(Memory.find(offset).readString());
     },
     socials() {
       const fns = Host.getFunctions();
-      if (!fns.owncast_server_socials) throw new Error(`permission '${Permissions.ServerRead}' not granted`);
+      if (!fns.owncast_server_socials)
+        throw new Error(`permission '${Permissions.ServerRead}' not granted`);
       const offset = fns.owncast_server_socials();
       if (offset == 0) return [];
       return JSON.parse(Memory.find(offset).readString());
     },
     federation() {
       const fns = Host.getFunctions();
-      if (!fns.owncast_server_federation) throw new Error(`permission '${Permissions.ServerRead}' not granted`);
+      if (!fns.owncast_server_federation)
+        throw new Error(`permission '${Permissions.ServerRead}' not granted`);
       const offset = fns.owncast_server_federation();
       if (offset == 0) return { enabled: false };
       return JSON.parse(Memory.find(offset).readString());
     },
     tags() {
       const fns = Host.getFunctions();
-      if (!fns.owncast_server_tags) throw new Error(`permission '${Permissions.ServerRead}' not granted`);
+      if (!fns.owncast_server_tags)
+        throw new Error(`permission '${Permissions.ServerRead}' not granted`);
       const offset = fns.owncast_server_tags();
       if (offset == 0) return [];
       return JSON.parse(Memory.find(offset).readString());
-    }
+    },
   },
   videoConfig: {
     /** Read the current video/transcoding config: { latencyLevel, codec,
      *  variants }. Requires `videoconfig.read`. */
     read() {
       const fns = Host.getFunctions();
-      if (!fns.owncast_video_config_read) throw new Error(`permission '${Permissions.VideoConfigRead}' not granted`);
+      if (!fns.owncast_video_config_read)
+        throw new Error(
+          `permission '${Permissions.VideoConfigRead}' not granted`,
+        );
       const offset = fns.owncast_video_config_read();
       if (offset == 0) return { latencyLevel: 0, codec: "", variants: [] };
       return JSON.parse(Memory.find(offset).readString());
@@ -356,39 +456,73 @@ const owncast = {
      *  rejects the config. Requires `videoconfig.write`. */
     write(config) {
       const fns = Host.getFunctions();
-      if (!fns.owncast_video_config_write) throw new Error(`permission '${Permissions.VideoConfigWrite}' not granted`);
-      const offset = fns.owncast_video_config_write(Memory.fromString(JSON.stringify(config || {})).offset);
-      if (offset == 0) throw new Error('videoConfig.write failed');
+      if (!fns.owncast_video_config_write)
+        throw new Error(
+          `permission '${Permissions.VideoConfigWrite}' not granted`,
+        );
+      const offset = fns.owncast_video_config_write(
+        Memory.fromString(JSON.stringify(config || {})).offset,
+      );
+      if (offset == 0) throw new Error("videoConfig.write failed");
       const result = JSON.parse(Memory.find(offset).readString());
-      if (!result.ok) throw new Error(result.error || 'videoConfig.write failed');
-    }
+      if (!result.ok)
+        throw new Error(result.error || "videoConfig.write failed");
+    },
   },
   kv: {
     get(key) {
       const fns = Host.getFunctions();
-      if (!fns.owncast_kv_get) throw new Error(`permission '${Permissions.StorageKV}' not granted`);
+      if (!fns.owncast_kv_get)
+        throw new Error(`permission '${Permissions.StorageKV}' not granted`);
       const offset = fns.owncast_kv_get(Memory.fromString(key).offset);
       if (offset == 0) return null;
       return Memory.find(offset).readString();
     },
     set(key, value) {
       const fns = Host.getFunctions();
-      if (!fns.owncast_kv_set) throw new Error(`permission '${Permissions.StorageKV}' not granted`);
+      if (!fns.owncast_kv_set)
+        throw new Error(`permission '${Permissions.StorageKV}' not granted`);
       fns.owncast_kv_set(
         Memory.fromString(key).offset,
-        Memory.fromString(String(value)).offset
+        Memory.fromString(String(value)).offset,
       );
-    }
+    },
   },
   events: {
     emit(eventType, payload) {
       const fns = Host.getFunctions();
-      if (!fns.owncast_emit_event) throw new Error(`permission '${Permissions.EventsEmit}' not granted`);
+      if (!fns.owncast_emit_event)
+        throw new Error(`permission '${Permissions.EventsEmit}' not granted`);
       fns.owncast_emit_event(
         Memory.fromString(eventType).offset,
-        Memory.fromString(JSON.stringify(payload)).offset
+        Memory.fromString(JSON.stringify(payload)).offset,
       );
-    }
+    },
+  },
+  actions: {
+    // Append one or more action buttons to the plugin's effective list
+    // (manifest.actions ++ runtime additions). Accepts a single button
+    // object or an array. The host validates each entry (title
+    // required, exactly one of url/html, relative URLs rewritten into
+    // this plugin's namespace, cross-plugin URLs rejected) and persists
+    // the result, so the next /api/config request returns the longer
+    // list. Requires 'ui.modify'.
+    add(actions) {
+      const fns = Host.getFunctions();
+      if (!fns.owncast_add_actions)
+        throw permError("owncast.actions.add", Permissions.UIModify);
+      const list = Array.isArray(actions) ? actions : [actions];
+      fns.owncast_add_actions(Memory.fromString(JSON.stringify(list)).offset);
+    },
+    // Drop the runtime additions so only manifest.actions remain in
+    // the effective list on the next /api/config request. Requires
+    // 'ui.modify'.
+    clear() {
+      const fns = Host.getFunctions();
+      if (!fns.owncast_clear_actions)
+        throw permError("owncast.actions.clear", Permissions.UIModify);
+      fns.owncast_clear_actions();
+    },
   },
   sse: {
     // send(channel, event, data) pushes one Server-Sent-Event to every
@@ -401,14 +535,15 @@ const owncast = {
     // the 'http.sse' permission.
     send(channel, event, data) {
       const fns = Host.getFunctions();
-      if (!fns.owncast_sse_send) throw new Error(`permission '${Permissions.HttpSSE}' not granted`);
+      if (!fns.owncast_sse_send)
+        throw new Error(`permission '${Permissions.HttpSSE}' not granted`);
       const payload = typeof data === "string" ? data : JSON.stringify(data);
       fns.owncast_sse_send(
         Memory.fromString(channel || "").offset,
         Memory.fromString(event || "").offset,
-        Memory.fromString(payload).offset
+        Memory.fromString(payload).offset,
       );
-    }
+    },
   },
   http: {
     // fetch(url, opts) → { status, headers, body }
@@ -420,13 +555,17 @@ const owncast = {
       const req = {
         url,
         method: opts.method || "GET",
-        headers: opts.headers || {}
+        headers: opts.headers || {},
       };
       const body = opts.body != null ? String(opts.body) : null;
       const res = body != null ? Http.request(req, body) : Http.request(req);
-      return { status: res.status, headers: res.headers || {}, body: res.body || "" };
-    }
-  }
+      return {
+        status: res.status,
+        headers: res.headers || {},
+        body: res.body || "",
+      };
+    },
+  },
 };
 
 module.exports = {
@@ -439,5 +578,5 @@ module.exports = {
   describeSubscriptions,
   dispatchEvent,
   dispatchFilter,
-  dispatchHttp
+  dispatchHttp,
 };

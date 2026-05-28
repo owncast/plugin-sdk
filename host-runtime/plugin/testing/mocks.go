@@ -23,7 +23,7 @@ type EmittedEvent struct {
 // MockHost is a HostEnv implementation that records side effects in memory.
 // Each scenario gets its own MockHost so state is isolated.
 //
-// emits are recorded but NOT dispatched — single-plugin tests don't load
+// emits are recorded but NOT dispatched, single-plugin tests don't load
 // the receiving plugin. Cross-plugin tests are a separate (future) mode.
 // RecordedHTTPRequest is an HTTP request the plugin made during a scenario.
 type RecordedHTTPRequest struct {
@@ -123,7 +123,7 @@ func NewMockHost() *MockHost {
 // plugin.Server. A scenario marks a request as admin-authenticated via
 // http.authenticated=true, which sets X-Test-Admin: 1 on the request. A
 // scenario marks a request as user-authenticated via http.user={...},
-// which sets X-Test-User: <json> — either form counts as authenticated.
+// which sets X-Test-User: <json>, either form counts as authenticated.
 func (m *MockHost) IsAuthenticated(r *http.Request) bool {
 	if r.Header.Get("X-Test-Admin") == "1" {
 		return true

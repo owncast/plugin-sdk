@@ -27,7 +27,7 @@ import (
 func TestSDKDoesNotDriftFromHostFns(t *testing.T) {
 	hostFns := hostFunctionNames(t)
 	if len(hostFns) == 0 {
-		t.Fatal("no owncast_* host functions found — pattern broken?")
+		t.Fatal("no owncast_* host functions found, pattern broken?")
 	}
 
 	indexJS := readRepoFile(t, "sdks/js/index.js")

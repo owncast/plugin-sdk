@@ -1,13 +1,13 @@
-// stream-ops — exercises read-only broadcast telemetry, the video config
+// stream-ops, exercises read-only broadcast telemetry, the video config
 // read/write pair, and the permission split between them.
 //
-//   !broadcaster   — the inbound encode (resolution + codecs). Read-only
+//   !broadcaster  , the inbound encode (resolution + codecs). Read-only
 //                    telemetry, there's nothing to write, so it lives under
 //                    the plain `server.read` permission.
-//   !videoconfig   — the current output config (latency, codec, variant
+//   !videoconfig  , the current output config (latency, codec, variant
 //                    count). Settable knobs, read under `videoconfig.read`.
-//   !latency <n>   — change the output latency level via
-//                    owncast.videoConfig.write — a write that needs the
+//   !latency <n>  , change the output latency level via
+//                    owncast.videoConfig.write, a write that needs the
 //                    separate, higher-privilege `videoconfig.write`. Partial
 //                    update: only latencyLevel is sent, leaving codec/variants
 //                    untouched.
@@ -19,12 +19,16 @@ module.exports = definePlugin({
 
     if (body === "!broadcaster") {
       const b = owncast.stream.broadcaster();
-      owncast.chat.send(`broadcaster: ${b.resolution || "?"} via ${(b.codecs || []).join("/") || "?"}`);
+      owncast.chat.send(
+        `broadcaster: ${b.resolution || "?"} via ${(b.codecs || []).join("/") || "?"}`,
+      );
       return;
     }
     if (body === "!videoconfig") {
       const c = owncast.videoConfig.read();
-      owncast.chat.send(`latency ${c.latencyLevel}, codec ${c.codec}, ${c.variants.length} variant(s)`);
+      owncast.chat.send(
+        `latency ${c.latencyLevel}, codec ${c.codec}, ${c.variants.length} variant(s)`,
+      );
       return;
     }
 
@@ -34,5 +38,5 @@ module.exports = definePlugin({
       owncast.videoConfig.write({ latencyLevel: level });
       owncast.chat.send(`latency set to ${level}`);
     }
-  }
+  },
 });

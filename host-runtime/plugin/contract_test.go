@@ -15,11 +15,11 @@ import (
 	"testing"
 )
 
-// hostFnNameRe matches an actual host-function name exactly — not the error
+// hostFnNameRe matches an actual host-function name exactly, not the error
 // strings ("owncast_x from %s: ...") that also begin with the prefix.
 var hostFnNameRe = regexp.MustCompile(`^owncast_[a-z_]+$`)
 
-// The plugin wire contract — the host-function names, permission identifiers,
+// The plugin wire contract, the host-function names, permission identifiers,
 // and serialized wire-type field shapes that plugins (and the TypeScript SDK,
 // and Owncast's embedded copy of this runtime) depend on. It's extracted from
 // hostfns.go and pinned to a committed golden file (plugin-contract.json).
@@ -27,7 +27,7 @@ var hostFnNameRe = regexp.MustCompile(`^owncast_[a-z_]+$`)
 // Two things drift silently without a guard:
 //  1. The TS SDK / build CLI stop matching the Go host functions.
 //  2. Owncast's vendored copy of this runtime (services/plugins) falls behind
-//     this one — exactly what happened with the videoconfig host functions.
+//     this one, exactly what happened with the videoconfig host functions.
 //
 // (1) is caught here (host-fn coverage in index.js) plus sdk_drift_test.go.
 // (2) is caught in the *consumer* repo: it runs the same extractor against its
@@ -38,7 +38,7 @@ var hostFnNameRe = regexp.MustCompile(`^owncast_[a-z_]+$`)
 //	UPDATE_CONTRACT=1 go test ./plugin/ -run TestPluginContract
 //
 // then copy host-runtime/plugin/plugin-contract.json into any consumer repo
-// (e.g. owncast/services/plugins/plugin-contract.json) — whose own contract
+// (e.g. owncast/services/plugins/plugin-contract.json), whose own contract
 // test will then force its runtime copy to match.
 
 // contract is the canonical, package-agnostic description of the wire surface.

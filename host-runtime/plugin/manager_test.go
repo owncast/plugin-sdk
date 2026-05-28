@@ -58,10 +58,10 @@ func TestManager_DiscoversWithoutLoading(t *testing.T) {
 		t.Errorf("name: got %q want hello-world", entries[0].Name)
 	}
 	if entries[0].Loaded {
-		t.Error("plugin should not be loaded — admin never enabled it")
+		t.Error("plugin should not be loaded, admin never enabled it")
 	}
 	if entries[0].Enabled {
-		t.Error("plugin should not be enabled — admin never enabled it")
+		t.Error("plugin should not be enabled, admin never enabled it")
 	}
 	if len(mgr.Snapshot()) != 0 {
 		t.Errorf("snapshot should be empty for un-enabled plugin, got %d", len(mgr.Snapshot()))

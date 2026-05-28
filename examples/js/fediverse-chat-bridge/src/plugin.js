@@ -17,7 +17,7 @@ function escapeHtml(s) {
     .replace(/'/g, "&#39;");
 }
 
-// Only allow http(s) URLs through unescaped — defense against javascript:
+// Only allow http(s) URLs through unescaped, defense against javascript:
 // and data: URLs sneaking into href/src attributes.
 function safeUrl(u) {
   const s = String(u == null ? "" : u);
@@ -39,10 +39,12 @@ function renderPost(post) {
   const nameHtml = profile
     ? `<a href="${escapeHtml(profile)}" rel="noopener noreferrer">${name}</a>`
     : name;
-  const handleHtml = handle ? ` <span style="opacity:0.7">${handle}</span>` : "";
+  const handleHtml = handle
+    ? ` <span style="opacity:0.7">${handle}</span>`
+    : "";
   const textHtml = permalink
-    ? ` — <a href="${escapeHtml(permalink)}" rel="noopener noreferrer">${text}</a>`
-    : ` — ${text}`;
+    ? `, <a href="${escapeHtml(permalink)}" rel="noopener noreferrer">${text}</a>`
+    : `, ${text}`;
 
   return `${avatarHtml}<strong>${nameHtml}</strong>${handleHtml}${textHtml}`;
 }
@@ -53,5 +55,5 @@ module.exports = definePlugin({
   },
   onFediverseReply(post) {
     owncast.chat.system(renderPost(post));
-  }
+  },
 });

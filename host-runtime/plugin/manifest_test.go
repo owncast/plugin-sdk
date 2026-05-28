@@ -172,7 +172,7 @@ func TestAgreesWith_SidecarMayDeclareMoreThanRuntimeUses(t *testing.T) {
 func TestParseManifest_Action_RelativeURLIsRewritten(t *testing.T) {
 	m, err := ParseManifest([]byte(`{
 		"api": "1", "name": "stats", "version": "1.0",
-		"permissions": ["http.serve"],
+		"permissions": ["http.serve", "ui.modify"],
 		"actions": [{"title": "Dashboard", "url": "/dashboard"}]
 	}`))
 	if err != nil {
@@ -186,7 +186,7 @@ func TestParseManifest_Action_RelativeURLIsRewritten(t *testing.T) {
 func TestParseManifest_Action_BareSlashIsRewritten(t *testing.T) {
 	m, err := ParseManifest([]byte(`{
 		"api": "1", "name": "stats", "version": "1.0",
-		"permissions": ["http.serve"],
+		"permissions": ["http.serve", "ui.modify"],
 		"actions": [{"title": "Dashboard", "url": "/"}]
 	}`))
 	if err != nil {
@@ -200,7 +200,7 @@ func TestParseManifest_Action_BareSlashIsRewritten(t *testing.T) {
 func TestParseManifest_Action_ExplicitPluginPathPreserved(t *testing.T) {
 	m, err := ParseManifest([]byte(`{
 		"api": "1", "name": "stats", "version": "1.0",
-		"permissions": ["http.serve"],
+		"permissions": ["http.serve", "ui.modify"],
 		"actions": [{"title": "Dashboard", "url": "/plugins/stats/foo"}]
 	}`))
 	if err != nil {
@@ -214,6 +214,7 @@ func TestParseManifest_Action_ExplicitPluginPathPreserved(t *testing.T) {
 func TestParseManifest_Action_ExternalURLPreserved(t *testing.T) {
 	m, err := ParseManifest([]byte(`{
 		"api": "1", "name": "stats", "version": "1.0",
+		"permissions": ["ui.modify"],
 		"actions": [{"title": "External", "url": "https://example.com/help"}]
 	}`))
 	if err != nil {
@@ -227,6 +228,7 @@ func TestParseManifest_Action_ExternalURLPreserved(t *testing.T) {
 func TestParseManifest_Action_MissingHttpServePerm(t *testing.T) {
 	_, err := ParseManifest([]byte(`{
 		"api": "1", "name": "stats", "version": "1.0",
+		"permissions": ["ui.modify"],
 		"actions": [{"title": "Dashboard", "url": "/dashboard"}]
 	}`))
 	if err == nil {
@@ -240,6 +242,7 @@ func TestParseManifest_Action_MissingHttpServePerm(t *testing.T) {
 func TestParseManifest_Action_PointsAtOtherPlugin(t *testing.T) {
 	_, err := ParseManifest([]byte(`{
 		"api": "1", "name": "stats", "version": "1.0",
+		"permissions": ["ui.modify"],
 		"actions": [{"title": "Other", "url": "/plugins/other-plugin/page"}]
 	}`))
 	if err == nil {
@@ -253,6 +256,7 @@ func TestParseManifest_Action_PointsAtOtherPlugin(t *testing.T) {
 func TestParseManifest_Action_TitleRequired(t *testing.T) {
 	_, err := ParseManifest([]byte(`{
 		"api": "1", "name": "stats", "version": "1.0",
+		"permissions": ["ui.modify"],
 		"actions": [{"url": "https://example.com"}]
 	}`))
 	if err == nil {
@@ -271,6 +275,7 @@ func TestParseManifest_Action_UrlXorHtml(t *testing.T) {
 		t.Run(c.name, func(t *testing.T) {
 			_, err := ParseManifest([]byte(`{
 				"api": "1", "name": "stats", "version": "1.0",
+				"permissions": ["ui.modify"],
 				"actions": [` + c.body + `]
 			}`))
 			if err == nil {
@@ -283,6 +288,7 @@ func TestParseManifest_Action_UrlXorHtml(t *testing.T) {
 func TestParseManifest_Action_HtmlOnly(t *testing.T) {
 	m, err := ParseManifest([]byte(`{
 		"api": "1", "name": "stats", "version": "1.0",
+		"permissions": ["ui.modify"],
 		"actions": [{"title": "Info", "html": "<p>hello</p>"}]
 	}`))
 	if err != nil {

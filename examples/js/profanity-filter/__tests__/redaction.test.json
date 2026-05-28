@@ -4,10 +4,17 @@
     "events": [
       {
         "filter": "chat.message.received",
-        "payload": { "id": "1", "user": "alice", "body": "what the hell", "timestamp": "2024-01-01T00:00:00Z" },
+        "payload": {
+          "id": "1",
+          "user": "alice",
+          "body": "what the hell",
+          "timestamp": "2024-01-01T00:00:00Z"
+        },
         "expect": {
           "action": "modify",
-          "payload": { "body": "what the ****" }
+          "payload": {
+            "body": "what the ****"
+          }
         }
       }
     ]
@@ -17,18 +24,32 @@
     "events": [
       {
         "filter": "chat.message.received",
-        "payload": { "id": "1", "user": "alice", "body": "hello world", "timestamp": "2024-01-01T00:00:00Z" },
-        "expect": { "action": "pass" }
+        "payload": {
+          "id": "1",
+          "user": "alice",
+          "body": "hello world",
+          "timestamp": "2024-01-01T00:00:00Z"
+        },
+        "expect": {
+          "action": "pass"
+        }
       }
     ]
   },
   {
-    "name": "uses word boundaries — does not match \"hell\" inside \"hello\"",
+    "name": "uses word boundaries, does not match \"hell\" inside \"hello\"",
     "events": [
       {
         "filter": "chat.message.received",
-        "payload": { "id": "1", "user": "alice", "body": "hello there", "timestamp": "2024-01-01T00:00:00Z" },
-        "expect": { "action": "pass" }
+        "payload": {
+          "id": "1",
+          "user": "alice",
+          "body": "hello there",
+          "timestamp": "2024-01-01T00:00:00Z"
+        },
+        "expect": {
+          "action": "pass"
+        }
       }
     ]
   },
@@ -37,10 +58,17 @@
     "events": [
       {
         "filter": "chat.message.received",
-        "payload": { "id": "1", "user": "alice", "body": "damn hell crap", "timestamp": "2024-01-01T00:00:00Z" },
+        "payload": {
+          "id": "1",
+          "user": "alice",
+          "body": "damn hell crap",
+          "timestamp": "2024-01-01T00:00:00Z"
+        },
         "expect": {
           "action": "modify",
-          "payload": { "body": "**** **** ****" }
+          "payload": {
+            "body": "**** **** ****"
+          }
         }
       }
     ]

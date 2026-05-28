@@ -2,13 +2,13 @@
 // Downloads per-platform tooling into <sdk>/bin/.cache so the build CLI
 // finds it without polluting the user's system:
 //
-//   - extism-js                  — JS → wasm compiler (extism/js-pdk releases)
-//   - wasm-merge, wasm-opt, lib  — binaryen post-processing (WebAssembly/binaryen releases)
-//   - owncast-plugin-test/serve  — scenario runner + dev server (this repo's releases)
+//   - extism-js                 , JS → wasm compiler (extism/js-pdk releases)
+//   - wasm-merge, wasm-opt, lib , binaryen post-processing (WebAssembly/binaryen releases)
+//   - owncast-plugin-test/serve , scenario runner + dev server (this repo's releases)
 //
 // PoC scope: linux-x86_64 + darwin-arm64 + darwin-x86_64 covered.
 // owncast-plugin-test/serve downloads gracefully skip if the matching
-// release asset isn't published yet — dev builds can substitute their own
+// release asset isn't published yet, dev builds can substitute their own
 // via tools/bootstrap.sh.
 
 const fs = require("fs");
@@ -41,7 +41,7 @@ function extismJsURL() {
     "linux-x86_64": `extism-js-x86_64-linux-${EXTISM_JS_VERSION}.gz`,
     "linux-aarch64": `extism-js-aarch64-linux-${EXTISM_JS_VERSION}.gz`,
     "darwin-x86_64": `extism-js-x86_64-macos-${EXTISM_JS_VERSION}.gz`,
-    "darwin-arm64": `extism-js-aarch64-macos-${EXTISM_JS_VERSION}.gz`
+    "darwin-arm64": `extism-js-aarch64-macos-${EXTISM_JS_VERSION}.gz`,
   };
   const file = map[platformKey()];
   return `https://github.com/extism/js-pdk/releases/download/${EXTISM_JS_VERSION}/${file}`;
@@ -52,7 +52,7 @@ function binaryenURL() {
     "linux-x86_64": `binaryen-${BINARYEN_VERSION}-x86_64-linux.tar.gz`,
     "linux-aarch64": `binaryen-${BINARYEN_VERSION}-aarch64-linux.tar.gz`,
     "darwin-x86_64": `binaryen-${BINARYEN_VERSION}-x86_64-macos.tar.gz`,
-    "darwin-arm64": `binaryen-${BINARYEN_VERSION}-arm64-macos.tar.gz`
+    "darwin-arm64": `binaryen-${BINARYEN_VERSION}-arm64-macos.tar.gz`,
   };
   const file = map[platformKey()];
   return `https://github.com/WebAssembly/binaryen/releases/download/${BINARYEN_VERSION}/${file}`;
@@ -65,7 +65,7 @@ function hostBinaryURL(name) {
     "linux-x86_64": "linux-amd64",
     "linux-aarch64": "linux-arm64",
     "darwin-x86_64": "darwin-amd64",
-    "darwin-arm64": "darwin-arm64"
+    "darwin-arm64": "darwin-arm64",
   };
   const suffix = map[platformKey()];
   return `https://github.com/${HOST_BINARIES_REPO}/releases/download/v${HOST_BINARIES_VERSION}/${name}-${suffix}`;
@@ -75,8 +75,10 @@ function download(url, dest) {
   return new Promise((resolve, reject) => {
     const req = (u) =>
       https.get(u, (res) => {
-        if (res.statusCode === 302 || res.statusCode === 301) return req(res.headers.location);
-        if (res.statusCode !== 200) return reject(new Error(`HTTP ${res.statusCode} for ${u}`));
+        if (res.statusCode === 302 || res.statusCode === 301)
+          return req(res.headers.location);
+        if (res.statusCode !== 200)
+          return reject(new Error(`HTTP ${res.statusCode} for ${u}`));
         const out = fs.createWriteStream(dest);
         res.pipe(out);
         out.on("finish", () => out.close(resolve));
@@ -113,7 +115,7 @@ async function main() {
     fs.copyFileSync(path.join(extracted, "bin", "wasm-opt"), wasmOptDest);
     fs.chmodSync(wasmMergeDest, 0o755);
     fs.chmodSync(wasmOptDest, 0o755);
-    // copy lib too — wasm-opt links against libbinaryen.so on linux
+    // copy lib too, wasm-opt links against libbinaryen.so on linux
     const libSrc = path.join(extracted, "lib");
     if (fs.existsSync(libSrc)) {
       fs.cpSync(libSrc, path.join(cacheDir, "lib"), { recursive: true });
@@ -122,7 +124,7 @@ async function main() {
     fs.unlinkSync(tar);
   }
 
-  // owncast-plugin-test + owncast-plugin-serve — built from this repo's
+  // owncast-plugin-test + owncast-plugin-serve, built from this repo's
   // host-runtime/ Go sources, published as gzipped release assets on
   // github.com/owncast/plugin-sdk (roughly halves the download). Skip silently
   // if the release doesn't exist yet (dev environments running against a
@@ -133,7 +135,9 @@ async function main() {
     if (fs.existsSync(dest)) continue;
     const gz = dest + ".gz";
     try {
-      console.log(`[plugin-sdk] downloading ${binary} ${HOST_BINARIES_VERSION}...`);
+      console.log(
+        `[plugin-sdk] downloading ${binary} ${HOST_BINARIES_VERSION}...`,
+      );
       await download(hostBinaryURL(binary) + ".gz", gz);
       fs.writeFileSync(dest, zlib.gunzipSync(fs.readFileSync(gz)));
       fs.chmodSync(dest, 0o755);
@@ -143,7 +147,7 @@ async function main() {
       // warning so the user sees them but the install still succeeds.
       console.warn(
         `[plugin-sdk] could not fetch ${binary}: ${e.message}\n` +
-        `  Build locally via tools/bootstrap.sh, or use the latest GitHub release.`
+          `  Build locally via tools/bootstrap.sh, or use the latest GitHub release.`,
       );
       // Make sure no partial files are left behind.
       for (const p of [gz, dest]) if (fs.existsSync(p)) fs.unlinkSync(p);

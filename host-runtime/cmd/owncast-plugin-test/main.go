@@ -47,7 +47,7 @@ func main() {
 	}
 	wasmPath := filepath.Join(abs, name+".wasm")
 	if !exists(wasmPath) {
-		fatal("no %s.wasm in %s — run `npm run build` first", name, abs)
+		fatal("no %s.wasm in %s, run `npm run build` first", name, abs)
 	}
 	testsDir := filepath.Join(abs, "__tests__")
 	if !exists(testsDir) {

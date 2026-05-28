@@ -448,7 +448,7 @@ func loadTarget(ctx context.Context, env *plugin.HostEnv, target string) (*plugi
 	}
 	wasmPath := filepath.Join(target, name+".wasm")
 	if !exists(wasmPath) {
-		fatal("no %s.wasm in %s — run `npm run build` first", name, target)
+		fatal("no %s.wasm in %s, run `npm run build` first", name, target)
 	}
 
 	loaded, err := plugin.LoadPlugin(ctx, env, wasmPath, manifestPath)

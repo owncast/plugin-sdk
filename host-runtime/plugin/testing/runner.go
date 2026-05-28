@@ -107,7 +107,7 @@ func runOne(ctx context.Context, wasmPath, manifestPath, file string, sc Scenari
 	// LoadPlugin doesn't auto-populate AssetsFS (only the Manager's full
 	// LoadAll does, since it knows the on-disk layout). For HTTP scenarios
 	// to find static assets, mount the project-local assets/ directory if
-	// present — this matches what owncast-plugin build symlinks into place.
+	// present, this matches what owncast-plugin build symlinks into place.
 	assetsDir := filepath.Join(filepath.Dir(wasmPath), "assets")
 	if info, err := os.Stat(assetsDir); err == nil && info.IsDir() {
 		loaded.AssetsFS = os.DirFS(assetsDir)

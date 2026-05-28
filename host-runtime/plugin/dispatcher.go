@@ -46,7 +46,7 @@ func NewDispatcher(loaded []*Loaded) *Dispatcher {
 	return &Dispatcher{snapshot: func() []*Loaded { return snap }}
 }
 
-// NewLiveDispatcher builds a dispatcher backed by a snapshot function — the
+// NewLiveDispatcher builds a dispatcher backed by a snapshot function, the
 // Manager passes its Snapshot method here so admin enable/disable shows up
 // immediately without restarting the host.
 func NewLiveDispatcher(snapshot func() []*Loaded) *Dispatcher {
@@ -66,7 +66,7 @@ const MaxEmitDepth = 8
 // because a runaway plugin in slot 1 doesn't block slot 2.
 //
 // Declared as a var (not const) so tests that need to exercise post-call
-// safeguards — e.g. the output-size check — can stretch this temporarily.
+// safeguards, e.g. the output-size check, can stretch this temporarily.
 // Production callers should treat it as read-only.
 var FilterTimeout = 50 * time.Millisecond
 
@@ -85,7 +85,7 @@ func emitDepth(ctx context.Context) int {
 func (d *Dispatcher) Dispatch(ctx context.Context, eventType string, payload any) {
 	depth := emitDepth(ctx)
 	if depth >= MaxEmitDepth {
-		fmt.Fprintf(os.Stderr, "dispatcher: max emit depth %d reached for %q — dropping\n", MaxEmitDepth, eventType)
+		fmt.Fprintf(os.Stderr, "dispatcher: max emit depth %d reached for %q, dropping\n", MaxEmitDepth, eventType)
 		return
 	}
 	ctx = context.WithValue(ctx, depthKey{}, depth+1)
@@ -99,7 +99,7 @@ func (d *Dispatcher) Dispatch(ctx context.Context, eventType string, payload any
 }
 
 // Filter runs the ordered filter chain for an event. Plugin errors are
-// fail-open — the event passes through that plugin unchanged. Returns the
+// fail-open, the event passes through that plugin unchanged. Returns the
 // final payload, whether the event survived, and a drop reason if not.
 func (d *Dispatcher) Filter(ctx context.Context, eventType string, payload any) (any, bool, string) {
 	type subbed struct {

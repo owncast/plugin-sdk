@@ -200,7 +200,7 @@ func main() {
 		"displayName": "bob",
 	})
 
-	// 3) Chat traffic — exercises filter chain + notifications.
+	// 3) Chat traffic, exercises filter chain + notifications.
 	messages := []ChatMessage{
 		{ID: "1", User: "alice", Body: "hello world", Timestamp: t0},
 		{ID: "2", User: "bob", Body: "what the hell, this is great", Timestamp: t0.Add(1 * time.Second)},
@@ -219,7 +219,7 @@ func main() {
 	fmt.Println("\n> stream.title.changed")
 	dispatcher.Dispatch(ctx, plugin.EventStreamTitleChanged, map[string]any{
 		"from": "Live demo stream",
-		"to":   "Live demo stream — Q&A",
+		"to":   "Live demo stream, Q&A",
 	})
 
 	// 5) Bob leaves.
@@ -248,7 +248,7 @@ func printEntry(e plugin.DiscoveredEntry) {
 	case e.Loaded:
 		state = "loaded"
 	case e.Enabled:
-		state = "enabled (not loaded — see lastError)"
+		state = "enabled (not loaded, see lastError)"
 	}
 	fmt.Printf("\n  %s v%s [%s]\n", e.Name, e.Version, state)
 	if e.Description != "" {
@@ -285,7 +285,7 @@ func registerAdminRoutes(mux *http.ServeMux, mgr *plugin.Manager, ctx context.Co
 		writeJSON(w, http.StatusOK, mgr.List())
 	}))
 
-	// GET /api/plugins/actions — merged ExternalAction-shaped list from every
+	// GET /api/plugins/actions, merged ExternalAction-shaped list from every
 	// loaded plugin. Public on purpose; the Owncast frontend folds these into
 	// the same list it already gets from /api/externalactions. No auth.
 	mux.HandleFunc("/api/plugins/actions", func(w http.ResponseWriter, r *http.Request) {

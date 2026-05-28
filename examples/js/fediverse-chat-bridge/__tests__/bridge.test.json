@@ -20,7 +20,7 @@
     ],
     "expect": {
       "chatSystems": [
-        "<img src=\"https://fediverse.example/avatars/alice.png\" alt=\"\" width=\"32\" height=\"32\" style=\"vertical-align:middle;border-radius:50%;margin-right:8px\"><strong><a href=\"https://fediverse.example/@alice\" rel=\"noopener noreferrer\">Alice</a></strong> <span style=\"opacity:0.7\">@alice@fediverse.example</span> — <a href=\"https://fediverse.example/@alice/123\" rel=\"noopener noreferrer\">great stream!</a>"
+        "<img src=\"https://fediverse.example/avatars/alice.png\" alt=\"\" width=\"32\" height=\"32\" style=\"vertical-align:middle;border-radius:50%;margin-right:8px\"><strong><a href=\"https://fediverse.example/@alice\" rel=\"noopener noreferrer\">Alice</a></strong> <span style=\"opacity:0.7\">@alice@fediverse.example</span>, <a href=\"https://fediverse.example/@alice/123\" rel=\"noopener noreferrer\">great stream!</a>"
       ]
     }
   },
@@ -45,7 +45,7 @@
     ],
     "expect": {
       "chatSystems": [
-        "<img src=\"https://example.com/a.png\" alt=\"\" width=\"32\" height=\"32\" style=\"vertical-align:middle;border-radius:50%;margin-right:8px\"><strong><a href=\"https://example.com/@evil\" rel=\"noopener noreferrer\">&lt;script&gt;alert(1)&lt;/script&gt;</a></strong> <span style=\"opacity:0.7\">@evil@example.com</span> — <a href=\"https://example.com/@evil/9\" rel=\"noopener noreferrer\">&lt;img onerror=alert(1)&gt;</a>"
+        "<img src=\"https://example.com/a.png\" alt=\"\" width=\"32\" height=\"32\" style=\"vertical-align:middle;border-radius:50%;margin-right:8px\"><strong><a href=\"https://example.com/@evil\" rel=\"noopener noreferrer\">&lt;script&gt;alert(1)&lt;/script&gt;</a></strong> <span style=\"opacity:0.7\">@evil@example.com</span>, <a href=\"https://example.com/@evil/9\" rel=\"noopener noreferrer\">&lt;img onerror=alert(1)&gt;</a>"
       ]
     }
   },
@@ -70,7 +70,7 @@
     ],
     "expect": {
       "chatSystems": [
-        "<strong>Mallory</strong> <span style=\"opacity:0.7\">@m@x.example</span> — x"
+        "<strong>Mallory</strong> <span style=\"opacity:0.7\">@m@x.example</span>, x"
       ]
     }
   }

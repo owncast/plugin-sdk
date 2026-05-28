@@ -15,7 +15,7 @@ import (
 	"time"
 )
 
-// Server is an http.Handler that serves /plugins/<name>/* — first by
+// Server is an http.Handler that serves /plugins/<name>/*, first by
 // looking for a static asset on the plugin's AssetsFS, then falling through
 // to the plugin's on_http_request wasm export. Plugins without the
 // http.serve permission produce 404 regardless.
@@ -34,7 +34,7 @@ type Server struct {
 	// IsAuthenticated reports whether an incoming HTTP request carries
 	// authenticated-admin credentials. Used to gate manifest.admin.pages
 	// paths and to populate req.authenticated for dynamic handlers.
-	// nil = always false (no auth available — admin paths return 401).
+	// nil = always false (no auth available, admin paths return 401).
 	IsAuthenticated func(*http.Request) bool
 	// GetRequestUser returns the user identity attached to the request
 	// (when the request came with a user-token, not admin auth). nil →
@@ -144,7 +144,7 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Host-reserved Server-Sent-Events endpoint. Gated on http.sse
-	// (independent of http.serve) and handled entirely by the host — the
+	// (independent of http.serve) and handled entirely by the host, the
 	// plugin never sees these requests.
 	if rest == SSEReservedPrefix || strings.HasPrefix(rest, SSEReservedPrefix+"/") {
 		if !pluginHasPermission(p.Manifest, PermHttpSSE) {
@@ -248,7 +248,7 @@ func (s *Server) tryStatic(w http.ResponseWriter, r *http.Request, loaded *Loade
 	}
 
 	// fs.FS paths must be slash-separated, without a leading slash, and
-	// can't contain ".." segments — path.Clean handles the first two; the
+	// can't contain ".." segments, path.Clean handles the first two; the
 	// fs.ValidPath check rejects traversal.
 	cleaned := strings.TrimPrefix(path.Clean("/"+requestPath), "/")
 	if cleaned == "" {
@@ -280,7 +280,7 @@ func (s *Server) tryStatic(w http.ResponseWriter, r *http.Request, loaded *Loade
 // problems with non-file-backed fs.FS implementations (zip entries aren't
 // seekable as ReadClosers); plugin assets are small enough that this is
 // fine in practice. http.ServeContent gives us correct content-type
-// sniffing, range support, ETag/conditional-GET handling — without
+// sniffing, range support, ETag/conditional-GET handling, without
 // net/http.ServeFile's path-canonicalization redirects.
 func serveAssetFile(w http.ResponseWriter, r *http.Request, root fs.FS, name string, info fs.FileInfo) {
 	data, err := fs.ReadFile(root, name)

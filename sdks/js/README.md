@@ -2,7 +2,7 @@
 
 SDK for authoring [Owncast](https://owncast.online) plugins in JavaScript or TypeScript. Plugins compile to WebAssembly and run sandboxed inside the Owncast server.
 
-Most authors don't install this directly — instead, scaffold a new project with `npm create owncast-plugin <name>` and the generated `package.json` already lists it as a dependency.
+Most authors don't install this directly, instead, scaffold a new project with `npm create owncast-plugin <name>` and the generated `package.json` already lists it as a dependency.
 
 ## Quick start
 
@@ -38,10 +38,11 @@ Declare the permissions your plugin uses (`chat.send` for the example above) in 
 
 ## What's in the package
 
-- `index.js` — runtime: `definePlugin`, the `owncast.*` host wrappers, the `filter` constructor.
-- `index.d.ts` — TypeScript declarations for editor autocomplete on every event payload and host API.
-- `bin/owncast-plugin` — CLI: `build`, `test`, `serve`, `package` subcommands.
-- `scripts/postinstall.js` — downloads the per-platform wasm toolchain (`extism-js`, `wasm-merge`, `wasm-opt`) and the Go test/serve runner on install.
+- `index.js`, runtime: `definePlugin`, the `owncast.*` host wrappers, the `filter` constructor.
+- `index.d.ts`, TypeScript declarations for editor autocomplete on every event payload and host API.
+- `testing.js`, JS test API (`runScenarios`) for writing `__tests__/*.test.js` with the full ergonomics of JavaScript instead of static JSON.
+- `bin/owncast-plugin`, CLI: `build`, `test`, `serve`, `package` subcommands.
+- `scripts/postinstall.js`, downloads the per-platform wasm toolchain (`extism-js`, `wasm-merge`, `wasm-opt`) and the Go test/serve runner on install.
 
 ## License
 

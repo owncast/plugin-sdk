@@ -6,7 +6,7 @@ export interface ChatMessage {
   timestamp: string;
 }
 
-/** A chat user — payload of join/part/rename events. */
+/** A chat user, payload of join/part/rename events. */
 export interface ChatUser {
   id: string;
   displayName: string;
@@ -15,13 +15,13 @@ export interface ChatUser {
   scopes?: string[];
 }
 
-/** Payload of `chat.user.renamed` — the same user changing their name. */
+/** Payload of `chat.user.renamed`, the same user changing their name. */
 export interface ChatUserRename {
   user: ChatUser;
   previousName: string;
 }
 
-/** Payload of `chat.message.moderated` — a message hidden/restored by a mod. */
+/** Payload of `chat.message.moderated`, a message hidden/restored by a mod. */
 export interface ChatMessageModeration {
   messageId: string;
   visible: boolean;
@@ -30,8 +30,8 @@ export interface ChatMessageModeration {
 
 /** Stream-lifecycle payloads. */
 export interface StreamLifecycleEvent {
-  startedAt?: string;     // ISO-8601, set for stream.started
-  stoppedAt?: string;     // ISO-8601, set for stream.stopped
+  startedAt?: string; // ISO-8601, set for stream.started
+  stoppedAt?: string; // ISO-8601, set for stream.stopped
   title?: string;
   summary?: string;
 }
@@ -125,7 +125,7 @@ export const Events: {
 /** Payload shape for fediverse engagement events. */
 export interface FediverseActor {
   name: string;
-  handle: string;      // e.g. "@alice@fediverse.example"
+  handle: string; // e.g. "@alice@fediverse.example"
   url?: string;
   image?: string;
 }
@@ -136,16 +136,16 @@ export interface FediverseEngagement {
   target?: { url: string };
 }
 
-/** Inbound fediverse post — a mention or reply that contains content the
+/** Inbound fediverse post, a mention or reply that contains content the
  *  plugin can act on. Carries both the rendered content (which has the
  *  source instance's HTML) and a plain-text version (HTML stripped). */
 export interface FediverseInboundPost {
   actor: FediverseActor;
-  content: string;                 // HTML from the source instance
-  contentText: string;             // HTML stripped to plain text
-  url: string;                     // permalink to the post on its source
-  postedAt: string;                // ISO-8601
-  inReplyTo?: string;              // parent post URL, when this is a reply
+  content: string; // HTML from the source instance
+  contentText: string; // HTML stripped to plain text
+  url: string; // permalink to the post on its source
+  postedAt: string; // ISO-8601
+  inReplyTo?: string; // parent post URL, when this is a reply
   attachments?: {
     url: string;
     mediaType: string;
@@ -171,6 +171,7 @@ export const Permissions: {
   readonly HttpSSE: "http.sse";
   readonly VideoConfigRead: "videoconfig.read";
   readonly VideoConfigWrite: "videoconfig.write";
+  readonly UIModify: "ui.modify";
 };
 
 export interface BrowserPushPayload {
@@ -204,7 +205,7 @@ export interface User {
   displayName: string;
   previousNames?: string[];
   createdAt?: string;
-  disabledAt?: string;        // ISO-8601 if banned, omitted otherwise
+  disabledAt?: string; // ISO-8601 if banned, omitted otherwise
   scopes?: string[];
   isBot?: boolean;
   isAuthenticated?: boolean;
@@ -290,12 +291,12 @@ export interface PluginDef {
   onFediverseReply?(post: FediverseInboundPost): void | Promise<void>;
 
   /** HTTP request handler. Called for any path under /plugins/<name>/ that
-   *  isn't served as a static asset. Default-public — gate admin features
+   *  isn't served as a static asset. Default-public, gate admin features
    *  on `req.authenticated` yourself. Requires `http.serve` permission. */
   onHttpRequest?(req: IncomingHttpRequest): OutgoingHttpResponse;
 
   /** Handlers for plugin-emitted custom events. The key is the event type
-   *  string (e.g. "announcement.broadcast"). Notifications only — to filter
+   *  string (e.g. "announcement.broadcast"). Notifications only, to filter
    *  custom events, additional API will be needed. */
   on?: { [eventType: string]: (payload: any) => void | Promise<void> };
 
@@ -314,7 +315,7 @@ export const owncast: {
     send(text: string): void;
     /** Same identity, but in action style (italic, like IRC "/me"). */
     sendAction(text: string): void;
-    /** Post a system message — no user identity, rendered as a server
+    /** Post a system message, no user identity, rendered as a server
      *  announcement. The body is rendered as HTML, so the plugin is
      *  responsible for escaping any untrusted content. Same `chat.send`
      *  permission as the other send variants. */
@@ -348,7 +349,7 @@ export const owncast: {
     upload(name: string, data: Uint8Array | string): UploadResult | null;
   };
   /** Post to the fediverse on the streamer's behalf. Requires `fediverse.post`,
-   *  which is high-trust — admins should grant it sparingly. The host
+   *  which is high-trust, admins should grant it sparingly. The host
    *  rate-limits at ~5 posts/hour per plugin. */
   fediverse: {
     /** Publish a public, text-only post. Returns { url } on success or null
@@ -371,6 +372,22 @@ export const owncast: {
   };
   events: {
     emit(eventType: string, payload: unknown): void;
+  };
+  /** Control over the viewer action buttons this plugin contributes.
+   *  The effective list shown to viewers is `manifest.actions` ++
+   *  whatever has been added at runtime via `add`. Requires
+   *  `ui.modify`. */
+  actions: {
+    /** Append one or more buttons to the plugin's runtime list. Each
+     *  entry is validated with the same rules as `manifest.actions`
+     *  (title required; exactly one of `url` or `html`; relative URLs
+     *  rewritten into this plugin's namespace; cross-plugin URLs
+     *  rejected). The next viewer `/api/config` request returns
+     *  `manifest.actions` ++ the runtime list. */
+    add(actions: ActionButton | ActionButton[]): void;
+    /** Drop the runtime additions; only `manifest.actions` remain on
+     *  the next viewer `/api/config` request. */
+    clear(): void;
   };
   sse: {
     /** Push one Server-Sent-Event to every browser connected to this
@@ -416,7 +433,7 @@ export interface HttpResponse {
   body: string;
 }
 
-/** An entry in `manifest.actions` — declares an action button the Owncast
+/** An entry in `manifest.actions`, declares an action button the Owncast
  *  UI surfaces while this plugin is enabled. Mirrors Owncast's existing
  *  ExternalAction shape; the host merges enabled-plugin buttons with the
  *  admin-configured list.
@@ -429,7 +446,7 @@ export interface HttpResponse {
  *  explicit `/plugins/<your-name>/...` paths are accepted unchanged.
  *
  *  When the resolved URL points back into this plugin, the manifest must
- *  declare `http.serve` — the host rejects the load otherwise. */
+ *  declare `http.serve`, the host rejects the load otherwise. */
 export interface ActionButton {
   /** Button label. Required. */
   title: string;
@@ -437,7 +454,7 @@ export interface ActionButton {
   url?: string;
   /** Render this raw HTML when the button is pressed. Mutually exclusive with `url`. */
   html?: string;
-  /** Icon image URL — same path conventions as `url`. */
+  /** Icon image URL, same path conventions as `url`. */
   icon?: string;
   /** Accent color, e.g. "#3b82f6". */
   color?: string;
@@ -447,7 +464,7 @@ export interface ActionButton {
   openExternally?: boolean;
 }
 
-/** `manifest.network` — narrows outbound HTTP scope for plugins that
+/** `manifest.network`, narrows outbound HTTP scope for plugins that
  *  declare the `network.fetch` permission. Required when that permission
  *  is granted; the host rejects loads otherwise. */
 export interface NetworkConfig {

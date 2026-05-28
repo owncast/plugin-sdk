@@ -1,0 +1,37 @@
+{
+  "api": "1",
+  "name": "action-buttons",
+  "version": "0.1.0",
+  "description": "Manifest-declared action buttons plus an admin page that renames them at runtime via a custom API backed by plugin config.",
+  "permissions": ["ui.modify", "http.serve", "storage.kv"],
+  "admin": {
+    "pages": [
+      {
+        "title": "Button labels",
+        "path": "/admin",
+        "icon": "gear"
+      }
+    ]
+  },
+  "actions": [
+    {
+      "title": "Owncast",
+      "description": "Visit the Owncast project home page",
+      "url": "https://owncast.online",
+      "openExternally": true
+    },
+    {
+      "title": "GitHub",
+      "description": "View the source on GitHub",
+      "url": "https://github.com/owncast/owncast",
+      "color": "#24292e",
+      "openExternally": true
+    },
+    {
+      "title": "About this stream",
+      "description": "An action that opens an inline HTML modal instead of navigating to a URL",
+      "html": "<div style=\"font-family: system-ui, sans-serif; padding: 16px; line-height: 1.5;\"><h2 style=\"margin-top: 0;\">About this stream</h2><p>Action buttons can embed inline HTML for short notices, contact info, schedules, or anything else that doesn't need a separate page.</p><p>This snippet came from a plugin's <code>manifest.actions[].html</code> field.</p></div>",
+      "color": "#42bea6"
+    }
+  ]
+}

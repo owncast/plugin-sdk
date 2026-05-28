@@ -1,8 +1,8 @@
 #!/usr/bin/env node
-// `owncast-plugin build`   — bundle src/plugin.{js,ts} into <name>.wasm
-// `owncast-plugin test`    — run scenarios in __tests__/ against the wasm
-// `owncast-plugin serve`   — run a localhost dev HTTP server
-// `owncast-plugin package` — produce a single-file <name>.ocpkg suitable
+// `owncast-plugin build`  , bundle src/plugin.{js,ts} into <name>.wasm
+// `owncast-plugin test`   , run scenarios in __tests__/ against the wasm
+// `owncast-plugin serve`  , run a localhost dev HTTP server
+// `owncast-plugin package`, produce a single-file <name>.ocpkg suitable
 //                            for distribution / installation
 
 const fs = require("fs");
@@ -23,7 +23,9 @@ if (cmd === "build") {
 } else if (cmd === "package") {
   packageMain().catch(fail);
 } else {
-  console.error(`unknown command: ${cmd}\nusage: owncast-plugin <build|test|serve|package>`);
+  console.error(
+    `unknown command: ${cmd}\nusage: owncast-plugin <build|test|serve|package>`,
+  );
   process.exit(1);
 }
 
@@ -46,17 +48,20 @@ function runBinary(name, args) {
   if (!fs.existsSync(bin)) {
     console.error(
       `${name} not found at ${bin}\n` +
-      `In production this is fetched by the SDK postinstall. For the PoC, ` +
-      `build it via: cd owncast && go build -o tools/${name} ./cmd/${name}`
+        `In production this is fetched by the SDK postinstall. For the PoC, ` +
+        `build it via: cd owncast && go build -o tools/${name} ./cmd/${name}`,
     );
     process.exit(1);
   }
   const env = {
     ...process.env,
-    LD_LIBRARY_PATH: `${path.join(cache, "lib")}:${process.env.LD_LIBRARY_PATH || ""}`
+    LD_LIBRARY_PATH: `${path.join(cache, "lib")}:${process.env.LD_LIBRARY_PATH || ""}`,
   };
   try {
-    execFileSync(bin, args.length > 0 ? args : [process.cwd()], { stdio: "inherit", env });
+    execFileSync(bin, args.length > 0 ? args : [process.cwd()], {
+      stdio: "inherit",
+      env,
+    });
   } catch (e) {
     process.exit(typeof e.status === "number" ? e.status : 1);
   }
@@ -74,14 +79,22 @@ async function buildMain() {
 
   // Detect entry point.
   let entry = null;
-  for (const candidate of ["src/plugin.ts", "src/plugin.js", "plugin.ts", "plugin.js"]) {
+  for (const candidate of [
+    "src/plugin.ts",
+    "src/plugin.js",
+    "plugin.ts",
+    "plugin.js",
+  ]) {
     const p = path.join(cwd, candidate);
     if (fs.existsSync(p)) {
       entry = p;
       break;
     }
   }
-  if (!entry) throw new Error("no plugin source found (expected src/plugin.ts or plugin.js)");
+  if (!entry)
+    throw new Error(
+      "no plugin source found (expected src/plugin.ts or plugin.js)",
+    );
 
   // Synthesize an entry that injects the manifest, requires user code,
   // then re-exports the SDK runtime exports as wasm-visible exports.
@@ -132,7 +145,7 @@ module.exports = { register, on_event, on_filter, on_http_request };
     platform: "neutral",
     target: "es2020",
     outfile: bundledJS,
-    logLevel: "warning"
+    logLevel: "warning",
   });
 
   // Generate index.d.ts declaring exports + host imports based on permissions.
@@ -143,16 +156,21 @@ module.exports = { register, on_event, on_filter, on_http_request };
   const cache = findCacheDir();
   const extismJs = path.join(cache, "extism-js");
   if (!fs.existsSync(extismJs)) {
-    throw new Error(`extism-js not found at ${extismJs} — run \`npm install\` to fetch the toolchain`);
+    throw new Error(
+      `extism-js not found at ${extismJs}, run \`npm install\` to fetch the toolchain`,
+    );
   }
   const env = {
     ...process.env,
     PATH: `${cache}:${process.env.PATH}`,
-    LD_LIBRARY_PATH: `${path.join(cache, "lib")}:${process.env.LD_LIBRARY_PATH || ""}`
+    LD_LIBRARY_PATH: `${path.join(cache, "lib")}:${process.env.LD_LIBRARY_PATH || ""}`,
   };
 
   const wasmOut = path.join(cwd, `${name}.wasm`);
-  execFileSync(extismJs, [bundledJS, "-i", dts, "-o", wasmOut], { stdio: "inherit", env });
+  execFileSync(extismJs, [bundledJS, "-i", dts, "-o", wasmOut], {
+    stdio: "inherit",
+    env,
+  });
 
   // If the project ships static assets in ./assets/, mirror them to the
   // canonical deployment layout (<name>-assets/) so plugin.Server finds them
@@ -162,15 +180,28 @@ module.exports = { register, on_event, on_filter, on_http_request };
   if (fs.existsSync(assetsSrc) && fs.statSync(assetsSrc).isDirectory()) {
     const assetsDest = path.join(cwd, `${name}-assets`);
     let needsLink = true;
-    if (fs.existsSync(assetsDest)) {
-      try {
-        const st = fs.lstatSync(assetsDest);
-        if (st.isSymbolicLink() && fs.realpathSync(assetsDest) === fs.realpathSync(assetsSrc)) {
-          needsLink = false;
-        } else {
-          fs.rmSync(assetsDest, { recursive: true, force: true });
-        }
-      } catch {
+    // Use lstatSync (not existsSync), existsSync follows symlinks and
+    // returns false for a dangling link, but the link's inode is still
+    // there and would make symlinkSync below fail with EEXIST. lstatSync
+    // sees the link itself regardless of whether its target resolves.
+    let st;
+    try {
+      st = fs.lstatSync(assetsDest);
+    } catch {
+      // path doesn't exist at all, fall through to create it.
+    }
+    if (st) {
+      let target;
+      if (st.isSymbolicLink()) {
+        // realpathSync throws on dangling links; treat that as "doesn't
+        // match, replace it" rather than letting it abort the build.
+        try {
+          target = fs.realpathSync(assetsDest);
+        } catch {}
+      }
+      if (target && target === fs.realpathSync(assetsSrc)) {
+        needsLink = false;
+      } else {
         fs.rmSync(assetsDest, { recursive: true, force: true });
       }
     }
@@ -182,7 +213,7 @@ module.exports = { register, on_event, on_filter, on_http_request };
   console.log(`built ${path.relative(cwd, wasmOut)}`);
 }
 
-// `owncast-plugin package` — bundle the project into a single .ocpkg file
+// `owncast-plugin package`, bundle the project into a single .ocpkg file
 // (zip archive with plugin.manifest.json, plugin.wasm, and optional assets/).
 // Builds the wasm first if it doesn't exist.
 async function packageMain() {
@@ -217,11 +248,13 @@ async function packageMain() {
   const buf = await zip.generateAsync({
     type: "nodebuffer",
     compression: "DEFLATE",
-    compressionOptions: { level: 6 }
+    compressionOptions: { level: 6 },
   });
   fs.writeFileSync(outPath, buf);
   const sizeKb = Math.round(fs.statSync(outPath).size / 1024);
-  console.log(`packaged ${path.relative(cwd, outPath)} (${sizeKb} KB, ${fileCount} files)`);
+  console.log(
+    `packaged ${path.relative(cwd, outPath)} (${sizeKb} KB, ${fileCount} files)`,
+  );
 }
 
 function* walkFiles(dir) {
@@ -248,7 +281,7 @@ function generateInterface(manifest) {
     "register(): I32",
     "on_event(): I32",
     "on_filter(): I32",
-    "on_http_request(): I32"
+    "on_http_request(): I32",
   ];
 
   const perms = new Set(manifest.permissions || []);
@@ -277,7 +310,9 @@ function generateInterface(manifest) {
     imports.push("owncast_user_get(idPtr: PTR): PTR");
   }
   if (perms.has("users.moderate")) {
-    imports.push("owncast_user_set_enabled(idPtr: PTR, enabled: I32, reasonPtr: PTR): void");
+    imports.push(
+      "owncast_user_set_enabled(idPtr: PTR, enabled: I32, reasonPtr: PTR): void",
+    );
     imports.push("owncast_ban_ip(ipPtr: PTR): void");
   }
   if (perms.has("storage.upload")) {
@@ -290,8 +325,14 @@ function generateInterface(manifest) {
     imports.push("owncast_kv_get(keyPtr: PTR): PTR");
     imports.push("owncast_kv_set(keyPtr: PTR, valPtr: PTR): void");
   }
-  if (perms.has("events.emit")) imports.push("owncast_emit_event(eventTypePtr: PTR, payloadPtr: PTR): void");
-  if (perms.has("http.sse")) imports.push("owncast_sse_send(channelPtr: PTR, eventPtr: PTR, dataPtr: PTR): void");
+  if (perms.has("events.emit"))
+    imports.push(
+      "owncast_emit_event(eventTypePtr: PTR, payloadPtr: PTR): void",
+    );
+  if (perms.has("http.sse"))
+    imports.push(
+      "owncast_sse_send(channelPtr: PTR, eventPtr: PTR, dataPtr: PTR): void",
+    );
   if (perms.has("server.read")) {
     imports.push("owncast_stream_current(): PTR");
     imports.push("owncast_server_info(): PTR");
@@ -305,6 +346,10 @@ function generateInterface(manifest) {
   }
   if (perms.has("videoconfig.write")) {
     imports.push("owncast_video_config_write(configPtr: PTR): PTR");
+  }
+  if (perms.has("ui.modify")) {
+    imports.push("owncast_add_actions(actionsPtr: PTR): void");
+    imports.push("owncast_clear_actions(): void");
   }
 
   let out = `declare module 'main' {\n`;
@@ -326,9 +371,9 @@ function findCacheDir() {
   const candidates = [
     path.join(__dirname, ".cache"),
     path.join(__dirname, "..", "bin", ".cache"),
-    path.join(__dirname, "..", "..", "..", "tools")
+    path.join(__dirname, "..", "..", "..", "tools"),
   ];
-  // Pick the first candidate that has any of the expected tools — different
+  // Pick the first candidate that has any of the expected tools, different
   // commands need different binaries (build needs extism-js, test needs
   // owncast-plugin-test) but they share a cache.
   for (const c of candidates) {
@@ -342,4 +387,3 @@ function findCacheDir() {
   }
   return candidates[0];
 }
-

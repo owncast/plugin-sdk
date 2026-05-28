@@ -50,12 +50,12 @@ type Loaded struct {
 // FilterStrikeThreshold is the number of consecutive filter failures a
 // plugin can rack up before the dispatcher auto-disables it for the rest
 // of the session. The fail-open semantics still apply on the path to the
-// strike — events flow normally; the strike just prevents the host from
+// strike, events flow normally; the strike just prevents the host from
 // drowning in log noise from a permanently-broken plugin.
 const FilterStrikeThreshold = 5
 
 // Sandbox caps. A misbehaving plugin should fail its own call; the host
-// stays up. These are deliberately generous — realistic plugins won't
+// stays up. These are deliberately generous, realistic plugins won't
 // come close. Per-plugin manifest overrides are a future TODO.
 const (
 	// MaxWasmPages caps a plugin's wasm linear memory. 1 page = 64 KiB,
@@ -74,14 +74,14 @@ const (
 	MaxExtismVarBytes = 1 << 20 // 1 MiB
 
 	// MaxRegisterOutputBytes caps the JSON the SDK emits from register().
-	// In practice this is a kilobyte or two (manifest echo) — the cap is
+	// In practice this is a kilobyte or two (manifest echo), the cap is
 	// just to prevent a buggy or malicious plugin from causing a huge
 	// allocation at load time.
 	MaxRegisterOutputBytes = 256 << 10 // 256 KiB
 
 	// MaxFilterOutputBytes caps the JSON a plugin's on_filter returns.
 	// Filter results carry the (possibly modified) event payload —
-	// chat messages, etc. — which are small in any realistic case.
+	// chat messages, etc., which are small in any realistic case.
 	MaxFilterOutputBytes = 1 << 20 // 1 MiB
 
 	// MaxHTTPHandlerOutputBytes caps the JSON envelope a plugin returns
@@ -92,7 +92,7 @@ const (
 
 	// NotifyTimeout caps a single on_event call. Notification handlers
 	// can do real work (kv writes, owncast.* host calls), but they
-	// shouldn't stall — events fire on the chat hot path.
+	// shouldn't stall, events fire on the chat hot path.
 	NotifyTimeout = 500 * time.Millisecond
 
 	// HTTPHandlerTimeout caps a single on_http_request call. HTTP
@@ -161,7 +161,7 @@ func (l *Loaded) Close(ctx context.Context) {
 //
 // The enabled set persists in <pluginsDir>/.enabled.json so admin choices
 // survive host restarts. Files appearing in the plugins directory are
-// auto-detected (scan every ScanInterval) but never auto-loaded — the
+// auto-detected (scan every ScanInterval) but never auto-loaded, the
 // admin clicks Enable.
 type Manager struct {
 	pluginsDir  string
@@ -178,7 +178,7 @@ type Manager struct {
 	scanCh       chan struct{}      // pings to force a scan (testing / admin trigger)
 }
 
-// DiscoveredEntry is the public view of a discovered plugin — what the
+// DiscoveredEntry is the public view of a discovered plugin, what the
 // admin UI lists.
 type DiscoveredEntry struct {
 	Name         string    `json:"name"`
@@ -310,7 +310,7 @@ func (m *Manager) Disable(ctx context.Context, name string) error {
 	delete(m.loaded, name)
 	m.mu.Unlock()
 	if err := m.saveEnabledSet(); err != nil {
-		// Don't bail — we've already removed from the in-memory set.
+		// Don't bail, we've already removed from the in-memory set.
 		fmt.Fprintf(os.Stderr, "persist enabled set: %v\n", err)
 	}
 	if loaded != nil {
@@ -490,7 +490,7 @@ func readManifestForPath(path string) (*Manifest, error) {
 	return nil, fmt.Errorf("unsupported file type: %s", path)
 }
 
-// Persistence — a tiny JSON file under the plugins directory listing the
+// Persistence, a tiny JSON file under the plugins directory listing the
 // names the admin has enabled. Survives restarts.
 
 type enabledFile struct {
@@ -545,7 +545,7 @@ func (m *Manager) EnabledFilePath() string {
 // (the loose-files layout). Used by the test runner so it shares the exact
 // same load + register + validate path that production uses via Start.
 //
-// AssetsFS on the returned Loaded is left nil — callers that want static
+// AssetsFS on the returned Loaded is left nil, callers that want static
 // asset serving should populate it themselves.
 func LoadPlugin(ctx context.Context, env *HostEnv, wasmPath, manifestPath string) (*Loaded, error) {
 	manifestBytes, err := os.ReadFile(manifestPath)
@@ -590,7 +590,7 @@ func loadFromBytes(ctx context.Context, env *HostEnv, manifestBytes, wasmBytes [
 		if p == PermNetworkFetch {
 			// Manifest validation already required AllowedHosts to be
 			// non-empty when network.fetch is granted, so passing the
-			// list through is safe — admins explicitly authorized this
+			// list through is safe, admins explicitly authorized this
 			// scope by approving the manifest at install time.
 			extismManifest.AllowedHosts = append([]string(nil), manifest.Network.AllowedHosts...)
 			break

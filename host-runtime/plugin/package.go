@@ -13,9 +13,9 @@ import (
 // The .ocpkg ("Owncast plugin package") format is a zip archive with three
 // well-known entries:
 //
-//	plugin.manifest.json    — required; the sidecar manifest
-//	plugin.wasm             — required; the compiled plugin module
-//	assets/...              — optional; static files served at /plugins/<name>/
+//	plugin.manifest.json   , required; the sidecar manifest
+//	plugin.wasm            , required; the compiled plugin module
+//	assets/...             , optional; static files served at /plugins/<name>/
 //
 // File names inside the archive are canonical regardless of the plugin's name
 // so the host doesn't have to read the manifest to discover the wasm path.
@@ -80,7 +80,7 @@ func LoadPackage(ctx context.Context, env *HostEnv, path string) (*Loaded, error
 }
 
 // readManifestFromPackage reads just the plugin.manifest.json entry from a
-// .ocpkg file without instantiating the wasm. Used by Manager.scan() — runs
+// .ocpkg file without instantiating the wasm. Used by Manager.scan(), runs
 // every couple seconds, so the file-backed reader matters: a multi-gigabyte
 // .ocpkg sitting in plugins/ costs only a central-directory read per scan,
 // not a full slurp into memory.

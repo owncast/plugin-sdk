@@ -46,7 +46,7 @@ func TestServer_NotFound_UnknownPlugin(t *testing.T) {
 }
 
 func TestServer_NotFound_WithoutHttpServePermission(t *testing.T) {
-	// Plugin exists but never declared http.serve — should appear as not-found.
+	// Plugin exists but never declared http.serve, should appear as not-found.
 	s := staticOnlyServer(t, []string{} /* no http.serve */, fstest.MapFS{
 		"index.html": {Data: []byte("hi")},
 	})
@@ -102,7 +102,7 @@ func TestServer_DirectoryServesIndexHTML(t *testing.T) {
 
 // TestServer_PathTraversal_CannotEscapeAssetsRoot verifies that traversal
 // attempts ("../") in the URL cannot reach files outside the plugin's
-// AssetsFS root. This is the actual security property — that the on-disk
+// AssetsFS root. This is the actual security property, that the on-disk
 // boundary of the asset directory is respected.
 func TestServer_PathTraversal_CannotEscapeAssetsRoot(t *testing.T) {
 	// Sibling directory layout:

@@ -1,4 +1,4 @@
-# Node — every example + the SDK + the scaffolder have their own deps
+# Node, every example + the SDK + the scaffolder have their own deps
 node_modules/
 npm-debug.log*
 .npm/
@@ -21,7 +21,7 @@ sdks/js/bin/.cache/
 # Demo binary's bolt KV from local runs (per-plugin namespaces)
 plugin-data.db
 
-# Deploy target — tools/build-plugin.sh populates this with .ocpkg packages,
+# Deploy target, tools/build-plugin.sh populates this with .ocpkg packages,
 # the manager writes its enabled-plugin state here, etc. All regenerable.
 # tools/build-plugin.sh mkdir -p's it, so missing-dir-on-fresh-clone is fine.
 plugins/
@@ -33,7 +33,7 @@ plugins/
 tools/*
 !tools/*.sh
 
-# Release build output — the host-binary release workflow
+# Release build output, the host-binary release workflow
 # (.github/workflows/release.yml) cross-compiles into here; CI-only, but the
 # steps run the same way locally.
 dist/

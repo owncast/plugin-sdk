@@ -36,7 +36,6 @@ How to write, test, and ship a plugin. Aimed at JavaScript developers. Write som
   - [Plugin composition](#plugin-composition)
 - [Tips](#tips)
 - [Failure handling](#failure-handling)
-- [What's coming](#whats-coming)
 
 ---
 
@@ -46,12 +45,13 @@ How to write, test, and ship a plugin. Aimed at JavaScript developers. Write som
 npx create-owncast-plugin my-plugin
 cd my-plugin
 npm install      # one-time toolchain fetch
-npm run build    # bundles your plugin
-npm test         # runs the included scenario
-npm run serve    # localhost dev server
+npm run build    # compile src/plugin.js to my-plugin.wasm
+npm test         # build, then run scenarios from __tests__/
+npm run serve    # build, then host the plugin on http://localhost:8080
+npm run package  # build, then bundle into my-plugin.ocpkg for distribution
 ```
 
-Edit `src/plugin.js` to handle events and call Owncast APIs. Edit `plugin.manifest.json` to declare permissions and bot identities. Ship as a `.ocpkg` file with `npx owncast-plugin package`.
+Edit `src/plugin.js` to handle events and call Owncast APIs. Edit `plugin.manifest.json` to declare permissions and bot identities. When you're ready to ship, `npm run package` produces the `.ocpkg` you hand to a server admin.
 
 ---
 
@@ -66,7 +66,7 @@ my-plugin/
 ├── assets/                # optional: served at /plugins/<name>/...
 │   └── index.html
 └── __tests__/
-    └── plugin.test.json   # scenarios
+    └── plugin.test.js    # scenarios
 ```
 
 ## The manifest
@@ -91,37 +91,67 @@ const { definePlugin, owncast, filter } = require("@owncast/plugin-sdk");
 
 module.exports = definePlugin({
   // Chat events
-  onChatMessage(msg)           { /* msg: ChatMessage */ },
-  onChatUserJoined(user)       { /* user: ChatUser */ },
-  onChatUserParted(user)       { },
-  onChatUserRenamed(change)    { /* {user, previousName} */ },
-  onMessageModerated(event)    { /* {messageId, visible, moderator} */ },
+  onChatMessage(msg) {
+    /* msg: ChatMessage */
+  },
+  onChatUserJoined(user) {
+    /* user: ChatUser */
+  },
+  onChatUserParted(user) {},
+  onChatUserRenamed(change) {
+    /* {user, previousName} */
+  },
+  onMessageModerated(event) {
+    /* {messageId, visible, moderator} */
+  },
 
   // Stream lifecycle
-  onStreamStarted(info)        { /* {startedAt, title, summary} */ },
-  onStreamStopped(info)        { /* {stoppedAt} */ },
-  onStreamTitleChanged(change) { /* {from, to} */ },
+  onStreamStarted(info) {
+    /* {startedAt, title, summary} */
+  },
+  onStreamStopped(info) {
+    /* {stoppedAt} */
+  },
+  onStreamTitleChanged(change) {
+    /* {from, to} */
+  },
 
-  // Fediverse — engagement metadata
-  onFediverseFollow(event)     { /* {actor: {name, handle, url}} */ },
-  onFediverseLike(event)       { /* {actor, target: {url}} */ },
-  onFediverseRepost(event)     { /* {actor, target: {url}} */ },
+  // Fediverse, engagement metadata
+  onFediverseFollow(event) {
+    /* {actor: {name, handle, url}} */
+  },
+  onFediverseLike(event) {
+    /* {actor, target: {url}} */
+  },
+  onFediverseRepost(event) {
+    /* {actor, target: {url}} */
+  },
 
-  // Fediverse — inbound posts (with content)
-  onFediverseMention(post)     { /* FediverseInboundPost — see below */ },
-  onFediverseReply(post)       { /* same shape; inReplyTo set */ },
+  // Fediverse, inbound posts (with content)
+  onFediverseMention(post) {
+    /* FediverseInboundPost, see below */
+  },
+  onFediverseReply(post) {
+    /* same shape; inReplyTo set */
+  },
 
   // Filter chain (sequential, can mutate or drop)
-  filterChatMessage(msg)       { return filter.pass(); },
-  filterPriority: 100,         // optional; lower = earlier in chain
+  filterChatMessage(msg) {
+    return filter.pass();
+  },
+  filterPriority: 100, // optional; lower = earlier in chain
 
   // HTTP endpoint (any path under /plugins/<your-name>/...)
-  onHttpRequest(req)           { return { status: 200, body: "ok" }; },
+  onHttpRequest(req) {
+    return { status: 200, body: "ok" };
+  },
 
   // Plugin-emitted custom events
   on: {
-    "another-plugin.something"(payload) { /* ... */ }
-  }
+    "another-plugin.something"(payload) {
+      /* ... */
+    },
+  },
 });
 ```
 
@@ -129,16 +159,16 @@ Only define the handlers you actually need. Missing handlers = no subscription.
 
 ### Fediverse inbound posts
 
-`onFediverseMention` and `onFediverseReply` carry a `FediverseInboundPost` — a post that someone on the fediverse made that's relevant to the streamer:
+`onFediverseMention` and `onFediverseReply` carry a `FediverseInboundPost`, a post that someone on the fediverse made that's relevant to the streamer:
 
 ```ts
 interface FediverseInboundPost {
   actor: { name: string; handle: string; url?: string; image?: string };
-  content: string;       // rendered HTML from the source instance
-  contentText: string;   // plain-text version (HTML stripped) — usually what you want
-  url: string;           // permalink on the source instance
-  postedAt: string;      // ISO-8601
-  inReplyTo?: string;    // parent post URL — set when this is a reply
+  content: string; // rendered HTML from the source instance
+  contentText: string; // plain-text version (HTML stripped), usually what you want
+  url: string; // permalink on the source instance
+  postedAt: string; // ISO-8601
+  inReplyTo?: string; // parent post URL, set when this is a reply
   attachments?: { url: string; mediaType: string; alt?: string }[];
   language?: string;
 }
@@ -149,27 +179,28 @@ interface FediverseInboundPost {
 ### Filter handlers
 
 `filterChatMessage(msg)` returns one of:
-- `filter.pass()` — let the message through unchanged
-- `filter.modify(payload)` — replace the message (subsequent filters see your version)
-- `filter.drop(reason)` — drop the message; no later filters or notifications see it
 
-Filter errors are treated as `filter.pass()` automatically — a buggy plugin can never block chat. Set `filterPriority` (lower = earlier) when order matters.
+- `filter.pass()`, let the message through unchanged
+- `filter.modify(payload)`, replace the message (subsequent filters see your version)
+- `filter.drop(reason)`, drop the message; no later filters or notifications see it
+
+Filter errors are treated as `filter.pass()` automatically, a buggy plugin can never block chat. Set `filterPriority` (lower = earlier) when order matters.
 
 ### HTTP handler
 
 ```ts
 interface IncomingHttpRequest {
   method: string;
-  path: string;                 // relative to /plugins/<name>/
+  path: string; // relative to /plugins/<name>/
   query: Record<string, string>;
   headers: Record<string, string>;
   body: string;
   remoteAddr: string;
-  authenticated: boolean;       // came from an authenticated Owncast admin
+  authenticated: boolean; // came from an authenticated Owncast admin
 }
 
 interface OutgoingHttpResponse {
-  status?: number;              // default 200
+  status?: number; // default 200
   headers?: Record<string, string>;
   body?: string;
 }
@@ -181,69 +212,70 @@ Endpoints are public by default. Gate admin features with `req.authenticated`.
 
 Each method requires the matching permission in your manifest:
 
-| API | Requires |
-|---|---|
-| `owncast.chat.send(text)` | `chat.send` |
-| `owncast.chat.sendAction(text)` (italic style) | `chat.send` |
-| `owncast.chat.sendTo(clientId, text)` — private message | `chat.send` |
-| `owncast.chat.history(limit?)` — recent messages | `chat.history` |
-| `owncast.chat.clients()` — connected chat clients | `chat.history` |
-| `owncast.chat.deleteMessage(messageId)` | `chat.moderate` |
-| `owncast.chat.kick(clientId)` | `chat.moderate` |
-| `owncast.users.list()` / `.get(id)` | `users.read` |
-| `owncast.users.setEnabled(id, enabled, reason?)` | `users.moderate` |
-| `owncast.users.banIP(ip)` | `users.moderate` |
-| `owncast.kv.get(key)` / `.set(key, value)` | `storage.kv` |
-| `owncast.storage.upload(name, bytes)` — returns `{url}` | `storage.upload` |
-| `owncast.http.fetch(url, opts?)` | `network.fetch` |
-| `owncast.events.emit(eventType, payload)` | `events.emit` |
-| `owncast.stream.current()` — live stream state | `server.read` |
-| `owncast.stream.broadcaster()` — inbound encode telemetry (read-only) | `server.read` |
-| `owncast.server.info()` — server name, version, etc. | `server.read` |
-| `owncast.server.socials()` — `[{platform, url, icon}]` | `server.read` |
-| `owncast.server.federation()` — `{enabled, username, isPrivate}` | `server.read` |
-| `owncast.server.tags()` — `[string]` | `server.read` |
-| `owncast.videoConfig.read()` — `{latencyLevel, codec, variants}` | `videoconfig.read` |
-| `owncast.videoConfig.write({latencyLevel?, codec?, variants?})` — partial update | `videoconfig.write` |
-| `owncast.notifications.discord(text)` | `notifications.send` |
-| `owncast.notifications.browserPush({title, body, url?})` | `notifications.send` |
-| `owncast.notifications.fediverse({type, body, image?, link?})` | `notifications.send` |
-| `owncast.fediverse.post(text)` — public post to the fediverse | `fediverse.post` |
-| `onHttpRequest` + static `assets/` | `http.serve` |
-| `owncast.sse.send(channel, event, data)` — push to browsers | `http.sse` |
+| API                                                                             | Requires             |
+| ------------------------------------------------------------------------------- | -------------------- |
+| `owncast.chat.send(text)`                                                       | `chat.send`          |
+| `owncast.chat.sendAction(text)` (italic style)                                  | `chat.send`          |
+| `owncast.chat.sendTo(clientId, text)`, private message                          | `chat.send`          |
+| `owncast.chat.history(limit?)`, recent messages                                 | `chat.history`       |
+| `owncast.chat.clients()`, connected chat clients                                | `chat.history`       |
+| `owncast.chat.deleteMessage(messageId)`                                         | `chat.moderate`      |
+| `owncast.chat.kick(clientId)`                                                   | `chat.moderate`      |
+| `owncast.users.list()` / `.get(id)`                                             | `users.read`         |
+| `owncast.users.setEnabled(id, enabled, reason?)`                                | `users.moderate`     |
+| `owncast.users.banIP(ip)`                                                       | `users.moderate`     |
+| `owncast.kv.get(key)` / `.set(key, value)`                                      | `storage.kv`         |
+| `owncast.storage.upload(name, bytes)`, returns `{url}`                          | `storage.upload`     |
+| `owncast.http.fetch(url, opts?)`                                                | `network.fetch`      |
+| `owncast.events.emit(eventType, payload)`                                       | `events.emit`        |
+| `owncast.stream.current()`, live stream state                                   | `server.read`        |
+| `owncast.stream.broadcaster()`, inbound encode telemetry (read-only)            | `server.read`        |
+| `owncast.server.info()`, server name, version, etc.                             | `server.read`        |
+| `owncast.server.socials()`, `[{platform, url, icon}]`                           | `server.read`        |
+| `owncast.server.federation()`, `{enabled, username, isPrivate}`                 | `server.read`        |
+| `owncast.server.tags()`, `[string]`                                             | `server.read`        |
+| `owncast.videoConfig.read()`, `{latencyLevel, codec, variants}`                 | `videoconfig.read`   |
+| `owncast.videoConfig.write({latencyLevel?, codec?, variants?})`, partial update | `videoconfig.write`  |
+| `owncast.notifications.discord(text)`                                           | `notifications.send` |
+| `owncast.notifications.browserPush({title, body, url?})`                        | `notifications.send` |
+| `owncast.notifications.fediverse({type, body, image?, link?})`                  | `notifications.send` |
+| `owncast.fediverse.post(text)`, public post to the fediverse                    | `fediverse.post`     |
+| `onHttpRequest` + static `assets/`                                              | `http.serve`         |
+| `owncast.sse.send(channel, event, data)`, push to browsers                      | `http.sse`           |
 
 Calling an API without its permission throws a clear error.
 
 ### Chat identity
 
-Every plugin has **exactly one chat identity** — the auto-bot Owncast provisions when your plugin is installed. The display name is your plugin's `name` (e.g. `echo-bot`), with `IsBot: true`. `owncast.chat.send(text)` and `owncast.chat.sendAction(text)` both post as this identity, through Owncast's normal chat pipeline (filters, rate limits, persistence, moderation — same as any user).
+Every plugin has **exactly one chat identity**, the auto-bot Owncast provisions when your plugin is installed. The display name is your plugin's `name` (e.g. `echo-bot`), with `IsBot: true`. `owncast.chat.send(text)` and `owncast.chat.sendAction(text)` both post as this identity, through Owncast's normal chat pipeline (filters, rate limits, persistence, moderation, same as any user).
 
 If you need multiple chat personas, **ship multiple plugins.** One identity per plugin keeps the trust boundary clear: admins see one chat user per granted plugin, and there's no allowlist machinery to forget or bypass. Plugins cannot post under arbitrary names or impersonate real users.
 
 ## Permissions
 
-| Permission | Grants |
-|---|---|
-| `chat.send` | `owncast.chat.send`, `.sendAction`, `.sendTo` |
-| `chat.history` | `owncast.chat.history`, `.clients` |
-| `chat.moderate` | `owncast.chat.deleteMessage`, `.kick` |
-| `users.read` | `owncast.users.list`, `.get` |
-| `users.moderate` | `owncast.users.setEnabled`, `.banIP` |
-| `storage.kv` | Per-plugin namespaced key/value store |
-| `storage.upload` | `owncast.storage.upload` — upload files, get a public URL |
-| `network.fetch` | Outbound HTTP — also requires `network.allowedHosts` (see below) |
-| `events.emit` | Emit custom events for other plugins to subscribe to |
-| `http.serve` | Serve HTTP at `/plugins/<your-name>/*` |
-| `http.sse` | Push realtime events to browsers via `owncast.sse.send` + the `/_sse/` endpoint |
-| `server.read` | Read stream state, server config, and read-only broadcast telemetry (`stream.broadcaster`) |
-| `videoconfig.read` | `owncast.videoConfig.read()` — read the output/transcoding config |
-| `videoconfig.write` | `owncast.videoConfig.write()` — change video config; high-trust. Changes apply on the next stream start (the host does not restart a live stream). |
-| `notifications.send` | `owncast.notifications.discord`, `.browserPush` |
-| `fediverse.post` | `owncast.fediverse.post(text)` — high-trust; admin should grant sparingly. Host rate-limits at ~5/hour per plugin. |
+| Permission           | Grants                                                                                                                                            |
+| -------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `chat.send`          | `owncast.chat.send`, `.sendAction`, `.sendTo`                                                                                                     |
+| `chat.history`       | `owncast.chat.history`, `.clients`                                                                                                                |
+| `chat.moderate`      | `owncast.chat.deleteMessage`, `.kick`                                                                                                             |
+| `users.read`         | `owncast.users.list`, `.get`                                                                                                                      |
+| `users.moderate`     | `owncast.users.setEnabled`, `.banIP`                                                                                                              |
+| `storage.kv`         | Per-plugin namespaced key/value store                                                                                                             |
+| `storage.upload`     | `owncast.storage.upload`, upload files, get a public URL                                                                                          |
+| `network.fetch`      | Outbound HTTP, also requires `network.allowedHosts` (see below)                                                                                   |
+| `events.emit`        | Emit custom events for other plugins to subscribe to                                                                                              |
+| `http.serve`         | Serve HTTP at `/plugins/<your-name>/*`                                                                                                            |
+| `http.sse`           | Push realtime events to browsers via `owncast.sse.send` + the `/_sse/` endpoint                                                                   |
+| `server.read`        | Read stream state, server config, and read-only broadcast telemetry (`stream.broadcaster`)                                                        |
+| `videoconfig.read`   | `owncast.videoConfig.read()`, read the output/transcoding config                                                                                  |
+| `videoconfig.write`  | `owncast.videoConfig.write()`, change video config; high-trust. Changes apply on the next stream start (the host does not restart a live stream). |
+| `notifications.send` | `owncast.notifications.discord`, `.browserPush`                                                                                                   |
+| `fediverse.post`     | `owncast.fediverse.post(text)`, high-trust; admin should grant sparingly. Host rate-limits at ~5/hour per plugin.                                 |
+| `ui.modify`          | Place UI inside Owncast's own chrome. Required for any plugin that declares `manifest.actions`; the host rejects the load otherwise.              |
 
 Declare only what you need. Admins reviewing your manifest before install make trust decisions based on declared permissions.
 
-### Outbound HTTP — `network.allowedHosts`
+### Outbound HTTP, `network.allowedHosts`
 
 `network.fetch` is gated by an explicit allowlist of hostnames. The host rejects the load if `network.fetch` is granted without a corresponding `network.allowedHosts` entry:
 
@@ -256,7 +288,7 @@ Declare only what you need. Admins reviewing your manifest before install make t
 }
 ```
 
-Entries are hostname globs — bare hostnames match exactly; `*` is a wildcard segment. The wildcard `"*"` matches any host but **must be written explicitly** (`"network": { "allowedHosts": ["*"] }`) so admins reviewing the manifest see the scope they're granting. Most plugins should list the specific hosts they actually call.
+Entries are hostname globs, bare hostnames match exactly; `*` is a wildcard segment. The wildcard `"*"` matches any host but **must be written explicitly** (`"network": { "allowedHosts": ["*"] }`) so admins reviewing the manifest see the scope they're granting. Most plugins should list the specific hosts they actually call.
 
 ## Serving HTTP
 
@@ -275,28 +307,32 @@ For dynamic endpoints (JSON APIs, webhooks, etc.) write an `onHttpRequest`. Path
 
 ## Realtime updates (Server-Sent Events)
 
-For pushing live updates to a browser — an overlay that reacts to chat, a dashboard that ticks viewer counts, an alert widget — declare `http.sse` and use `owncast.sse.send`.
+For pushing live updates to a browser, an overlay that reacts to chat, a dashboard that ticks viewer counts, an alert widget, declare `http.sse` and use `owncast.sse.send`.
 
 You do **not** open or hold the connection yourself. Your `onHttpRequest` handler can't stream: each call is a single buffered request/response. Instead, the host owns the long-lived connection and exposes a ready-made endpoint at `/plugins/<your-name>/_sse/<channel>`. Your plugin just pushes; the host fans each message out to every connected browser.
 
-**Plugin side** — push whenever you have something to send (from an event handler, an HTTP handler, anywhere):
+**Plugin side**, push whenever you have something to send (from an event handler, an HTTP handler, anywhere):
 
 ```js
 // src/plugin.js
 export function onChatMessage(msg) {
   // Notify every browser watching the "overlay" stream.
-  host.sse.send("overlay", "chat", { from: msg.user.displayName, body: msg.body });
+  host.sse.send("overlay", "chat", {
+    from: msg.user.displayName,
+    body: msg.body,
+  });
 }
 ```
 
 `send(channel, event, data)`:
-- `channel` — which stream to push to. Browsers subscribe per channel, so you can run several independent streams (`"overlay"`, `"admin-stats"`) from one plugin. Use `""` for a single default channel.
-- `event` — the event name the browser listens for (`addEventListener("chat", …)`). Pass `""` for the browser's default `message` event.
-- `data` — the payload. Strings are sent as-is; anything else is JSON-encoded for you.
+
+- `channel`, which stream to push to. Browsers subscribe per channel, so you can run several independent streams (`"overlay"`, `"admin-stats"`) from one plugin. Use `""` for a single default channel.
+- `event`, the event name the browser listens for (`addEventListener("chat", …)`). Pass `""` for the browser's default `message` event.
+- `data`, the payload. Strings are sent as-is; anything else is JSON-encoded for you.
 
 Sends are fire-and-forget: the call returns immediately and never blocks, even if no one is connected or a client is slow (slow clients drop frames rather than stall your plugin).
 
-**Browser side** — connect with the standard `EventSource` API, no library needed:
+**Browser side**, connect with the standard `EventSource` API, no library needed:
 
 ```html
 <!-- assets/index.html, served at /plugins/my-plugin/ -->
@@ -310,8 +346,9 @@ Sends are fire-and-forget: the call returns immediately and never blocks, even i
 ```
 
 Notes:
+
 - Up to 64 simultaneous connections per plugin; over that the endpoint returns 503. `EventSource` reconnects automatically.
-- If the channel matches one of your `admin.pages[]` globs it's auth-gated like any admin route — handy for an admin-only stats stream.
+- If the channel matches one of your `admin.pages[]` globs it's auth-gated like any admin route, handy for an admin-only stats stream.
 - The endpoint is host-owned and reserved: your `onHttpRequest` never sees `/_sse/...` requests, and you can't serve your own route there.
 
 ## Admin pages
@@ -330,26 +367,27 @@ Plugins can register pages that appear in the Owncast admin UI for configuration
 }
 ```
 
-- `path` is a glob (e.g. `"/admin"`, `"/admin/*"`). Requests under `/plugins/<your-name>/<path>` that match any declared glob are **auth-gated by the host** — unauthenticated requests get `401` before your plugin code ever runs.
-- Owncast renders the admin UI in an iframe pointed at `/plugins/<your-name>/<path>`.
+- `path` is a glob (e.g. `"/admin"`, `"/admin/*"`). Requests under `/plugins/<your-name>/<path>` that match any declared glob are **auth-gated by the host**, unauthenticated requests get `401` before your plugin code ever runs.
+- Owncast's admin renders each declared page as a tab inside `/admin/plugins/configure?name=<your-plugin>`, embedded as an iframe pointed at `/plugins/<your-name>/<path>`. Each plugin gets its own bookmarkable URL plus a sidebar entry under **Plugins** in the admin nav.
 - Both static assets and dynamic endpoints under matched paths are auth-gated; you don't have to check `req.authenticated` yourself.
+- The host auto-injects an admin-themed stylesheet (`/styles/admin/plugin-iframe.css`) into HTML responses on admin paths so plain `<input>`/`<button>` controls match Owncast's look without you needing to ship CSS. Plugins that prefer their own styling can layer on top.
 
 Author flow:
 
 1. Put admin HTML/CSS/JS in `assets/admin/index.html` (and friends)
 2. Expose admin APIs via `onHttpRequest` at `/admin/api/...`
 3. Declare both globs (or just `"/admin/*"`) in `manifest.admin.pages[].path`
-4. Visit `/plugins/<your-name>/admin/` — Owncast challenges for admin auth, then renders your page
+4. Visit `/admin/plugins/configure?name=<your-name>` in the admin UI (or `/plugins/<your-name>/admin/` directly), Owncast challenges for admin auth on the first API call, then renders your page
 
 ## Action buttons
 
-Owncast surfaces a row of "external action" buttons in its UI — clickable entries that either open a URL (in a modal or new tab) or render raw HTML. Plugins can contribute their own. While the plugin is enabled, the host merges its action entries into the list Owncast already shows; when disabled, they disappear.
+Owncast surfaces a row of "external action" buttons in its UI, clickable entries that either open a URL (in a modal or new tab) or render raw HTML. Plugins can contribute their own. While the plugin is enabled, the host merges its action entries into the list Owncast already shows; when disabled, they disappear.
 
 Declare them in the manifest:
 
 ```json
 {
-  "permissions": ["http.serve"],
+  "permissions": ["ui.modify", "http.serve"],
   "actions": [
     {
       "title": "Chat Overlay",
@@ -371,13 +409,39 @@ Declare them in the manifest:
 }
 ```
 
+- **`ui.modify` is required** for any plugin that declares `actions`, because action buttons place UI inside Owncast's own chrome. The host rejects the load otherwise so it's visible at install time that the plugin extends the host UI.
 - Exactly one of `url` or `html` is required per entry.
 - **Relative URLs auto-prefix.** `"url": "/"` becomes `/plugins/my-plugin/` at load time. `"/stats"` becomes `/plugins/my-plugin/stats`. Saves you from hard-coding your plugin name in your own manifest.
-- Absolute `https://...` URLs are accepted unchanged — use them for external links (set `openExternally: true` to open in a new tab).
-- If your URL resolves into your own `/plugins/<name>/` namespace, you must declare `http.serve` so the page actually serves. The host rejects the load with a clear error otherwise.
-- You can't point at another plugin's namespace (`/plugins/some-other-plugin/...`) — the host rejects that at load to catch typos.
+- Absolute `https://...` URLs are accepted unchanged, use them for external links (set `openExternally: true` to open in a new tab).
+- If your URL resolves into your own `/plugins/<name>/` namespace, you must also declare `http.serve` so the page actually serves. The host rejects the load with a clear error otherwise.
+- You can't point at another plugin's namespace (`/plugins/some-other-plugin/...`), the host rejects that at load to catch typos.
 
 This pairs naturally with `http.serve`: ship a UI under `assets/` and declare an action button that opens it.
+
+### Adding buttons at runtime
+
+A plugin can append more action buttons on top of `manifest.actions` without a reload:
+
+```js
+owncast.actions.add({
+  title: "Donate",
+  url: "https://example.com/donate",
+  openExternally: true,
+});
+
+// or pass an array to add several at once
+owncast.actions.add([
+  { title: "Tip", url: "https://example.com/tip", openExternally: true },
+  { title: "Schedule", html: "<p>Weekdays 8pm UTC.</p>" },
+]);
+
+// remove every runtime addition; manifest.actions remain
+owncast.actions.clear();
+```
+
+The host validates each entry with the same rules as `manifest.actions` (title required, exactly one of `url` / `html`, relative URLs auto-prefixed, cross-plugin URLs rejected) and persists the result in the plugin's config so the additions survive a reload. The next viewer `/api/config` request returns `manifest.actions` ++ the runtime list. Requires `ui.modify`.
+
+A common pattern is an admin page that lets the streamer add a custom button (label + URL) on top of the plugin's defaults; the `action-buttons` example in the SDK ships a working version.
 
 ## Plugin-to-plugin events
 
@@ -397,79 +461,89 @@ Use `<your-plugin>.<event>` namespacing. Event names are arbitrary strings.
 
 ## Testing
 
-Tests live in `__tests__/*.test.json`. They drive your built plugin through the real Owncast plugin runtime with mocked side effects — passing tests guarantee the same behavior in production.
+Tests live in `__tests__/*.test.js`. They drive your built plugin through the real Owncast plugin runtime with mocked side effects, passing tests guarantee the same behavior in production.
 
-```json
-[
+```js
+const { runScenarios } = require("@owncast/plugin-sdk/testing");
+
+runScenarios([
   {
-    "name": "echoes the message",
-    "events": [
-      { "event": "chat.message.received",
-        "payload": { "user": "alice", "body": "hi" } }
+    name: "echoes the message",
+    events: [
+      {
+        event: "chat.message.received",
+        payload: { user: "alice", body: "hi" },
+      },
     ],
-    "expect": {
-      "chatSends": ["alice said: hi"]
-    }
-  }
-]
+    expect: {
+      chatSends: ["alice said: hi"],
+    },
+  },
+]);
 ```
+
+`npm test` builds your wasm, then runs `node __tests__/*.test.js`. Each scenario is a `{ name, given?, events, expect? }` object, the same data model as a JSON scenario file, but in JS you can build the array with loops, helpers, fixtures, or computed payloads.
+
+If you prefer raw JSON, drop `__tests__/*.test.json` files in instead and invoke the runner with `owncast-plugin test`. The data model is identical; the host binary that runs them is the same. Pick whichever is easier to read for the scenarios you're writing.
 
 ### Step types
 
-- `event: "<type>"` — fire-and-forget notification dispatch
-- `filter: "<type>"` — filter chain; inline `expect: {action, payload?, reason?}` checks the FilterResult
-- `http: { method, path, headers?, body?, expect: {status, headers?, body?} }` — sends an HTTP request through your plugin server
+- `event: "<type>"`, fire-and-forget notification dispatch
+- `filter: "<type>"`, filter chain; inline `expect: {action, payload?, reason?}` checks the FilterResult
+- `http: { method, path, headers?, body?, expect: {status, headers?, body?} }`, sends an HTTP request through your plugin server
 
 ### Assertions
 
 Per-step `expect` (on filter and http steps):
+
 - For filters: `action: "pass" | "modify" | "drop"`, `payload`, `reason`
 - For HTTP: `status`, `headers`, `body`
 
 Final-state `expect` (on the whole scenario):
-- `chatSends`, `chatActions`, `chatAs` — exact-match lists of chat posts
-- `videoConfigWrites` — list of partial configs applied via `owncast.videoConfig.write()`
-- `emits` — list of `{eventType, payload}` for custom events
-- `kv` — partial map of KV state after the scenario
-- `httpRequests` — outbound HTTP made by your plugin
+
+- `chatSends`, `chatActions`, `chatAs`, exact-match lists of chat posts
+- `videoConfigWrites`, list of partial configs applied via `owncast.videoConfig.write()`
+- `emits`, list of `{eventType, payload}` for custom events
+- `kv`, partial map of KV state after the scenario
+- `httpRequests`, outbound HTTP made by your plugin
 
 ### Seeding state with `given`
 
-- `given.kv` — pre-populate your plugin's KV
-- `given.stream` — what `owncast.stream.current()` returns
-- `given.broadcaster` — what `owncast.stream.broadcaster()` returns
-- `given.server` — what `owncast.server.info()` returns
-- `given.socials` / `given.federation` / `given.tags` — what the matching `owncast.server.*` reads return
-- `given.videoConfig` — what `owncast.videoConfig.read()` returns
-- `given.chatHistory` — what `owncast.chat.history()` returns
-- `given.chatClients` — what `owncast.chat.clients()` returns
-- `given.users` — what `owncast.users.list()` / `.get(id)` returns
-- `given.httpResponses` — canned responses for outbound `owncast.http.fetch` calls
+- `given.kv`, pre-populate your plugin's KV
+- `given.stream`, what `owncast.stream.current()` returns
+- `given.broadcaster`, what `owncast.stream.broadcaster()` returns
+- `given.server`, what `owncast.server.info()` returns
+- `given.socials` / `given.federation` / `given.tags`, what the matching `owncast.server.*` reads return
+- `given.videoConfig`, what `owncast.videoConfig.read()` returns
+- `given.chatHistory`, what `owncast.chat.history()` returns
+- `given.chatClients`, what `owncast.chat.clients()` returns
+- `given.users`, what `owncast.users.list()` / `.get(id)` returns
+- `given.httpResponses`, canned responses for outbound `owncast.http.fetch` calls
 
 ### Auth in HTTP scenarios
 
-For testing admin endpoints, add `"authenticated": true` to an HTTP step:
+For testing admin endpoints, add `authenticated: true` to an HTTP step:
 
-```json
+```js
 {
-  "http": {
-    "method": "GET",
-    "path": "/admin/api/settings",
-    "authenticated": true,
-    "expect": { "status": 200 }
-  }
+  http: {
+    method: "GET",
+    path: "/admin/api/settings",
+    authenticated: true,
+    expect: { status: 200 },
+  },
 }
 ```
 
-For testing user-token endpoints, set `user` instead — the user identity is forwarded to the plugin as `req.user`:
+For testing user-token endpoints, set `user` instead, the user identity is forwarded to the plugin as `req.user`:
 
-```json
+```js
 {
-  "http": {
-    "method": "GET",
-    "path": "/my-data",
-    "user": { "id": "u1", "displayName": "alice", "scopes": ["MODERATOR"] }
-  }
+  http: {
+    method: "GET",
+    path: "/my-data",
+    user: { id: "u1", displayName: "alice", scopes: ["MODERATOR"] },
+  },
 }
 ```
 
@@ -485,21 +559,25 @@ Loads your plugin and serves it on `http://localhost:8080/plugins/<your-name>/`.
 
 It also exposes dev-only endpoints to drive your event and filter handlers (which a plain HTTP server can't reach), and host reads (server info, video config, etc.) return sample dev data:
 
-- `POST /_dev/chat` with `{"user":"alice","body":"hi"}` — runs your `filterChatMessage` chain, then fires `chat.message.received` (`onChatMessage`). The JSON response shows what your filter did.
-- `GET /_dev/chat` — the chat log so far, including anything your plugin posted.
-- `POST /_dev/event` with `{"type":"stream.started","payload":{}}` — dispatch an arbitrary event to your `onEvent` handlers.
+- `POST /_dev/chat` with `{"user":"alice","body":"hi"}`, runs your `filterChatMessage` chain, then fires `chat.message.received` (`onChatMessage`). The JSON response shows what your filter did.
+- `GET /_dev/chat`, the chat log so far, including anything your plugin posted.
+- `POST /_dev/event` with `{"type":"stream.started","payload":{}}`, dispatch an arbitrary event to your `onEvent` handlers.
 
 For repeatable assertions use `npm test` (scenario tests); the dev server is for interactive iteration. Many authors run both: dev server in one terminal, test watcher in another.
 
 ## Deployment
 
-Build a single `.ocpkg` file:
+A `.ocpkg` is the distribution format: a single zip containing your `plugin.manifest.json`, the compiled `<name>.wasm`, and your `assets/` directory if you have one. It's what a server admin drops into Owncast, they don't see your `package.json`, `node_modules`, or anything else.
+
+Bundle the `.ocpkg`:
 
 ```sh
-npx owncast-plugin package
+npm run package
 ```
 
-Drop the resulting `my-plugin.ocpkg` into your Owncast server's `plugins/` directory and enable it in the admin. That's it.
+This compiles the wasm (if it's not already up to date) and zips manifest + wasm + `assets/` into `<name>.ocpkg` in the project root. The file is self-contained, share it however you like (release on GitHub, hand it to an admin over chat, host it somewhere). Drop it into your Owncast server's `data/plugins/` directory and enable it from the **Plugins** admin page. That's it.
+
+`npm run build` produces only the intermediate `<name>.wasm` and is faster, useful while iterating. `npm run package` is the step you run when you're ready to ship.
 
 ## Recipes
 
@@ -510,8 +588,12 @@ Complete working plugins, also in `examples/js/`:
 Replies to every chat message.
 
 ```json
-{ "api": "1", "name": "echo-bot", "version": "0.1.0",
-  "permissions": ["chat.send"] }
+{
+  "api": "1",
+  "name": "echo-bot",
+  "version": "0.1.0",
+  "permissions": ["chat.send"]
+}
 ```
 
 ```js
@@ -520,7 +602,7 @@ const { definePlugin, owncast } = require("@owncast/plugin-sdk");
 module.exports = definePlugin({
   onChatMessage(msg) {
     owncast.chat.send(`${msg.user} said: ${msg.body}`);
-  }
+  },
 });
 ```
 
@@ -542,7 +624,7 @@ module.exports = definePlugin({
       }
     }
     return modified ? filter.modify({ ...msg, body }) : filter.pass();
-  }
+  },
 });
 ```
 
@@ -558,12 +640,12 @@ module.exports = definePlugin({
   filterChatMessage(msg) {
     const now = new Date(msg.timestamp).getTime();
     const last = parseInt(owncast.kv.get(`last:${msg.user}`) || "0", 10);
-    if (last && (now - last) < MIN_INTERVAL_MS) {
+    if (last && now - last < MIN_INTERVAL_MS) {
       return filter.drop(`${msg.user} must wait ${MIN_INTERVAL_MS}ms`);
     }
     owncast.kv.set(`last:${msg.user}`, String(now));
     return filter.pass();
-  }
+  },
 });
 ```
 
@@ -581,7 +663,7 @@ module.exports = definePlugin({
     if (res.status !== 200) return;
     const { ip } = JSON.parse(res.body);
     owncast.chat.send(`server IP: ${ip}`);
-  }
+  },
 });
 ```
 
@@ -590,8 +672,12 @@ module.exports = definePlugin({
 Ships an HTML page that polls a JSON endpoint backed by `owncast.chat.history()`.
 
 ```json
-{ "api": "1", "name": "overlay", "version": "0.1.0",
-  "permissions": ["http.serve", "chat.history"] }
+{
+  "api": "1",
+  "name": "overlay",
+  "version": "0.1.0",
+  "permissions": ["http.serve", "chat.history"]
+}
 ```
 
 ```js
@@ -604,11 +690,11 @@ module.exports = definePlugin({
       return {
         status: 200,
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ messages })
+        body: JSON.stringify({ messages }),
       };
     }
     return { status: 404 };
-  }
+  },
 });
 ```
 
@@ -620,8 +706,9 @@ module.exports = definePlugin({
   <script>
     setInterval(async () => {
       const { messages } = await (await fetch("./api/messages")).json();
-      document.getElementById("messages").innerHTML =
-        messages.map(m => `<div>${m.user}: ${m.body}</div>`).join("");
+      document.getElementById("messages").innerHTML = messages
+        .map((m) => `<div>${m.user}: ${m.body}</div>`)
+        .join("");
     }, 2000);
   </script>
 </body>
@@ -632,8 +719,12 @@ Visit `/plugins/overlay/` to render. Owncast owns the chat history; your plugin 
 ### Stream tracker (lifecycle events, read APIs)
 
 ```json
-{ "api": "1", "name": "stream-tracker", "version": "0.1.0",
-  "permissions": ["chat.send", "server.read"] }
+{
+  "api": "1",
+  "name": "stream-tracker",
+  "version": "0.1.0",
+  "permissions": ["chat.send", "server.read"]
+}
 ```
 
 ```js
@@ -651,46 +742,48 @@ module.exports = definePlugin({
       return;
     }
     const seconds = Math.floor(
-      (new Date(msg.timestamp).getTime() - new Date(state.startedAt).getTime()) / 1000
+      (new Date(msg.timestamp).getTime() -
+        new Date(state.startedAt).getTime()) /
+        1000,
     );
     owncast.chat.send(`uptime: ${seconds}s, ${state.viewers} viewer(s)`);
-  }
+  },
 });
 ```
 
-Messages from this plugin appear in chat from the `stream-tracker` bot account — the auto-bot Owncast provisions on install.
+Messages from this plugin appear in chat from the `stream-tracker` bot account, the auto-bot Owncast provisions on install.
 
 ### Plugin composition
 
 `relay` watches for `/announce` in chat and emits a custom event; `announcer` subscribes.
 
 ```js
-// relay/src/plugin.js — needs events.emit
+// relay/src/plugin.js, needs events.emit
 module.exports = definePlugin({
   onChatMessage(msg) {
     if (!msg.body.startsWith("/announce ")) return;
     owncast.events.emit("announcement.broadcast", {
       text: msg.body.substring(10),
-      by: msg.user
+      by: msg.user,
     });
-  }
+  },
 });
 ```
 
 ```js
-// announcer/src/plugin.js — no permissions needed
+// announcer/src/plugin.js, no permissions needed
 module.exports = definePlugin({
   on: {
     "announcement.broadcast"(payload) {
       console.log(`📢 ${payload.by}: ${payload.text}`);
-    }
-  }
+    },
+  },
 });
 ```
 
 ## Tips
 
-- **TypeScript works** — name your file `src/plugin.ts` instead of `.js`. The SDK ships TypeScript declarations; `import` instead of `require`.
+- **TypeScript works**, name your file `src/plugin.ts` instead of `.js`. The SDK ships TypeScript declarations; `import` instead of `require`.
 - **npm packages work** as long as they're pure JavaScript (no Node built-ins like `fs` or `http`).
 - **`console.log`** in plugin code surfaces in the host log with a `[your-plugin]` prefix. Use it freely for debugging.
 - **One handler = one subscription.** Define `onChatMessage` → subscribed. Delete it → unsubscribed. Don't think about it.
@@ -703,7 +796,7 @@ The runtime watches for filters that consistently throw or hang. Two protections
 
 **Timeouts.** Each filter call is capped at **50 ms**. Past that, the host cancels the call and treats it as a failure (fail-open: the filter is skipped, the chain continues with the unmodified payload). This protects the chat hot path from a single slow filter.
 
-**Strike system.** After **5 consecutive failures** (errors *or* timeouts) the host auto-disables the plugin for the rest of the session and logs once:
+**Strike system.** After **5 consecutive failures** (errors _or_ timeouts) the host auto-disables the plugin for the rest of the session and logs once:
 
 ```
 plugin <name>: auto-disabled after 5 consecutive filter failures
@@ -711,11 +804,4 @@ plugin <name>: auto-disabled after 5 consecutive filter failures
 
 Disabled plugins are silently skipped by the filter chain. A successful filter call resets the counter, so transient flakiness doesn't accumulate. To re-enable a disabled plugin, restart the host.
 
-> **Note:** the 50 ms cancellation kicks in when your filter calls back into Owncast (via `owncast.*` APIs, `console.log`, etc.). A tight pure-JS loop with no calls out (e.g. `while(true) {}`) may not be cancelled until the outer 10 s safety net fires — at which point the strike system disables the plugin. Realistic plugin code yields plenty, so this isn't something to design around.
-
-## What's coming
-
-Capabilities planned for future releases:
-
-- Plugin install/uninstall flow from the admin UI
-- `owncast.config.*` — typed, admin-set per-plugin config
+> **Note:** the 50 ms cancellation kicks in when your filter calls back into Owncast (via `owncast.*` APIs, `console.log`, etc.). A tight pure-JS loop with no calls out (e.g. `while(true) {}`) may not be cancelled until the outer 10 s safety net fires, at which point the strike system disables the plugin. Realistic plugin code yields plenty, so this isn't something to design around.

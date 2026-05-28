@@ -10,81 +10,97 @@ A plugin is a WebAssembly module exposing four well-known exports and (condition
 
 Every plugin must export these four functions:
 
-| Function | Input | Output | Purpose |
-|---|---|---|---|
-| `register` | none | JSON `Manifest` | Returns the plugin's subscriptions for the host to compare against the static `plugin.manifest.json`. |
-| `on_event` | JSON `Envelope` | none | Notification dispatch. Fire-and-forget. |
-| `on_filter` | JSON `Envelope` | JSON `FilterResult` | Filter chain entry point. |
-| `on_http_request` | JSON `IncomingHttpRequest` | JSON `OutgoingHttpResponse` | HTTP request handler for `/plugins/<name>/*`. |
+| Function          | Input                      | Output                      | Purpose                                                                                               |
+| ----------------- | -------------------------- | --------------------------- | ----------------------------------------------------------------------------------------------------- |
+| `register`        | none                       | JSON `Manifest`             | Returns the plugin's subscriptions for the host to compare against the static `plugin.manifest.json`. |
+| `on_event`        | JSON `Envelope`            | none                        | Notification dispatch. Fire-and-forget.                                                               |
+| `on_filter`       | JSON `Envelope`            | JSON `FilterResult`         | Filter chain entry point.                                                                             |
+| `on_http_request` | JSON `IncomingHttpRequest` | JSON `OutgoingHttpResponse` | HTTP request handler for `/plugins/<name>/*`.                                                         |
 
 Each entry point has a per-call timeout enforced by the host. See the host's `dispatcher.go` and `server.go` for current values.
 
 ## Imports (host → plugin)
 
-Host functions are wired in conditionally based on the manifest's declared permissions. A plugin that doesn't declare a permission won't see the matching imports — calling a wrapper that needs an absent import throws a clear error in the SDK.
+Host functions are wired in conditionally based on the manifest's declared permissions. A plugin that doesn't declare a permission won't see the matching imports, calling a wrapper that needs an absent import throws a clear error in the SDK.
 
 ### `chat.send`
-- `owncast_send_chat(textPtr: PTR): void` — plugin's bot identity, regular message
-- `owncast_send_chat_action(textPtr: PTR): void` — same identity, "/me" action style
-- `owncast_send_chat_system(bodyPtr: PTR): void` — no user identity, body rendered as HTML
-- `owncast_send_chat_to(clientId: I64, textPtr: PTR): void` — private DM to one client
+
+- `owncast_send_chat(textPtr: PTR): void`, plugin's bot identity, regular message
+- `owncast_send_chat_action(textPtr: PTR): void`, same identity, "/me" action style
+- `owncast_send_chat_system(bodyPtr: PTR): void`, no user identity, body rendered as HTML
+- `owncast_send_chat_to(clientId: I64, textPtr: PTR): void`, private DM to one client
 
 ### `chat.history`
-- `owncast_chat_history(limit: I32): PTR` — returns JSON `ChatMessage[]`
-- `owncast_chat_clients(): PTR` — returns JSON `ChatClient[]`
+
+- `owncast_chat_history(limit: I32): PTR`, returns JSON `ChatMessage[]`
+- `owncast_chat_clients(): PTR`, returns JSON `ChatClient[]`
 
 ### `chat.moderate`
+
 - `owncast_delete_message(idPtr: PTR): void`
 - `owncast_kick_client(clientId: I64): void`
 
 ### `storage.kv`
-- `owncast_kv_get(keyPtr: PTR): PTR` — returns text or 0-offset on miss
+
+- `owncast_kv_get(keyPtr: PTR): PTR`, returns text or 0-offset on miss
 - `owncast_kv_set(keyPtr: PTR, valPtr: PTR): void`
 
 ### `storage.upload`
-- `owncast_storage_upload(namePtr: PTR, dataPtr: PTR): PTR` — returns JSON `{url}` or 0-offset on failure
+
+- `owncast_storage_upload(namePtr: PTR, dataPtr: PTR): PTR`, returns JSON `{url}` or 0-offset on failure
 
 ### `events.emit`
-- `owncast_emit_event(eventTypePtr: PTR, payloadPtr: PTR): void` — payload is a JSON-encoded value
+
+- `owncast_emit_event(eventTypePtr: PTR, payloadPtr: PTR): void`, payload is a JSON-encoded value
 
 ### `server.read`
-- `owncast_stream_current(): PTR` — JSON `StreamInfo`
-- `owncast_stream_broadcaster(): PTR` — JSON `StreamBroadcaster` (read-only inbound-feed telemetry)
-- `owncast_server_info(): PTR` — JSON `ServerInfo`
-- `owncast_server_socials(): PTR` — JSON `SocialHandle[]`
-- `owncast_server_federation(): PTR` — JSON `FederationInfo`
-- `owncast_server_tags(): PTR` — JSON `string[]`
+
+- `owncast_stream_current(): PTR`, JSON `StreamInfo`
+- `owncast_stream_broadcaster(): PTR`, JSON `StreamBroadcaster` (read-only inbound-feed telemetry)
+- `owncast_server_info(): PTR`, JSON `ServerInfo`
+- `owncast_server_socials(): PTR`, JSON `SocialHandle[]`
+- `owncast_server_federation(): PTR`, JSON `FederationInfo`
+- `owncast_server_tags(): PTR`, JSON `string[]`
 
 ### `videoconfig.read`
-- `owncast_video_config_read(): PTR` — JSON `VideoConfig` (`{latencyLevel, codec, variants}`)
+
+- `owncast_video_config_read(): PTR`, JSON `VideoConfig` (`{latencyLevel, codec, variants}`)
 
 ### `videoconfig.write`
-- `owncast_video_config_write(configPtr: PTR): PTR` — applies a partial `VideoConfigUpdate`; returns JSON `{ok, error?}`
+
+- `owncast_video_config_write(configPtr: PTR): PTR`, applies a partial `VideoConfigUpdate`; returns JSON `{ok, error?}`
 
 ### `notifications.send`
+
 - `owncast_notify_discord(textPtr: PTR): void`
-- `owncast_notify_browser_push(payloadPtr: PTR): void` — JSON `BrowserPushPayload`
-- `owncast_notify_fediverse(payloadPtr: PTR): void` — JSON `FediversePayload`
+- `owncast_notify_browser_push(payloadPtr: PTR): void`, JSON `BrowserPushPayload`
+- `owncast_notify_fediverse(payloadPtr: PTR): void`, JSON `FediversePayload`
 
 ### `users.read`
-- `owncast_users_list(): PTR` — JSON `User[]`
-- `owncast_user_get(idPtr: PTR): PTR` — JSON `User` or 0-offset on miss
+
+- `owncast_users_list(): PTR`, JSON `User[]`
+- `owncast_user_get(idPtr: PTR): PTR`, JSON `User` or 0-offset on miss
 
 ### `users.moderate`
+
 - `owncast_user_set_enabled(idPtr: PTR, enabled: I32, reasonPtr: PTR): void`
 - `owncast_ban_ip(ipPtr: PTR): void`
 
 ### `fediverse.post`
-- `owncast_fediverse_post(textPtr: PTR): PTR` — JSON `{url}` or 0-offset on failure
+
+- `owncast_fediverse_post(textPtr: PTR): PTR`, JSON `{url}` or 0-offset on failure
 
 ### `network.fetch`
-- Not a custom host function — grants the plugin access to Extism's built-in `Http.request`. The host configures Extism's `AllowedHosts` from the manifest's `network.allowedHosts` (see [Manifest extensions](#manifest-extensions) below). Manifests granting `network.fetch` without `network.allowedHosts` are rejected at load.
+
+- Not a custom host function, grants the plugin access to Extism's built-in `Http.request`. The host configures Extism's `AllowedHosts` from the manifest's `network.allowedHosts` (see [Manifest extensions](#manifest-extensions) below). Manifests granting `network.fetch` without `network.allowedHosts` are rejected at load.
 
 ### `http.serve`
+
 - Not a host function. Grants the host's HTTP server permission to route `/plugins/<name>/*` requests to this plugin's `on_http_request` export and to serve static assets from its `assets/` directory.
 
 ### `http.sse`
-- `owncast_sse_send(channelPtr: PTR, eventPtr: PTR, dataPtr: PTR): void` — push one Server-Sent-Events message to every browser connected to `(this plugin, channel)`. `channel` and `event` are plain strings; `data` is the message body (the SDK JSON-encodes non-string values). Fire-and-forget: the call returns immediately and never blocks on a slow or absent client.
+
+- `owncast_sse_send(channelPtr: PTR, eventPtr: PTR, dataPtr: PTR): void`, push one Server-Sent-Events message to every browser connected to `(this plugin, channel)`. `channel` and `event` are plain strings; `data` is the message body (the SDK JSON-encodes non-string values). Fire-and-forget: the call returns immediately and never blocks on a slow or absent client.
 - Grants the host permission to serve the reserved `/plugins/<name>/_sse/<channel>` endpoint (see [Host-reserved endpoints](#host-reserved-endpoints)). Independent of `http.serve`: a plugin may stream events without serving any other routes.
 
 ## Host-reserved endpoints
@@ -95,9 +111,10 @@ These paths under `/plugins/<name>/` are owned by the host. The plugin's `on_htt
 
 A long-lived [Server-Sent-Events](https://developer.mozilla.org/en-US/docs/Web/API/Server-sent_events) stream. The browser opens it with `EventSource`; the host holds the connection open and writes each frame the plugin pushes via `owncast.sse.send(channel, …)`. The segment after `_sse/` is the channel name (empty selects the default channel), letting one plugin run several independent streams (e.g. `overlay` and `admin-stats`).
 
-The plugin process is **not** involved in serving the connection — no wasm call is made per request and the per-plugin call mutex is never held, so an idle stream costs only a goroutine. This is the supported way to do realtime push: a plugin's own `on_http_request` cannot stream, because each call is a single buffered request/response bounded by the HTTP handler timeout.
+The plugin process is **not** involved in serving the connection, no wasm call is made per request and the per-plugin call mutex is never held, so an idle stream costs only a goroutine. This is the supported way to do realtime push: a plugin's own `on_http_request` cannot stream, because each call is a single buffered request/response bounded by the HTTP handler timeout.
 
 Host behavior:
+
 - Requires the `http.sse` permission; 404 otherwise.
 - A channel that matches a `manifest.admin.pages[]` glob is auth-gated like any other admin path (401 if not authenticated).
 - Connections are capped per-plugin (default 64); over the cap returns 503.
@@ -126,6 +143,7 @@ An array of `ActionButton` entries the host merges into Owncast's external-actio
 ```
 
 Host validation:
+
 - `title` required; exactly one of `url` or `html` required.
 - Relative URLs starting with `/` but not `/plugins/` are rewritten to `/plugins/<plugin-name>/<path>`.
 - URLs resolving into the plugin's own namespace require `http.serve`; load fails otherwise.
@@ -148,11 +166,13 @@ The JSON shapes for `Manifest`, `Envelope`, `ChatMessage`, `FediverseInboundPost
 ## Conformance
 
 Each language SDK is responsible for:
+
 - Declaring the imports listed above (gated by manifest permissions) so the plugin author's call into `owncast.chat.send(...)` resolves to the right wasm import.
 - Encoding/decoding payloads as JSON or text per the table above.
 - Implementing the four exports' dispatch loop: parse the envelope, route to the right handler, serialize the response.
 
 The Owncast server repo's plugin runtime is responsible for:
+
 - Registering each host function under the right Extism namespace and permission gate.
 - Calling exports with the right input shapes and observing the documented timeout / size caps.
 

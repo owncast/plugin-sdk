@@ -1,11 +1,11 @@
-// admin-demo — shows manifest-declared admin pages. The /admin/* routes
+// admin-demo, shows manifest-declared admin pages. The /admin/* routes
 // are auth-gated by the host; the plugin doesn't have to check anything.
 //
 // Layout:
-//   GET  /              — public landing page (assets/index.html)
-//   GET  /admin/        — admin-only settings panel (assets/admin/index.html)
-//   GET  /admin/api/settings  — admin-only JSON config read
-//   POST /admin/api/settings  — admin-only JSON config write
+//   GET  /             , public landing page (assets/index.html)
+//   GET  /admin/       , admin-only settings panel (assets/admin/index.html)
+//   GET  /admin/api/settings , admin-only JSON config read
+//   POST /admin/api/settings , admin-only JSON config write
 const { definePlugin, owncast } = require("@owncast/plugin-sdk");
 
 function settings() {
@@ -18,7 +18,7 @@ module.exports = definePlugin({
       return {
         status: 200,
         headers: { "content-type": "application/json" },
-        body: JSON.stringify(settings())
+        body: JSON.stringify(settings()),
       };
     }
     if (req.method === "POST" && req.path === "/admin/api/settings") {
@@ -32,5 +32,5 @@ module.exports = definePlugin({
       return { status: 204 };
     }
     return { status: 404 };
-  }
+  },
 });

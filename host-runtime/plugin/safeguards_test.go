@@ -28,7 +28,7 @@ func findSafeguardStressWasm(t *testing.T) (wasmPath, manifestPath string) {
 	return wasmPath, manifestPath
 }
 
-// loadStress is the common setup for safeguard tests — loads the
+// loadStress is the common setup for safeguard tests, loads the
 // safeguard-stress plugin with a no-op HostEnv. Returns the loaded plugin
 // and a cleanup func.
 func loadStress(t *testing.T) (*Loaded, func()) {
@@ -49,7 +49,7 @@ func TestSafeguard_FilterHugeOutputRejected(t *testing.T) {
 	defer cleanup()
 
 	// QuickJS serializing a 1 MB JSON output legitimately doesn't fit in
-	// the 50 ms production timeout — the timeout would fire first and we'd
+	// the 50 ms production timeout, the timeout would fire first and we'd
 	// never reach the size check. Production safety in practice comes from
 	// the timeout; this test stretches the timeout to verify the *separate*
 	// size-cap defense (which would matter for faster runtimes returning
@@ -88,7 +88,7 @@ func TestSafeguard_FilterSpinTriggersTimeout(t *testing.T) {
 	// 50 ms cap + generous slack for QuickJS cancellation latency. If this
 	// takes seconds, the cancellation isn't working.
 	if elapsed > 2*time.Second {
-		t.Errorf("filter spin took %v — timeout enforcement is too slow", elapsed)
+		t.Errorf("filter spin took %v, timeout enforcement is too slow", elapsed)
 	}
 }
 
@@ -135,7 +135,7 @@ func TestSafeguard_NotifyTimeoutEnforced(t *testing.T) {
 		t.Errorf("expected timeout in error, got %v", err)
 	}
 	if elapsed > 2*time.Second {
-		t.Errorf("on_event spin took %v — timeout enforcement is too slow", elapsed)
+		t.Errorf("on_event spin took %v, timeout enforcement is too slow", elapsed)
 	}
 }
 
@@ -158,7 +158,7 @@ func TestSafeguard_HTTPHandlerTimeoutReturns504(t *testing.T) {
 	}
 	// Allow some slack over the 5s cap for cancellation latency.
 	if elapsed > 10*time.Second {
-		t.Errorf("HTTP spin took %v — timeout enforcement is too slow", elapsed)
+		t.Errorf("HTTP spin took %v, timeout enforcement is too slow", elapsed)
 	}
 }
 
@@ -206,21 +206,21 @@ func TestSafeguard_ManifestSandboxConstantsSet(t *testing.T) {
 	// wiring is verified by TestSafeguard_WasmMemoryCapPreventsHugeAllocation
 	// (functional test); this guards against silent removal.
 	if MaxWasmPages == 0 {
-		t.Error("MaxWasmPages is 0 — wasm memory is uncapped")
+		t.Error("MaxWasmPages is 0, wasm memory is uncapped")
 	}
 	if MaxExtismHTTPResponseBytes == 0 {
-		t.Error("MaxExtismHTTPResponseBytes is 0 — outbound HTTP body is uncapped")
+		t.Error("MaxExtismHTTPResponseBytes is 0, outbound HTTP body is uncapped")
 	}
 	if MaxFilterOutputBytes == 0 {
-		t.Error("MaxFilterOutputBytes is 0 — filter output is uncapped")
+		t.Error("MaxFilterOutputBytes is 0, filter output is uncapped")
 	}
 	if MaxHTTPHandlerOutputBytes == 0 {
-		t.Error("MaxHTTPHandlerOutputBytes is 0 — HTTP handler output is uncapped")
+		t.Error("MaxHTTPHandlerOutputBytes is 0, HTTP handler output is uncapped")
 	}
 	if NotifyTimeout == 0 {
-		t.Error("NotifyTimeout is 0 — on_event has no per-call cap")
+		t.Error("NotifyTimeout is 0, on_event has no per-call cap")
 	}
 	if HTTPHandlerTimeout == 0 {
-		t.Error("HTTPHandlerTimeout is 0 — on_http_request has no per-call cap")
+		t.Error("HTTPHandlerTimeout is 0, on_http_request has no per-call cap")
 	}
 }

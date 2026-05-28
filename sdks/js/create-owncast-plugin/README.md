@@ -10,10 +10,10 @@ npx create-owncast-plugin my-plugin
 
 Drops a working starter project into `./my-plugin/` with:
 
-- `plugin.manifest.json` — name, version, permissions
-- `src/plugin.js` — your handler code
-- `__tests__/plugin.test.json` — sample scenario test
-- `package.json` — pre-wired with `@owncast/plugin-sdk` and the `build`/`test` scripts
+- `plugin.manifest.json`, name, version, permissions
+- `src/plugin.js`, your handler code
+- `__tests__/plugin.test.json`, sample scenario test
+- `package.json`, pre-wired with `@owncast/plugin-sdk` and the `build`/`test` scripts
 
 Then:
 

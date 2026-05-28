@@ -1,9 +1,9 @@
-// stream-tracker — exercises every typed event and read API.
+// stream-tracker, exercises every typed event and read API.
 //
 // On stream lifecycle / chat user activity, it persists a small running
 // state in KV (when the stream started; who's currently in chat). When a
 // viewer types !uptime, !who, or !server, it answers via owncast.chat.send
-// — posting as the plugin's own bot ("stream-tracker") which the host
+//, posting as the plugin's own bot ("stream-tracker") which the host
 // provisions automatically. Action-style messages announce stream start /
 // title changes.
 const { definePlugin, owncast } = require("@owncast/plugin-sdk");
@@ -19,7 +19,10 @@ module.exports = definePlugin({
   // ── stream lifecycle ────────────────────────────────────────────────
   onStreamStarted(info) {
     owncast.kv.set("startedAt", info.startedAt || "");
-    owncast.chat.sendAction(`is live: ${info.title || "stream"}`);
+    // sendAction prepends the bot name and renders /me-style, so phrase
+    // the body so it reads like a sentence after "stream-tracker ".
+    const title = info.title ? `: ${info.title}` : "";
+    owncast.chat.sendAction(`announces the stream is live${title}`);
   },
 
   onStreamStopped(info) {
@@ -41,11 +44,15 @@ module.exports = definePlugin({
   },
 
   onChatUserParted(user) {
-    setUserList(userList().filter(n => n !== user.displayName));
+    setUserList(userList().filter((n) => n !== user.displayName));
   },
 
   onChatUserRenamed(change) {
-    setUserList(userList().map(n => n === change.previousName ? change.user.displayName : n));
+    setUserList(
+      userList().map((n) =>
+        n === change.previousName ? change.user.displayName : n,
+      ),
+    );
   },
 
   // ── interactive commands ────────────────────────────────────────────
@@ -58,22 +65,30 @@ module.exports = definePlugin({
         return;
       }
       // "Now" is the moment the user asked, not wallclock.
-      const askedAt = msg.timestamp ? new Date(msg.timestamp).getTime() : Date.now();
-      const startedAt = state.startedAt ? new Date(state.startedAt).getTime() : askedAt;
+      const askedAt = msg.timestamp
+        ? new Date(msg.timestamp).getTime()
+        : Date.now();
+      const startedAt = state.startedAt
+        ? new Date(state.startedAt).getTime()
+        : askedAt;
       const seconds = Math.floor((askedAt - startedAt) / 1000);
-      owncast.chat.send(`uptime: ${seconds}s, ${state.viewers} viewer(s) — "${state.title}"`);
+      owncast.chat.send(
+        `uptime: ${seconds}s, ${state.viewers} viewer(s), "${state.title}"`,
+      );
       return;
     }
     if (body === "!who") {
       const users = userList();
-      owncast.chat.send(users.length === 0
-        ? "no one's here yet"
-        : `in chat: ${users.join(", ")}`);
+      owncast.chat.send(
+        users.length === 0
+          ? "no one's here yet"
+          : `in chat: ${users.join(", ")}`,
+      );
       return;
     }
     if (body === "!server") {
       const info = owncast.server.info();
-      owncast.chat.send(`${info.name} v${info.version} — ${info.summary}`);
+      owncast.chat.send(`${info.name} v${info.version}, ${info.summary}`);
     }
-  }
+  },
 });

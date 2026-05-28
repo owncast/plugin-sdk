@@ -8,11 +8,11 @@ function hugeString(bytes) {
   return "x".repeat(bytes);
 }
 
-// Pre-built at module-load so the handlers return them instantly — building
+// Pre-built at module-load so the handlers return them instantly, building
 // multi-MB strings inside a 50ms filter call would otherwise hit the per-call
 // timeout before we got to test the output-size cap.
 // Sized just over each cap so the handler can serialize and return the
-// payload within the per-call timeout — the tests want the *size* check to
+// payload within the per-call timeout, the tests want the *size* check to
 // fire, not the timeout. (MaxFilterOutputBytes = 1 MiB; we send 1.1 MiB.
 // MaxHTTPHandlerOutputBytes = 12 MiB; HTTP test has a 5s call cap so 13 MiB
 // is fine there.)
@@ -23,7 +23,7 @@ module.exports = definePlugin({
   filterChatMessage(msg) {
     switch (msg && msg.cmd) {
       case "spin":
-        // Tight loop — bounded by the host's per-filter timeout.
+        // Tight loop, bounded by the host's per-filter timeout.
         while (true) {}
       case "huge-output":
         // Return a payload larger than MaxFilterOutputBytes (1 MiB).
@@ -60,5 +60,5 @@ module.exports = definePlugin({
       default:
         return { status: 200, body: "ok" };
     }
-  }
+  },
 });

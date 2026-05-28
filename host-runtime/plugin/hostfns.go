@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"net/http"
 	"os"
+	"strings"
 
 	extism "github.com/extism/go-sdk"
 	"github.com/owncast/owncast-plugin-sdk/host-runtime/kv"
@@ -32,19 +33,25 @@ const (
 	PermFediversePost     = "fediverse.post"
 	PermVideoConfigRead   = "videoconfig.read"
 	PermVideoConfigWrite  = "videoconfig.write"
+	// PermUIModify lets a plugin add UI surfaces to Owncast: admin pages
+	// (manifest.admin.pages) and viewer action buttons (manifest.actions).
+	// A plugin can serve HTTP on /plugins/<name>/ without this permission
+	// (e.g. for headless APIs), but cannot publish anything that shows up
+	// in the admin UI or viewer chrome without opting in explicitly.
+	PermUIModify = "ui.modify"
 )
 
 // ChatSendKind distinguishes how a plugin asked to post to chat. All sends
-// post under the plugin's own chat identity — provisioned by the host at
+// post under the plugin's own chat identity, provisioned by the host at
 // install time as a chat user with IsBot=true and DisplayName=plugin name.
 // Plugins cannot post under arbitrary or other users' identities; to use a
 // different chat name, ship as a different plugin.
 type ChatSendKind int
 
 const (
-	ChatSendBot    ChatSendKind = iota // owncast.chat.send — posts as the plugin's bot
-	ChatSendAction                     // owncast.chat.sendAction — italic, "/me" style
-	ChatSendSystem                     // owncast.chat.system — server-announcement style, no user identity, body is HTML
+	ChatSendBot    ChatSendKind = iota // owncast.chat.send, posts as the plugin's bot
+	ChatSendAction                     // owncast.chat.sendAction, italic, "/me" style
+	ChatSendSystem                     // owncast.chat.system, server-announcement style, no user identity, body is HTML
 )
 
 // ChatSendRequest is everything the host needs to dispatch a chat post made
@@ -76,7 +83,7 @@ type ServerInfo struct {
 	Version        string `json:"version,omitempty"`
 }
 
-// StreamBroadcaster is what owncast.stream.broadcaster() returns — details
+// StreamBroadcaster is what owncast.stream.broadcaster() returns, details
 // about the currently-connected inbound broadcast. Zero-valued when offline.
 type StreamBroadcaster struct {
 	RemoteAddr string   `json:"remoteAddr,omitempty"`
@@ -140,7 +147,7 @@ type FediversePayload struct {
 }
 
 // HostChatMessage is the shape returned by ChatHistory. Wider than the
-// onChatMessage event payload — production wires this to whatever the chat
+// onChatMessage event payload, production wires this to whatever the chat
 // repository hands back; tests construct it directly.
 type HostChatMessage struct {
 	ID        string `json:"id"`
@@ -169,7 +176,7 @@ type HostUser struct {
 	IsAuthenticated bool     `json:"isAuthenticated,omitempty"`
 }
 
-// HostChatClient is the shape returned by ChatClients() — a connected chat
+// HostChatClient is the shape returned by ChatClients(), a connected chat
 // session, not a User (one user may have several clients).
 type HostChatClient struct {
 	ID           uint64 `json:"id"`
@@ -226,7 +233,7 @@ type HostEnv struct {
 	PostFediverse func(pluginName, text string) (url string, err error)
 	// IsAuthenticated is forwarded to plugin.Server (which uses it both to
 	// gate admin paths and to populate req.authenticated). Optional; nil
-	// means "no auth available" — admin paths always return 401.
+	// means "no auth available", admin paths always return 401.
 	IsAuthenticated func(r *http.Request) bool
 	// GetRequestUser returns the User the request came from when the request
 	// carries a user-token (not admin Basic Auth). Plugins see this in
@@ -315,6 +322,12 @@ func BuildHostFunctions(env *HostEnv, manifest *Manifest) []extism.HostFunction 
 	}
 	if granted[PermVideoConfigWrite] {
 		fns = append(fns, hostVideoConfigWrite(env, manifest.Name))
+	}
+	if granted[PermUIModify] {
+		fns = append(fns,
+			hostAddActions(env, manifest),
+			hostClearActions(env, manifest.Name),
+		)
 	}
 	return fns
 }
@@ -1107,4 +1120,134 @@ func hostKVSet(ns kv.Namespace) extism.HostFunction {
 	)
 	fn.SetNamespace("extism:host/user")
 	return fn
+}
+
+// RuntimeActionsConfigKey is the reserved key inside a plugin's own
+// config namespace that holds a list of action buttons the plugin has
+// added at runtime. The host's Actions() reader concatenates the
+// plugin's manifest.actions with this list on every viewer request, so
+// runtime additions take effect immediately without a plugin reload.
+// Written by owncast_add_actions, cleared by owncast_clear_actions.
+// Both the SDK runtime (this package) and the Owncast host agree on
+// the key name.
+const RuntimeActionsConfigKey = "owncast.actions"
+
+// hostAddActions backs owncast.actions.add(actions). Takes a JSON array
+// of ActionButton entries, validates each (title required, exactly one
+// of url/html, relative URLs rewritten into this plugin's namespace,
+// cross-plugin URLs rejected), and appends to the runtime list in the
+// plugin's config. The host's /api/config reader returns
+// manifest.actions ++ runtime list on every viewer request.
+//
+// Requires the ui.modify permission; invalid input is logged but not
+// surfaced back to the plugin (consistent with the other fire-and-
+// forget host fns) — return-value-style validation can come later if a
+// real use case needs it.
+func hostAddActions(env *HostEnv, manifest *Manifest) extism.HostFunction {
+	pluginName := manifest.Name
+	hasHTTPServe := false
+	for _, perm := range manifest.Permissions {
+		if perm == PermHttpServe {
+			hasHTTPServe = true
+			break
+		}
+	}
+	fn := extism.NewHostFunctionWithStack(
+		"owncast_add_actions",
+		func(ctx context.Context, p *extism.CurrentPlugin, stack []uint64) {
+			payloadBytes, err := p.ReadBytes(stack[0])
+			if err != nil {
+				return
+			}
+			var incoming []ActionButton
+			if err := json.Unmarshal(payloadBytes, &incoming); err != nil {
+				fmt.Fprintf(os.Stderr, "owncast_add_actions from %s: invalid JSON: %v\n", pluginName, err)
+				return
+			}
+			normalized, err := validateRuntimeActions(pluginName, hasHTTPServe, incoming)
+			if err != nil {
+				fmt.Fprintf(os.Stderr, "owncast_add_actions from %s: %v\n", pluginName, err)
+				return
+			}
+			if env.KV == nil {
+				return
+			}
+			ns := env.KV.Namespace(pluginName)
+			var existing []ActionButton
+			if raw, err := ns.Get(RuntimeActionsConfigKey); err == nil && len(raw) > 0 {
+				// A bad existing value (someone wrote the key by hand,
+				// schema drift, etc.) is treated as empty rather than
+				// blocking — we'd rather lose stale state than break
+				// the plugin's ability to add buttons.
+				_ = json.Unmarshal(raw, &existing)
+			}
+			combined := make([]ActionButton, 0, len(existing)+len(normalized))
+			combined = append(combined, existing...)
+			combined = append(combined, normalized...)
+			out, err := json.Marshal(combined)
+			if err != nil {
+				fmt.Fprintf(os.Stderr, "owncast_add_actions from %s: marshal: %v\n", pluginName, err)
+				return
+			}
+			if err := ns.Set(RuntimeActionsConfigKey, out); err != nil {
+				fmt.Fprintf(os.Stderr, "owncast_add_actions from %s: kv write: %v\n", pluginName, err)
+			}
+		},
+		[]extism.ValueType{extism.ValueTypePTR},
+		[]extism.ValueType{},
+	)
+	fn.SetNamespace("extism:host/user")
+	return fn
+}
+
+// hostClearActions backs owncast.actions.clear(). Removes the runtime
+// list from the plugin's config so only manifest.actions remain in the
+// effective set returned by /api/config.
+func hostClearActions(env *HostEnv, pluginName string) extism.HostFunction {
+	fn := extism.NewHostFunctionWithStack(
+		"owncast_clear_actions",
+		func(ctx context.Context, p *extism.CurrentPlugin, stack []uint64) {
+			if env.KV == nil {
+				return
+			}
+			if err := env.KV.Namespace(pluginName).Delete(RuntimeActionsConfigKey); err != nil {
+				fmt.Fprintf(os.Stderr, "owncast_clear_actions from %s: %v\n", pluginName, err)
+			}
+		},
+		nil,
+		nil,
+	)
+	fn.SetNamespace("extism:host/user")
+	return fn
+}
+
+// validateRuntimeActions checks and rewrites plugin-supplied action
+// entries using the same rules as manifest validation, so the runtime
+// path can't accept a malformed entry or a cross-plugin URL. Returns
+// the (possibly URL-rewritten) actions.
+func validateRuntimeActions(pluginName string, hasHTTPServe bool, actions []ActionButton) ([]ActionButton, error) {
+	pluginPrefix := "/plugins/" + pluginName + "/"
+	for i := range actions {
+		a := &actions[i]
+		if a.Title == "" {
+			return nil, fmt.Errorf("actions[%d].title is required", i)
+		}
+		hasURL, hasHTML := a.Url != "", a.Html != ""
+		if hasURL == hasHTML {
+			return nil, fmt.Errorf("actions[%d]: exactly one of url or html is required", i)
+		}
+		if !hasURL {
+			continue
+		}
+		if strings.HasPrefix(a.Url, "/") && !strings.HasPrefix(a.Url, "/plugins/") {
+			a.Url = pluginPrefix + strings.TrimPrefix(a.Url, "/")
+		}
+		if strings.HasPrefix(a.Url, pluginPrefix) && !hasHTTPServe {
+			return nil, fmt.Errorf("actions[%d].url targets this plugin (%s) but http.serve permission is not declared", i, a.Url)
+		}
+		if strings.HasPrefix(a.Url, "/plugins/") && !strings.HasPrefix(a.Url, pluginPrefix) {
+			return nil, fmt.Errorf("actions[%d].url points at another plugin's namespace: %s", i, a.Url)
+		}
+	}
+	return actions, nil
 }

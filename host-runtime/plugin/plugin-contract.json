@@ -12,15 +12,18 @@
     "PermServerRead": "server.read",
     "PermStorageKV": "storage.kv",
     "PermStorageUpload": "storage.upload",
+    "PermUIModify": "ui.modify",
     "PermUsersModerate": "users.moderate",
     "PermUsersRead": "users.read",
     "PermVideoConfigRead": "videoconfig.read",
     "PermVideoConfigWrite": "videoconfig.write"
   },
   "hostFunctions": [
+    "owncast_add_actions",
     "owncast_ban_ip",
     "owncast_chat_clients",
     "owncast_chat_history",
+    "owncast_clear_actions",
     "owncast_delete_message",
     "owncast_emit_event",
     "owncast_fediverse_post",

@@ -4,9 +4,11 @@
   "private": true,
   "scripts": {
     "build": "owncast-plugin build",
-    "test": "owncast-plugin build && owncast-plugin test"
+    "package": "owncast-plugin package",
+    "test": "owncast-plugin build && node __tests__/plugin.test.js",
+    "serve": "owncast-plugin build && owncast-plugin serve"
   },
   "dependencies": {
-    "@owncast/plugin-sdk": "^0.1.0"
+    "@owncast/plugin-sdk": "^0.2.0"
   }
 }

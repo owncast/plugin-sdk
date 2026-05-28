@@ -94,7 +94,7 @@ func (h *SSEHub) Subscribe(pluginName, channel string) (<-chan []byte, func(), b
 // to (pluginName, channel). Delivery is non-blocking per client: if a
 // client's buffer is full (a slow consumer), the message is dropped for that
 // client. This keeps a single slow browser from blocking the publishing
-// plugin call — correctness of the live stream is best-effort by design.
+// plugin call, correctness of the live stream is best-effort by design.
 // Returns the number of clients the frame was delivered to.
 //
 // The send happens under the hub lock; sends are non-blocking, so the lock
