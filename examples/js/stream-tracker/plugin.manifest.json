@@ -1,7 +1,12 @@
 {
   "api": "1",
-  "name": "stream-tracker",
+  "name": "Example Stream Tracker",
+  "slug": "stream-tracker",
   "version": "0.1.0",
   "description": "Tracks stream lifecycle + chat user activity; responds to !uptime and !who",
-  "permissions": ["chat.send", "storage.kv", "server.read"]
+  "permissions": [
+    "chat.send",
+    "storage.kv",
+    "server.read"
+  ]
 }

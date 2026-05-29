@@ -4,10 +4,17 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"regexp"
 	"strings"
 )
 
 const SupportedAPIVersion = "1"
+
+// slugPattern matches valid plugin slugs: lowercase letter start,
+// followed by lowercase letters, digits, or hyphens, max 64 chars.
+// The slug becomes the URL segment, KV namespace, on-disk filename,
+// and registry primary key, so it has to stay narrow.
+var slugPattern = regexp.MustCompile(`^[a-z][a-z0-9-]{0,63}$`)
 
 type Subscription struct {
 	Event    string `json:"event"`
@@ -26,16 +33,49 @@ type ConfigField struct {
 }
 
 type Manifest struct {
-	API           string                 `json:"api"`
-	Name          string                 `json:"name"`
+	API string `json:"api"`
+	// DisplayName is the user-facing plugin name shown in admin lists,
+	// registry browse cards, and (by default) as the in-chat bot
+	// identity. JSON-tagged `name` for author ergonomics: authors
+	// write `"name": "Awesome Echo Bot"` in their manifest and the Go
+	// side treats it as a display string.
+	DisplayName string `json:"name"`
+	// Slug is the plugin's canonical identifier: URL segment, KV
+	// namespace, on-disk filename, registry primary key. Lowercase,
+	// hyphenated. Optional in source manifests, the SDK derives it
+	// from DisplayName when omitted (see slugify). Authors who need
+	// to pin a specific slug (e.g. for non-ASCII names) set it
+	// explicitly.
+	Slug          string                 `json:"slug,omitempty"`
 	Version       string                 `json:"version"`
 	Description   string                 `json:"description,omitempty"`
+	Bot           BotConfig              `json:"bot,omitempty"`
 	Subscriptions Subscriptions          `json:"subscriptions"`
 	Permissions   []string               `json:"permissions,omitempty"`
 	Config        map[string]ConfigField `json:"config,omitempty"`
 	Admin         AdminConfig            `json:"admin,omitempty"`
 	Actions       []ActionButton         `json:"actions,omitempty"`
 	Network       NetworkConfig          `json:"network,omitempty"`
+}
+
+// BotConfig is the chat-bot configuration for plugins that post to
+// chat. Optional; falls back to Manifest.DisplayName when unset (see
+// ChatDisplayName).
+type BotConfig struct {
+	// DisplayName is what viewers see when the plugin posts to chat.
+	// Empty means "use Manifest.DisplayName".
+	DisplayName string `json:"displayName,omitempty"`
+}
+
+// ChatDisplayName resolves the name a plugin's chatbot user should
+// post under. Bot.DisplayName wins when set, otherwise the plugin's
+// own DisplayName. Never empty post-Validate because DisplayName is
+// required.
+func (m *Manifest) ChatDisplayName() string {
+	if m.Bot.DisplayName != "" {
+		return m.Bot.DisplayName
+	}
+	return m.DisplayName
 }
 
 // NetworkConfig narrows what hosts a plugin with the `network.fetch`
@@ -106,11 +146,21 @@ func (m *Manifest) Validate() error {
 	if m.API != SupportedAPIVersion {
 		return fmt.Errorf("unsupported api version %q (host supports %q)", m.API, SupportedAPIVersion)
 	}
-	if m.Name == "" {
+	if m.DisplayName == "" {
 		return errors.New("manifest.name is required")
 	}
 	if m.Version == "" {
 		return errors.New("manifest.version is required")
+	}
+	if m.Slug == "" {
+		derived, err := slugify(m.DisplayName)
+		if err != nil {
+			return fmt.Errorf("could not auto-generate a slug from manifest.name %q: %w; set manifest.slug explicitly", m.DisplayName, err)
+		}
+		m.Slug = derived
+	}
+	if !slugPattern.MatchString(m.Slug) {
+		return fmt.Errorf("manifest.slug %q is invalid; must match %s", m.Slug, slugPattern.String())
 	}
 	hasHttpServe := false
 	hasNetworkFetch := false
@@ -157,7 +207,7 @@ func (m *Manifest) Validate() error {
 			return fmt.Errorf("manifest.network.allowedHosts[%d] is empty", i)
 		}
 	}
-	pluginPrefix := "/plugins/" + m.Name + "/"
+	pluginPrefix := "/plugins/" + m.Slug + "/"
 	for i := range m.Actions {
 		a := &m.Actions[i]
 		if a.Title == "" {
@@ -220,9 +270,30 @@ func rewriteActionIcon(pluginPrefix string, hasHttpServe bool, icon string) (str
 // with the sidecar manifest. The sidecar declares identity and permissions;
 // the runtime must not exceed declared permissions. Subscriptions are derived
 // by the SDK at runtime, so they aren't validated here.
+//
+// Identity comparison runs on Slug (the canonical identifier), not
+// DisplayName. When either side ships no explicit Slug field, the helper
+// derives one from DisplayName the same way ParseManifest does, so the
+// comparison still works with a register() output that only echoes back
+// the display name.
 func (m *Manifest) AgreesWith(other *Manifest) error {
-	if m.Name != other.Name {
-		return fmt.Errorf("name mismatch: manifest=%q register=%q", m.Name, other.Name)
+	resolveSlug := func(x *Manifest) string {
+		if x.Slug != "" {
+			return x.Slug
+		}
+		if x.DisplayName == "" {
+			return ""
+		}
+		derived, err := slugify(x.DisplayName)
+		if err != nil {
+			return ""
+		}
+		return derived
+	}
+	mySlug := resolveSlug(m)
+	otherSlug := resolveSlug(other)
+	if mySlug != otherSlug {
+		return fmt.Errorf("slug mismatch: manifest=%q register=%q", mySlug, otherSlug)
 	}
 	if m.Version != other.Version {
 		return fmt.Errorf("version mismatch: manifest=%q register=%q", m.Version, other.Version)
@@ -234,6 +305,45 @@ func (m *Manifest) AgreesWith(other *Manifest) error {
 		}
 	}
 	return nil
+}
+
+// slugify turns a free-form display name into a URL-safe slug
+// matching slugPattern. ASCII letters and digits pass through
+// lowercased; every other rune collapses to a single hyphen; leading
+// and trailing hyphens are trimmed. Non-ASCII input degrades noisily
+// (e.g. "Café Helper" becomes "caf-helper") so plugins with
+// diacritics or non-Latin names should pin slug explicitly in their
+// manifest. Returns an error when the result is empty or fails the
+// "starts with a letter" rule.
+func slugify(input string) (string, error) {
+	var sb strings.Builder
+	prevHyphen := false
+	for _, r := range input {
+		switch {
+		case r >= 'a' && r <= 'z':
+			sb.WriteRune(r)
+			prevHyphen = false
+		case r >= 'A' && r <= 'Z':
+			sb.WriteRune(r + ('a' - 'A'))
+			prevHyphen = false
+		case r >= '0' && r <= '9':
+			sb.WriteRune(r)
+			prevHyphen = false
+		default:
+			if !prevHyphen && sb.Len() > 0 {
+				sb.WriteRune('-')
+				prevHyphen = true
+			}
+		}
+	}
+	out := strings.TrimRight(sb.String(), "-")
+	if out == "" {
+		return "", errors.New("slugified value is empty")
+	}
+	if !slugPattern.MatchString(out) {
+		return "", fmt.Errorf("slugified value %q does not match the required pattern", out)
+	}
+	return out, nil
 }
 
 func stringSet(items []string) map[string]bool {

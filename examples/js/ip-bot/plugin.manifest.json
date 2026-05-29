@@ -1,10 +1,19 @@
 {
   "api": "1",
-  "name": "ip-bot",
+  "name": "Example IP Bot",
+  "slug": "ip-bot",
   "version": "0.1.0",
   "description": "Responds to !ip in chat by fetching the server's public IP",
-  "permissions": ["chat.send", "network.fetch"],
+  "permissions": [
+    "chat.send",
+    "network.fetch"
+  ],
+  "bot": {
+    "displayName": "Example IP Helper"
+  },
   "network": {
-    "allowedHosts": ["api.ipify.org"]
+    "allowedHosts": [
+      "api.ipify.org"
+    ]
   }
 }

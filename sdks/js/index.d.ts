@@ -350,11 +350,13 @@ export const owncast: {
     upload(name: string, data: Uint8Array | string): UploadResult | null;
   };
   /** Post to the fediverse on the streamer's behalf. Requires `fediverse.post`,
-   *  which is high-trust, admins should grant it sparingly. The host
-   *  rate-limits at ~5 posts/hour per plugin. */
+   *  which is high-trust (posts go out under the streamer's own handle);
+   *  admins should grant it sparingly. */
   fediverse: {
-    /** Publish a public, text-only post. Returns { url } on success or null
-     *  on rate-limit / disabled / other failure. */
+    /** Publish a public, text-only post. Returns `{ url }` (currently empty
+     *  on success: Owncast publishes the note but doesn't yet round-trip its
+     *  URL), or `null` when the host rejects the call (disabled, missing
+     *  permission, etc.). */
     post(text: string): { url: string } | null;
   };
   /** Send notifications via Owncast's configured channels.

@@ -98,8 +98,10 @@ func runOne(ctx context.Context, wasmPath, manifestPath, file string, sc Scenari
 
 	dispatcher := plugin.NewDispatcher([]*plugin.Loaded{loaded})
 
-	pluginName := loaded.Manifest.Name
-	if err := mock.SeedKV(pluginName, sc.Given.KV); err != nil {
+	// SeedKV + checkExpectations key on slug so the mock storage matches
+	// what real host fns (KV namespace, action storage) use.
+	pluginSlug := loaded.Manifest.Slug
+	if err := mock.SeedKV(pluginSlug, sc.Given.KV); err != nil {
 		res.Errors = append(res.Errors, fmt.Sprintf("seed kv: %v", err))
 		return res
 	}
@@ -122,7 +124,7 @@ func runOne(ctx context.Context, wasmPath, manifestPath, file string, sc Scenari
 		}
 	}
 
-	checkExpectations(&res, &sc.Expect, mock, pluginName)
+	checkExpectations(&res, &sc.Expect, mock, pluginSlug)
 
 	res.Pass = len(res.Errors) == 0
 	return res
@@ -130,7 +132,7 @@ func runOne(ctx context.Context, wasmPath, manifestPath, file string, sc Scenari
 
 func runStep(ctx context.Context, d *plugin.Dispatcher, server *plugin.Server, loaded *plugin.Loaded, step ScenarioStep) error {
 	if step.HTTP != nil {
-		return runHTTPStep(server, loaded.Manifest.Name, step.HTTP)
+		return runHTTPStep(server, loaded.Manifest.Slug, step.HTTP)
 	}
 	if step.Filter != "" {
 		final, allowed, reason := d.Filter(ctx, step.Filter, step.Payload)

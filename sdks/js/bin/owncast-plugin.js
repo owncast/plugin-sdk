@@ -1,9 +1,15 @@
 #!/usr/bin/env node
-// `owncast-plugin build`  , bundle src/plugin.{js,ts} into <name>.wasm
+// `owncast-plugin build`  , bundle src/plugin.{js,ts} into <slug>.wasm
 // `owncast-plugin test`   , run scenarios in __tests__/ against the wasm
 // `owncast-plugin serve`  , run a localhost dev HTTP server
-// `owncast-plugin package`, produce a single-file <name>.ocpkg suitable
+// `owncast-plugin package`, produce a single-file <slug>.ocpkg suitable
 //                            for distribution / installation
+//
+// "Slug" is the plugin's identifier: lowercase, hyphenated, used in
+// filenames, URL segments, and as the registry's primary key. Plugin
+// authors set the human-readable display name via `name` in their
+// manifest; if they don't set `slug`, the CLI auto-derives it from
+// `name`.
 
 const fs = require("fs");
 const path = require("path");
@@ -14,24 +20,71 @@ const JSZip = require("jszip");
 const cmd = process.argv[2] || "build";
 const restArgs = process.argv.slice(3);
 
-if (cmd === "build") {
-  buildMain().catch(fail);
-} else if (cmd === "test") {
-  testMain(restArgs);
-} else if (cmd === "serve") {
-  serveMain(restArgs);
-} else if (cmd === "package") {
-  packageMain().catch(fail);
-} else {
-  console.error(
-    `unknown command: ${cmd}\nusage: owncast-plugin <build|test|serve|package>`,
-  );
-  process.exit(1);
-}
-
 function fail(e) {
   console.error(`${cmd} failed: ${e.message}`);
   process.exit(1);
+}
+
+// slugPattern matches a valid plugin slug: a lowercase letter
+// followed by lowercase letters/digits/hyphens, up to 64 chars total.
+// Same shape the host + SDK + registry all validate against.
+const slugPattern = /^[a-z][a-z0-9-]{0,63}$/;
+
+// slugify mirrors the host's Go slugify: ASCII letters and digits
+// pass through lowercased; everything else collapses to a single
+// hyphen; leading and trailing hyphens are trimmed.
+// Non-ASCII names (e.g. "Café") degrade noisily (-> "caf"); plugins
+// with accented or non-Latin display names should pin `slug` in the
+// manifest instead of relying on auto-derivation.
+function slugify(input) {
+  let out = "";
+  let prevHyphen = false;
+  for (const ch of input) {
+    const code = ch.codePointAt(0);
+    let lower = ch;
+    if (code >= 65 && code <= 90) lower = String.fromCodePoint(code + 32);
+    const lc = lower.codePointAt(0);
+    if ((lc >= 97 && lc <= 122) || (lc >= 48 && lc <= 57)) {
+      out += lower;
+      prevHyphen = false;
+    } else if (!prevHyphen && out.length > 0) {
+      out += "-";
+      prevHyphen = true;
+    }
+  }
+  return out.replace(/-+$/, "");
+}
+
+// readAndResolveManifest loads plugin.manifest.json, validates the
+// required fields, and returns a manifest object with `slug` filled
+// in: either the author's explicit `slug`, or one auto-derived from
+// `name`. The returned object is what gets baked into MANIFEST_BASE
+// in the build's synthesized entry, so register() always emits both
+// name (display) and slug (identifier).
+function readAndResolveManifest(manifestPath) {
+  const manifest = JSON.parse(fs.readFileSync(manifestPath, "utf8"));
+  if (!manifest.name || typeof manifest.name !== "string") {
+    throw new Error("manifest.name is required");
+  }
+  if (!manifest.version || typeof manifest.version !== "string") {
+    throw new Error("manifest.version is required");
+  }
+  let slug = manifest.slug;
+  if (!slug) {
+    slug = slugify(manifest.name);
+    if (!slug) {
+      throw new Error(
+        `could not derive a slug from manifest.name ${JSON.stringify(manifest.name)}; set manifest.slug explicitly`,
+      );
+    }
+  }
+  if (!slugPattern.test(slug)) {
+    throw new Error(
+      `manifest.slug ${JSON.stringify(slug)} must match ${slugPattern} (lowercase letters/digits/hyphens, starting with a letter, max 64 chars)`,
+    );
+  }
+  manifest.slug = slug;
+  return manifest;
 }
 
 function testMain(args) {
@@ -73,9 +126,8 @@ async function buildMain() {
   if (!fs.existsSync(manifestPath)) {
     throw new Error("plugin.manifest.json not found in current directory");
   }
-  const manifest = JSON.parse(fs.readFileSync(manifestPath, "utf8"));
-  const name = manifest.name;
-  if (!name) throw new Error("manifest.name is required");
+  const manifest = readAndResolveManifest(manifestPath);
+  const slug = manifest.slug;
 
   // Detect entry point.
   let entry = null;
@@ -166,7 +218,7 @@ module.exports = { register, on_event, on_filter, on_http_request };
     LD_LIBRARY_PATH: `${path.join(cache, "lib")}:${process.env.LD_LIBRARY_PATH || ""}`,
   };
 
-  const wasmOut = path.join(cwd, `${name}.wasm`);
+  const wasmOut = path.join(cwd, `${slug}.wasm`);
   execFileSync(extismJs, [bundledJS, "-i", dts, "-o", wasmOut], {
     stdio: "inherit",
     env,
@@ -178,7 +230,7 @@ module.exports = { register, on_event, on_filter, on_http_request };
   // show up live during dev (no rebuild needed for HTML/CSS changes).
   const assetsSrc = path.join(cwd, "assets");
   if (fs.existsSync(assetsSrc) && fs.statSync(assetsSrc).isDirectory()) {
-    const assetsDest = path.join(cwd, `${name}-assets`);
+    const assetsDest = path.join(cwd, `${slug}-assets`);
     let needsLink = true;
     // Use lstatSync (not existsSync), existsSync follows symlinks and
     // returns false for a dangling link, but the link's inode is still
@@ -222,11 +274,10 @@ async function packageMain() {
   if (!fs.existsSync(manifestPath)) {
     throw new Error("plugin.manifest.json not found in current directory");
   }
-  const manifest = JSON.parse(fs.readFileSync(manifestPath, "utf8"));
-  const name = manifest.name;
-  if (!name) throw new Error("manifest.name is required");
+  const manifest = readAndResolveManifest(manifestPath);
+  const slug = manifest.slug;
 
-  const wasmPath = path.join(cwd, `${name}.wasm`);
+  const wasmPath = path.join(cwd, `${slug}.wasm`);
   if (!fs.existsSync(wasmPath)) {
     await buildMain();
   }
@@ -237,7 +288,7 @@ async function packageMain() {
   zip.file("plugin.wasm", fs.readFileSync(wasmPath));
   let fileCount = 2;
   // Bundle a top-level icon.png if the plugin source root has one.
-  // The host reads it from /api/plugins/<name>/icon to render in the
+  // The host reads it from /api/plugins/<slug>/icon to render in the
   // admin list and sidebar (no manifest field, no http.serve
   // permission required).
   const iconPath = path.join(cwd, "icon.png");
@@ -253,7 +304,7 @@ async function packageMain() {
     }
   }
 
-  const outPath = path.join(cwd, `${name}.ocpkg`);
+  const outPath = path.join(cwd, `${slug}.ocpkg`);
   const buf = await zip.generateAsync({
     type: "nodebuffer",
     compression: "DEFLATE",
@@ -395,4 +446,24 @@ function findCacheDir() {
     }
   }
   return candidates[0];
+}
+
+// Dispatch sits at the bottom so every const + function above is
+// fully initialized before any handler runs. Calling a handler from
+// the top of the file would put the top-level `const slugPattern`
+// (and friends) in the TDZ for the first synchronous slice of
+// buildMain/packageMain.
+if (cmd === "build") {
+  buildMain().catch(fail);
+} else if (cmd === "test") {
+  testMain(restArgs);
+} else if (cmd === "serve") {
+  serveMain(restArgs);
+} else if (cmd === "package") {
+  packageMain().catch(fail);
+} else {
+  console.error(
+    `unknown command: ${cmd}\nusage: owncast-plugin <build|test|serve|package>`,
+  );
+  process.exit(1);
 }

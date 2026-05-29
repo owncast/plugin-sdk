@@ -33,6 +33,30 @@ const { execFileSync } = require("child_process");
 // binary specifically (not just any toolchain file) so we correctly fall
 // through to the dev tools/ dir when postinstall has only fetched part of the
 // toolchain (e.g., on a not-yet-released SDK version).
+// slugifyForTest mirrors the slugify in the build CLI + host SDKs so
+// this entrypoint can locate the .wasm file when a manifest omits
+// `slug`. ASCII letters and digits pass through lowercased;
+// everything else collapses to a single hyphen; trailing hyphens are
+// trimmed.
+function slugifyForTest(input) {
+  let out = "";
+  let prevHyphen = false;
+  for (const ch of input) {
+    const code = ch.codePointAt(0);
+    let lower = ch;
+    if (code >= 65 && code <= 90) lower = String.fromCodePoint(code + 32);
+    const lc = lower.codePointAt(0);
+    if ((lc >= 97 && lc <= 122) || (lc >= 48 && lc <= 57)) {
+      out += lower;
+      prevHyphen = false;
+    } else if (!prevHyphen && out.length > 0) {
+      out += "-";
+      prevHyphen = true;
+    }
+  }
+  return out.replace(/-+$/, "");
+}
+
 function findCacheDir() {
   const candidates = [
     path.join(__dirname, "bin", ".cache"), // installed under node_modules
@@ -77,10 +101,20 @@ function runScenarios(scenarios, opts = {}) {
     console.error("manifest.name is required");
     process.exit(2);
   }
-  const wasmPath = path.join(cwd, `${manifest.name}.wasm`);
+  // wasm + symlink filenames key off slug (the identifier), not the
+  // display name. Derive the slug here the same way the build CLI
+  // does so this entrypoint works on manifests that omit `slug`.
+  const slug = manifest.slug || slugifyForTest(manifest.name);
+  if (!slug) {
+    console.error(
+      `could not derive slug from manifest.name ${JSON.stringify(manifest.name)}; set manifest.slug explicitly`,
+    );
+    process.exit(2);
+  }
+  const wasmPath = path.join(cwd, `${slug}.wasm`);
   if (!fs.existsSync(wasmPath)) {
     console.error(
-      `${manifest.name}.wasm not found at ${wasmPath}, run \`owncast-plugin build\` first`,
+      `${slug}.wasm not found at ${wasmPath}, run \`owncast-plugin package\` first`,
     );
     process.exit(2);
   }
@@ -100,7 +134,7 @@ function runScenarios(scenarios, opts = {}) {
   const tmp = fs.mkdtempSync(path.join(os.tmpdir(), "owncast-plugin-test-"));
   try {
     fs.symlinkSync(manifestPath, path.join(tmp, "plugin.manifest.json"));
-    fs.symlinkSync(wasmPath, path.join(tmp, `${manifest.name}.wasm`));
+    fs.symlinkSync(wasmPath, path.join(tmp, `${slug}.wasm`));
     fs.mkdirSync(path.join(tmp, "__tests__"));
     fs.writeFileSync(
       path.join(tmp, "__tests__", "scenarios.test.json"),

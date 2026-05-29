@@ -1,9 +1,13 @@
 {
   "api": "1",
-  "name": "echo-bot",
+  "name": "Example Echo Bot",
+  "slug": "echo-bot",
   "version": "0.1.0",
   "description": "Echoes chat messages back with a prefix",
   "permissions": [
     "chat.send"
-  ]
+  ],
+  "bot": {
+    "displayName": "Example Echo"
+  }
 }

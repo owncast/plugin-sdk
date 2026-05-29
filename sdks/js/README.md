@@ -2,7 +2,7 @@
 
 SDK for authoring [Owncast](https://owncast.online) plugins in JavaScript or TypeScript. Plugins compile to WebAssembly and run sandboxed inside the Owncast server.
 
-Most authors don't install this directly, instead, scaffold a new project with `npx create-owncast-plugin@latest <name>` and the generated `package.json` already lists it as a dependency.
+Most authors don't install this directly, instead, scaffold a new project with `npx create-owncast-plugin@latest <slug>` and the generated `package.json` already lists it as a dependency.
 
 ## Quick start
 

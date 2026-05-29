@@ -287,15 +287,23 @@ func (d *devState) history(limit int) []plugin.HostChatMessage {
 // onPluginChat backs the OnChat host hook: a plugin posted to chat. Log it
 // for the author and record it so chat.history() reflects bot output.
 func (d *devState) onPluginChat(req plugin.ChatSendRequest) {
+	// In the dev host log, identify the bot by its display name when set
+	// (that's what end users would see in chat), otherwise the slug.
+	// History records use the display name so chat.history() reads back
+	// the same identity the plugin posted under.
+	label := req.BotDisplayName
+	if label == "" {
+		label = req.PluginSlug
+	}
 	switch req.Kind {
 	case plugin.ChatSendAction:
-		fmt.Fprintf(os.Stderr, "[chat.action by %s] *%s*\n", req.PluginName, req.Text)
+		fmt.Fprintf(os.Stderr, "[chat.action by %s] *%s*\n", label, req.Text)
 	case plugin.ChatSendSystem:
-		fmt.Fprintf(os.Stderr, "[chat.system by %s] %s\n", req.PluginName, req.Text)
+		fmt.Fprintf(os.Stderr, "[chat.system by %s] %s\n", label, req.Text)
 	default:
-		fmt.Fprintf(os.Stderr, "[chat.send by %s] %s\n", req.PluginName, req.Text)
+		fmt.Fprintf(os.Stderr, "[chat.send by %s] %s\n", label, req.Text)
 	}
-	d.record(req.PluginName, req.Text)
+	d.record(label, req.Text)
 }
 
 // handleChat drives the loaded plugin's chat handling end to end: it runs the
@@ -435,20 +443,23 @@ func loadTarget(ctx context.Context, env *plugin.HostEnv, target string) (*plugi
 		if loaded.AssetsFS != nil {
 			assets = "embedded in " + filepath.Base(target)
 		}
-		return loaded, loaded.Manifest.Name, assets
+		return loaded, loaded.Manifest.Slug, assets
 	}
 
 	manifestPath := filepath.Join(target, "plugin.manifest.json")
 	if !exists(manifestPath) {
 		fatal("no plugin.manifest.json in %s", target)
 	}
-	name, err := readManifestName(manifestPath)
+	// readManifestSlug runs through ParseManifest so any author-omitted
+	// slug is auto-derived from the manifest's display name the same way
+	// the host does at install time.
+	slug, err := readManifestSlug(manifestPath)
 	if err != nil {
 		fatal("read manifest: %v", err)
 	}
-	wasmPath := filepath.Join(target, name+".wasm")
+	wasmPath := filepath.Join(target, slug+".wasm")
 	if !exists(wasmPath) {
-		fatal("no %s.wasm in %s, run `npm run build` first", name, target)
+		fatal("no %s.wasm in %s, run `owncast-plugin package` first", slug, target)
 	}
 
 	loaded, err := plugin.LoadPlugin(ctx, env, wasmPath, manifestPath)
@@ -461,7 +472,7 @@ func loadTarget(ctx context.Context, env *plugin.HostEnv, target string) (*plugi
 		loaded.AssetsFS = os.DirFS(assetsDir)
 		assetsDescription = assetsDir
 	}
-	return loaded, name, assetsDescription
+	return loaded, slug, assetsDescription
 }
 
 func logging(h http.Handler) http.Handler {
@@ -489,21 +500,21 @@ func writeJSON(w http.ResponseWriter, status int, body any) {
 	_ = json.NewEncoder(w).Encode(body)
 }
 
-func readManifestName(path string) (string, error) {
+// readManifestSlug parses the on-disk manifest with the SDK's full
+// validator so slug auto-derivation, validation, and any other parse
+// rules apply the same way they would when the plugin is loaded by a
+// real host. The returned slug is what the wasm file and route
+// segments key off.
+func readManifestSlug(path string) (string, error) {
 	data, err := os.ReadFile(path)
 	if err != nil {
 		return "", err
 	}
-	var m struct {
-		Name string `json:"name"`
-	}
-	if err := json.Unmarshal(data, &m); err != nil {
+	m, err := plugin.ParseManifest(data)
+	if err != nil {
 		return "", err
 	}
-	if strings.TrimSpace(m.Name) == "" {
-		return "", fmt.Errorf("manifest.name is empty")
-	}
-	return m.Name, nil
+	return m.Slug, nil
 }
 
 func isVersionArg(arg string) bool {

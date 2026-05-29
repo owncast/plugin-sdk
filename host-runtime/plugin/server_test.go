@@ -28,7 +28,7 @@ func staticOnlyServer(t *testing.T, perms []string, assets fstest.MapFS) *Server
 	t.Helper()
 	loaded := &Loaded{
 		Manifest: &Manifest{
-			API: "1", Name: "demo", Version: "1.0.0", Permissions: perms,
+			API: "1", DisplayName: "demo", Slug: "demo", Version: "1.0.0", Permissions: perms,
 		},
 		AssetsFS: assets,
 	}
@@ -124,7 +124,7 @@ func TestServer_PathTraversal_CannotEscapeAssetsRoot(t *testing.T) {
 
 	loaded := &Loaded{
 		Manifest: &Manifest{
-			API: "1", Name: "demo", Version: "1.0.0",
+			API: "1", DisplayName: "demo", Slug: "demo", Version: "1.0.0",
 			Permissions: []string{"http.serve"},
 		},
 		AssetsFS: osDirFS(pluginAssets),

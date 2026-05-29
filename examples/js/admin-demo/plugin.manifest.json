@@ -1,6 +1,7 @@
 {
   "api": "1",
-  "name": "admin-demo",
+  "name": "Example Admin Demo",
+  "slug": "admin-demo",
   "version": "0.1.0",
   "description": "Demonstrates admin UI integration, a public landing page plus an admin-gated settings panel and API",
   "permissions": [

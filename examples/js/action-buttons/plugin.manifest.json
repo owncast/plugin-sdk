@@ -1,9 +1,14 @@
 {
   "api": "1",
-  "name": "action-buttons",
+  "name": "Custom Action Buttons Example",
+  "slug": "action-buttons",
   "version": "0.1.0",
   "description": "Manifest-declared action buttons plus an admin page that renames them at runtime via a custom API backed by plugin config.",
-  "permissions": ["ui.modify", "http.serve", "storage.kv"],
+  "permissions": [
+    "ui.modify",
+    "http.serve",
+    "storage.kv"
+  ],
   "admin": {
     "pages": [
       {

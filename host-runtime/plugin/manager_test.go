@@ -54,8 +54,8 @@ func TestManager_DiscoversWithoutLoading(t *testing.T) {
 	if len(entries) != 1 {
 		t.Fatalf("expected 1 discovered, got %d", len(entries))
 	}
-	if entries[0].Name != "hello-world" {
-		t.Errorf("name: got %q want hello-world", entries[0].Name)
+	if entries[0].Slug != "hello-world" {
+		t.Errorf("slug: got %q want hello-world", entries[0].Slug)
 	}
 	if entries[0].Loaded {
 		t.Error("plugin should not be loaded, admin never enabled it")
