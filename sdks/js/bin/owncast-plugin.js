@@ -25,6 +25,27 @@ function fail(e) {
   process.exit(1);
 }
 
+// toolchainEnv extends the current environment with the variables
+// the dynamic linker needs to find `libbinaryen` next to `wasm-merge`
+// and `wasm-opt` (which extism-js shells out to during the wasm
+// pipeline). Linux uses LD_LIBRARY_PATH; macOS uses DYLD_LIBRARY_PATH
+// plus DYLD_FALLBACK_LIBRARY_PATH (Apple Silicon strips
+// DYLD_LIBRARY_PATH in some sandboxed contexts, the FALLBACK
+// variant survives). Setting all three is safe on both OSes; the
+// inactive ones are ignored. This is the difference between "build
+// succeeds" and `library not loaded: @rpath/libbinaryen.dylib` on
+// macOS.
+function toolchainEnv(cache) {
+  const libDir = path.join(cache, "lib");
+  return {
+    ...process.env,
+    PATH: `${cache}:${process.env.PATH}`,
+    LD_LIBRARY_PATH: `${libDir}:${process.env.LD_LIBRARY_PATH || ""}`,
+    DYLD_LIBRARY_PATH: `${libDir}:${process.env.DYLD_LIBRARY_PATH || ""}`,
+    DYLD_FALLBACK_LIBRARY_PATH: `${libDir}:${process.env.DYLD_FALLBACK_LIBRARY_PATH || "/usr/local/lib:/usr/lib"}`,
+  };
+}
+
 // slugPattern matches a valid plugin slug: a lowercase letter
 // followed by lowercase letters/digits/hyphens, up to 64 chars total.
 // Same shape the host + SDK + registry all validate against.
@@ -106,10 +127,7 @@ function runBinary(name, args) {
     );
     process.exit(1);
   }
-  const env = {
-    ...process.env,
-    LD_LIBRARY_PATH: `${path.join(cache, "lib")}:${process.env.LD_LIBRARY_PATH || ""}`,
-  };
+  const env = toolchainEnv(cache);
   try {
     execFileSync(bin, args.length > 0 ? args : [process.cwd()], {
       stdio: "inherit",
@@ -212,11 +230,7 @@ module.exports = { register, on_event, on_filter, on_http_request };
       `extism-js not found at ${extismJs}, run \`npm install\` to fetch the toolchain`,
     );
   }
-  const env = {
-    ...process.env,
-    PATH: `${cache}:${process.env.PATH}`,
-    LD_LIBRARY_PATH: `${path.join(cache, "lib")}:${process.env.LD_LIBRARY_PATH || ""}`,
-  };
+  const env = toolchainEnv(cache);
 
   const wasmOut = path.join(cwd, `${slug}.wasm`);
   execFileSync(extismJs, [bundledJS, "-i", dts, "-o", wasmOut], {

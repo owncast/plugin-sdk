@@ -9,6 +9,6 @@
     "serve": "owncast-plugin build && owncast-plugin serve"
   },
   "dependencies": {
-    "@owncast/plugin-sdk": "^0.2.0"
+    "@owncast/plugin-sdk": "^0.3.1"
   }
 }

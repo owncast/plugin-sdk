@@ -141,9 +141,17 @@ function runScenarios(scenarios, opts = {}) {
       JSON.stringify(scenarios, null, 2),
     );
 
+    // Match the build CLI: extism-js (and its wasm-merge/wasm-opt
+    // children) needs LD_LIBRARY_PATH on Linux and DYLD_LIBRARY_PATH +
+    // DYLD_FALLBACK_LIBRARY_PATH on macOS to find libbinaryen via
+    // @rpath. Setting all three is safe on both OSes; the inactive
+    // ones are ignored.
+    const libDir = path.join(cache, "lib");
     const env = {
       ...process.env,
-      LD_LIBRARY_PATH: `${path.join(cache, "lib")}:${process.env.LD_LIBRARY_PATH || ""}`,
+      LD_LIBRARY_PATH: `${libDir}:${process.env.LD_LIBRARY_PATH || ""}`,
+      DYLD_LIBRARY_PATH: `${libDir}:${process.env.DYLD_LIBRARY_PATH || ""}`,
+      DYLD_FALLBACK_LIBRARY_PATH: `${libDir}:${process.env.DYLD_FALLBACK_LIBRARY_PATH || "/usr/local/lib:/usr/lib"}`,
     };
     try {
       execFileSync(bin, [tmp], { stdio: "inherit", env });
