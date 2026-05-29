@@ -1,9 +1,14 @@
 {
   "api": "1",
-  "name": "message-counter",
+  "name": "Example Message Counter",
+  "slug": "message-counter",
   "version": "0.1.0",
-  "description": "Counts messages per user, persists across restarts",
+  "description": "Counts messages per user (persisted across restarts) and posts the running total back to chat.",
   "permissions": [
-    "storage.kv"
-  ]
+    "storage.kv",
+    "chat.send"
+  ],
+  "bot": {
+    "displayName": "Example Counter"
+  }
 }

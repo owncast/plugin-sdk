@@ -52,13 +52,20 @@ func main() {
 	env := &plugin.HostEnv{
 		KV: store,
 		OnChat: func(req plugin.ChatSendRequest) {
+			// Identify the plugin in dev-host logs by display name when set,
+			// otherwise the slug. Bot.DisplayName drives what would show in
+			// chat in production; slug is the stable identifier.
+			label := req.BotDisplayName
+			if label == "" {
+				label = req.PluginSlug
+			}
 			switch req.Kind {
 			case plugin.ChatSendAction:
-				fmt.Printf("[chat action from plugin %s] *%s*\n", req.PluginName, req.Text)
+				fmt.Printf("[chat action from plugin %s] *%s*\n", label, req.Text)
 			case plugin.ChatSendSystem:
-				fmt.Printf("[system message from plugin %s] %s\n", req.PluginName, req.Text)
+				fmt.Printf("[system message from plugin %s] %s\n", label, req.Text)
 			default:
-				fmt.Printf("[chat from plugin %s] %s\n", req.PluginName, req.Text)
+				fmt.Printf("[chat from plugin %s] %s\n", label, req.Text)
 			}
 		},
 		StreamCurrent: func() plugin.StreamInfo {
@@ -250,7 +257,7 @@ func printEntry(e plugin.DiscoveredEntry) {
 	case e.Enabled:
 		state = "enabled (not loaded, see lastError)"
 	}
-	fmt.Printf("\n  %s v%s [%s]\n", e.Name, e.Version, state)
+	fmt.Printf("\n  %s [%s] v%s (%s)\n", e.DisplayName, e.Slug, e.Version, state)
 	if e.Description != "" {
 		fmt.Printf("    %s\n", e.Description)
 	}

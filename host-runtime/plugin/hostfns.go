@@ -63,10 +63,17 @@ const (
 // ChatSendRequest is everything the host needs to dispatch a chat post made
 // by a plugin. The host looks up the plugin's bot access token and posts
 // through Owncast's normal chat pipeline using that token.
+//
+// PluginSlug is the stable identifier used to look up the plugin's
+// chatbot user; BotDisplayName is what chat viewers see. The split lets
+// a plugin authored as "Awesome Echo Bot" (display) with slug
+// "awesome-echo-bot" (identifier) post under the friendly name while
+// keeping a stable on-disk identity.
 type ChatSendRequest struct {
-	PluginName string
-	Kind       ChatSendKind
-	Text       string
+	PluginSlug     string
+	BotDisplayName string
+	Kind           ChatSendKind
+	Text           string
 }
 
 // StreamInfo is what owncast.stream.current() returns to a plugin. Wired to
@@ -262,19 +269,22 @@ func BuildHostFunctions(env *HostEnv, manifest *Manifest) []extism.HostFunction 
 	granted := stringSet(manifest.Permissions)
 
 	if granted[PermStorageKV] {
-		ns := env.KV.Namespace(manifest.Name)
+		ns := env.KV.Namespace(manifest.Slug)
 		fns = append(fns, hostKVGet(ns), hostKVSet(ns))
 	}
 	if granted[PermChatSend] {
+		// Chat fns capture slug + chat display name in their closure: slug
+		// routes to the right bot user, display name is what chat viewers see.
+		chatDisplay := manifest.ChatDisplayName()
 		fns = append(fns,
-			hostSendChat(env.OnChat, manifest.Name),
-			hostSendChatAction(env.OnChat, manifest.Name),
-			hostSendChatSystem(env.OnChat, manifest.Name),
-			hostSendChatTo(env, manifest.Name),
+			hostSendChat(env.OnChat, manifest.Slug, chatDisplay),
+			hostSendChatAction(env.OnChat, manifest.Slug, chatDisplay),
+			hostSendChatSystem(env.OnChat, manifest.Slug, chatDisplay),
+			hostSendChatTo(env, manifest.Slug),
 		)
 	}
 	if granted[PermEmitEvent] {
-		fns = append(fns, hostEmitEvent(env, manifest.Name))
+		fns = append(fns, hostEmitEvent(env, manifest.Slug))
 	}
 	if granted[PermServerRead] {
 		fns = append(fns,
@@ -291,15 +301,15 @@ func BuildHostFunctions(env *HostEnv, manifest *Manifest) []extism.HostFunction 
 	}
 	if granted[PermChatModerate] {
 		fns = append(fns,
-			hostDeleteMessage(env, manifest.Name),
-			hostKickClient(env, manifest.Name),
+			hostDeleteMessage(env, manifest.Slug),
+			hostKickClient(env, manifest.Slug),
 		)
 	}
 	if granted[PermNotificationsSend] {
 		fns = append(fns,
-			hostSendDiscord(env, manifest.Name),
-			hostSendBrowserPush(env, manifest.Name),
-			hostSendFediverse(env, manifest.Name),
+			hostSendDiscord(env, manifest.Slug),
+			hostSendBrowserPush(env, manifest.Slug),
+			hostSendFediverse(env, manifest.Slug),
 		)
 	}
 	if granted[PermChatHistory] {
@@ -310,29 +320,29 @@ func BuildHostFunctions(env *HostEnv, manifest *Manifest) []extism.HostFunction 
 	}
 	if granted[PermUsersModerate] {
 		fns = append(fns,
-			hostUserSetEnabled(env, manifest.Name),
-			hostBanIP(env, manifest.Name),
+			hostUserSetEnabled(env, manifest.Slug),
+			hostBanIP(env, manifest.Slug),
 		)
 	}
 	if granted[PermStorageUpload] {
-		fns = append(fns, hostStorageUpload(env, manifest.Name))
+		fns = append(fns, hostStorageUpload(env, manifest.Slug))
 	}
 	if granted[PermFediversePost] {
-		fns = append(fns, hostFediversePost(env, manifest.Name))
+		fns = append(fns, hostFediversePost(env, manifest.Slug))
 	}
 	if granted[PermHttpSSE] {
-		fns = append(fns, hostSSESend(env, manifest.Name))
+		fns = append(fns, hostSSESend(env, manifest.Slug))
 	}
 	if granted[PermVideoConfigRead] {
 		fns = append(fns, hostVideoConfigRead(env))
 	}
 	if granted[PermVideoConfigWrite] {
-		fns = append(fns, hostVideoConfigWrite(env, manifest.Name))
+		fns = append(fns, hostVideoConfigWrite(env, manifest.Slug))
 	}
 	if granted[PermUIModify] {
 		fns = append(fns,
 			hostAddActions(env, manifest),
-			hostClearActions(env, manifest.Name),
+			hostClearActions(env, manifest.Slug),
 		)
 	}
 	return fns
@@ -878,7 +888,7 @@ func hostEmitEvent(env *HostEnv, pluginName string) extism.HostFunction {
 	return fn
 }
 
-func hostSendChat(sink func(ChatSendRequest), pluginName string) extism.HostFunction {
+func hostSendChat(sink func(ChatSendRequest), pluginSlug, botDisplayName string) extism.HostFunction {
 	fn := extism.NewHostFunctionWithStack(
 		"owncast_send_chat",
 		func(ctx context.Context, p *extism.CurrentPlugin, stack []uint64) {
@@ -888,7 +898,12 @@ func hostSendChat(sink func(ChatSendRequest), pluginName string) extism.HostFunc
 				return
 			}
 			if sink != nil {
-				sink(ChatSendRequest{PluginName: pluginName, Kind: ChatSendBot, Text: text})
+				sink(ChatSendRequest{
+					PluginSlug:     pluginSlug,
+					BotDisplayName: botDisplayName,
+					Kind:           ChatSendBot,
+					Text:           text,
+				})
 			}
 		},
 		[]extism.ValueType{extism.ValueTypePTR},
@@ -898,7 +913,7 @@ func hostSendChat(sink func(ChatSendRequest), pluginName string) extism.HostFunc
 	return fn
 }
 
-func hostSendChatSystem(sink func(ChatSendRequest), pluginName string) extism.HostFunction {
+func hostSendChatSystem(sink func(ChatSendRequest), pluginSlug, botDisplayName string) extism.HostFunction {
 	fn := extism.NewHostFunctionWithStack(
 		"owncast_send_chat_system",
 		func(ctx context.Context, p *extism.CurrentPlugin, stack []uint64) {
@@ -907,7 +922,12 @@ func hostSendChatSystem(sink func(ChatSendRequest), pluginName string) extism.Ho
 				return
 			}
 			if sink != nil {
-				sink(ChatSendRequest{PluginName: pluginName, Kind: ChatSendSystem, Text: body})
+				sink(ChatSendRequest{
+					PluginSlug:     pluginSlug,
+					BotDisplayName: botDisplayName,
+					Kind:           ChatSendSystem,
+					Text:           body,
+				})
 			}
 		},
 		[]extism.ValueType{extism.ValueTypePTR},
@@ -917,7 +937,7 @@ func hostSendChatSystem(sink func(ChatSendRequest), pluginName string) extism.Ho
 	return fn
 }
 
-func hostSendChatAction(sink func(ChatSendRequest), pluginName string) extism.HostFunction {
+func hostSendChatAction(sink func(ChatSendRequest), pluginSlug, botDisplayName string) extism.HostFunction {
 	fn := extism.NewHostFunctionWithStack(
 		"owncast_send_chat_action",
 		func(ctx context.Context, p *extism.CurrentPlugin, stack []uint64) {
@@ -926,7 +946,12 @@ func hostSendChatAction(sink func(ChatSendRequest), pluginName string) extism.Ho
 				return
 			}
 			if sink != nil {
-				sink(ChatSendRequest{PluginName: pluginName, Kind: ChatSendAction, Text: text})
+				sink(ChatSendRequest{
+					PluginSlug:     pluginSlug,
+					BotDisplayName: botDisplayName,
+					Kind:           ChatSendAction,
+					Text:           text,
+				})
 			}
 		},
 		[]extism.ValueType{extism.ValueTypePTR},
@@ -1150,7 +1175,7 @@ const RuntimeActionsConfigKey = "owncast.actions"
 // forget host fns) — return-value-style validation can come later if a
 // real use case needs it.
 func hostAddActions(env *HostEnv, manifest *Manifest) extism.HostFunction {
-	pluginName := manifest.Name
+	pluginSlug := manifest.Slug
 	hasHTTPServe := false
 	for _, perm := range manifest.Permissions {
 		if perm == PermHttpServe {
@@ -1167,18 +1192,18 @@ func hostAddActions(env *HostEnv, manifest *Manifest) extism.HostFunction {
 			}
 			var incoming []ActionButton
 			if err := json.Unmarshal(payloadBytes, &incoming); err != nil {
-				fmt.Fprintf(os.Stderr, "owncast_add_actions from %s: invalid JSON: %v\n", pluginName, err)
+				fmt.Fprintf(os.Stderr, "owncast_add_actions from %s: invalid JSON: %v\n", pluginSlug, err)
 				return
 			}
-			normalized, err := validateRuntimeActions(pluginName, hasHTTPServe, incoming)
+			normalized, err := validateRuntimeActions(pluginSlug, hasHTTPServe, incoming)
 			if err != nil {
-				fmt.Fprintf(os.Stderr, "owncast_add_actions from %s: %v\n", pluginName, err)
+				fmt.Fprintf(os.Stderr, "owncast_add_actions from %s: %v\n", pluginSlug, err)
 				return
 			}
 			if env.KV == nil {
 				return
 			}
-			ns := env.KV.Namespace(pluginName)
+			ns := env.KV.Namespace(pluginSlug)
 			var existing []ActionButton
 			if raw, err := ns.Get(RuntimeActionsConfigKey); err == nil && len(raw) > 0 {
 				// A bad existing value (someone wrote the key by hand,
@@ -1192,11 +1217,11 @@ func hostAddActions(env *HostEnv, manifest *Manifest) extism.HostFunction {
 			combined = append(combined, normalized...)
 			out, err := json.Marshal(combined)
 			if err != nil {
-				fmt.Fprintf(os.Stderr, "owncast_add_actions from %s: marshal: %v\n", pluginName, err)
+				fmt.Fprintf(os.Stderr, "owncast_add_actions from %s: marshal: %v\n", pluginSlug, err)
 				return
 			}
 			if err := ns.Set(RuntimeActionsConfigKey, out); err != nil {
-				fmt.Fprintf(os.Stderr, "owncast_add_actions from %s: kv write: %v\n", pluginName, err)
+				fmt.Fprintf(os.Stderr, "owncast_add_actions from %s: kv write: %v\n", pluginSlug, err)
 			}
 		},
 		[]extism.ValueType{extism.ValueTypePTR},
@@ -1209,15 +1234,15 @@ func hostAddActions(env *HostEnv, manifest *Manifest) extism.HostFunction {
 // hostClearActions backs owncast.actions.clear(). Removes the runtime
 // list from the plugin's config so only manifest.actions remain in the
 // effective set returned by /api/config.
-func hostClearActions(env *HostEnv, pluginName string) extism.HostFunction {
+func hostClearActions(env *HostEnv, pluginSlug string) extism.HostFunction {
 	fn := extism.NewHostFunctionWithStack(
 		"owncast_clear_actions",
 		func(ctx context.Context, p *extism.CurrentPlugin, stack []uint64) {
 			if env.KV == nil {
 				return
 			}
-			if err := env.KV.Namespace(pluginName).Delete(RuntimeActionsConfigKey); err != nil {
-				fmt.Fprintf(os.Stderr, "owncast_clear_actions from %s: %v\n", pluginName, err)
+			if err := env.KV.Namespace(pluginSlug).Delete(RuntimeActionsConfigKey); err != nil {
+				fmt.Fprintf(os.Stderr, "owncast_clear_actions from %s: %v\n", pluginSlug, err)
 			}
 		},
 		nil,
@@ -1231,8 +1256,8 @@ func hostClearActions(env *HostEnv, pluginName string) extism.HostFunction {
 // entries using the same rules as manifest validation, so the runtime
 // path can't accept a malformed entry or a cross-plugin URL. Returns
 // the (possibly URL-rewritten) actions.
-func validateRuntimeActions(pluginName string, hasHTTPServe bool, actions []ActionButton) ([]ActionButton, error) {
-	pluginPrefix := "/plugins/" + pluginName + "/"
+func validateRuntimeActions(pluginSlug string, hasHTTPServe bool, actions []ActionButton) ([]ActionButton, error) {
+	pluginPrefix := "/plugins/" + pluginSlug + "/"
 	for i := range actions {
 		a := &actions[i]
 		if a.Title == "" {

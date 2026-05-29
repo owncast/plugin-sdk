@@ -3,7 +3,7 @@
 // side effects it observed: chatSends, kv writes, emitted events, HTTP
 // requests the plugin made, etc.
 //
-// Runs via `npm test` (which builds the wasm first, then runs this file).
+// Runs via `npm test` (which builds your plugin first, then runs this file).
 const { runScenarios } = require("@owncast/plugin-sdk/testing");
 
 // Small helper so each scenario doesn't repeat the event shape. You can build

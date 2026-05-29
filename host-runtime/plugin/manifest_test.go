@@ -17,8 +17,8 @@ func TestParseManifest_Valid(t *testing.T) {
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
-	if m.Name != "demo" {
-		t.Errorf("name: got %q want %q", m.Name, "demo")
+	if m.DisplayName != "demo" {
+		t.Errorf("name: got %q want %q", m.DisplayName, "demo")
 	}
 	if m.Version != "1.2.3" {
 		t.Errorf("version: got %q want %q", m.Version, "1.2.3")
@@ -64,11 +64,11 @@ func TestParseManifest_RejectsMalformedJSON(t *testing.T) {
 
 func TestAgreesWith_HappyPath(t *testing.T) {
 	sidecar := &Manifest{
-		API: "1", Name: "demo", Version: "1.0.0",
+		API: "1", DisplayName: "demo", Version: "1.0.0",
 		Permissions: []string{"chat.send", "storage.kv"},
 	}
 	runtime := &Manifest{
-		API: "1", Name: "demo", Version: "1.0.0",
+		API: "1", DisplayName: "demo", Version: "1.0.0",
 		Permissions: []string{"chat.send"}, // subset OK
 	}
 	if err := sidecar.AgreesWith(runtime); err != nil {
@@ -76,18 +76,21 @@ func TestAgreesWith_HappyPath(t *testing.T) {
 	}
 }
 
-func TestAgreesWith_NameMismatch(t *testing.T) {
-	sidecar := &Manifest{API: "1", Name: "demo", Version: "1.0.0"}
-	runtime := &Manifest{API: "1", Name: "other", Version: "1.0.0"}
+func TestAgreesWith_SlugMismatch(t *testing.T) {
+	// AgreesWith identity-checks on Slug. With no explicit Slug field on
+	// either side, the helper derives slugs from DisplayName the same way
+	// ParseManifest does, so the comparison still works.
+	sidecar := &Manifest{API: "1", DisplayName: "demo", Slug: "demo", Version: "1.0.0"}
+	runtime := &Manifest{API: "1", DisplayName: "other", Version: "1.0.0"}
 	err := sidecar.AgreesWith(runtime)
-	if err == nil || !strings.Contains(err.Error(), "name mismatch") {
-		t.Errorf("expected name mismatch error, got: %v", err)
+	if err == nil || !strings.Contains(err.Error(), "slug mismatch") {
+		t.Errorf("expected slug mismatch error, got: %v", err)
 	}
 }
 
 func TestAgreesWith_VersionMismatch(t *testing.T) {
-	sidecar := &Manifest{API: "1", Name: "demo", Version: "1.0.0"}
-	runtime := &Manifest{API: "1", Name: "demo", Version: "2.0.0"}
+	sidecar := &Manifest{API: "1", DisplayName: "demo", Version: "1.0.0"}
+	runtime := &Manifest{API: "1", DisplayName: "demo", Version: "2.0.0"}
 	err := sidecar.AgreesWith(runtime)
 	if err == nil || !strings.Contains(err.Error(), "version mismatch") {
 		t.Errorf("expected version mismatch error, got: %v", err)
@@ -96,11 +99,11 @@ func TestAgreesWith_VersionMismatch(t *testing.T) {
 
 func TestAgreesWith_RuntimeExceedsDeclaredPermissions(t *testing.T) {
 	sidecar := &Manifest{
-		API: "1", Name: "demo", Version: "1.0.0",
+		API: "1", DisplayName: "demo", Version: "1.0.0",
 		Permissions: []string{"chat.send"},
 	}
 	runtime := &Manifest{
-		API: "1", Name: "demo", Version: "1.0.0",
+		API: "1", DisplayName: "demo", Version: "1.0.0",
 		Permissions: []string{"chat.send", "events.emit"}, // events.emit not declared
 	}
 	err := sidecar.AgreesWith(runtime)
@@ -113,7 +116,7 @@ func TestAgreesWith_RuntimeExceedsDeclaredPermissions(t *testing.T) {
 }
 
 func TestStrikeSystem_FilterFailuresAutoDisable(t *testing.T) {
-	l := &Loaded{Manifest: &Manifest{Name: "x"}}
+	l := &Loaded{Manifest: &Manifest{DisplayName: "x"}}
 	for i := 0; i < FilterStrikeThreshold-1; i++ {
 		if disabled := l.recordFilterFailure(); disabled {
 			t.Fatalf("disabled too early at strike %d", i+1)
@@ -135,7 +138,7 @@ func TestStrikeSystem_FilterFailuresAutoDisable(t *testing.T) {
 }
 
 func TestStrikeSystem_SuccessResetsCounter(t *testing.T) {
-	l := &Loaded{Manifest: &Manifest{Name: "x"}}
+	l := &Loaded{Manifest: &Manifest{DisplayName: "x"}}
 	// Rack up almost enough strikes to disable.
 	for i := 0; i < FilterStrikeThreshold-1; i++ {
 		l.recordFilterFailure()
@@ -157,11 +160,11 @@ func TestAgreesWith_SidecarMayDeclareMoreThanRuntimeUses(t *testing.T) {
 	// The asymmetry: sidecar is the upper bound. Plugin author can declare
 	// more than they end up using.
 	sidecar := &Manifest{
-		API: "1", Name: "demo", Version: "1.0.0",
+		API: "1", DisplayName: "demo", Version: "1.0.0",
 		Permissions: []string{"chat.send", "storage.kv", "network.fetch"},
 	}
 	runtime := &Manifest{
-		API: "1", Name: "demo", Version: "1.0.0",
+		API: "1", DisplayName: "demo", Version: "1.0.0",
 		Permissions: []string{"chat.send"},
 	}
 	if err := sidecar.AgreesWith(runtime); err != nil {
@@ -440,7 +443,7 @@ func TestRequireChatFilterPermission_RejectsWhenMissing(t *testing.T) {
 	// declare the chat.filter permission. The host refuses to load
 	// otherwise so the admin can't be surprised by a plugin that silently
 	// starts rewriting chat.
-	m := &Manifest{Name: "stealth", Permissions: nil}
+	m := &Manifest{DisplayName: "stealth", Permissions: nil}
 	subs := Subscriptions{
 		Filter: []Subscription{{Event: EventChatMessageReceived, Priority: 100}},
 	}
@@ -454,7 +457,7 @@ func TestRequireChatFilterPermission_RejectsWhenMissing(t *testing.T) {
 }
 
 func TestRequireChatFilterPermission_AcceptsWhenDeclared(t *testing.T) {
-	m := &Manifest{Name: "honest", Permissions: []string{PermChatFilter}}
+	m := &Manifest{DisplayName: "honest", Permissions: []string{PermChatFilter}}
 	subs := Subscriptions{
 		Filter: []Subscription{{Event: EventChatMessageReceived, Priority: 100}},
 	}
@@ -464,7 +467,7 @@ func TestRequireChatFilterPermission_AcceptsWhenDeclared(t *testing.T) {
 }
 
 func TestRequireChatFilterPermission_NoOpWhenNoFilterSubscription(t *testing.T) {
-	m := &Manifest{Name: "passive", Permissions: nil}
+	m := &Manifest{DisplayName: "passive", Permissions: nil}
 	subs := Subscriptions{
 		Filter: []Subscription{{Event: "some-other-event", Priority: 100}},
 	}

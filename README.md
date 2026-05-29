@@ -42,20 +42,20 @@ Layout mirrors the planned future repo split: `sdks/<lang>/` for author-facing S
 
 ## Architecture in one screen
 
-- **Manifest is the source of truth**, `plugin.manifest.json` declares name, version, subscriptions (notify/filter), and permissions. The host compares it against the plugin's runtime `register()` output at load; mismatches are rejected.
+- **Manifest is the source of truth**, `plugin.manifest.json` declares display name, slug (the canonical identifier), version, subscriptions (notify/filter), and permissions. The host compares it against the plugin's runtime `register()` output at load; mismatches on slug, version, or permissions are rejected.
 - **Typed handlers per event**, instead of one `onEvent(event)` with a string switch, plugins define methods like `onChatMessage(msg)` and `filterChatMessage(msg)`. The SDK derives the manifest's subscriptions from which methods are present, so the author maintains a single source of truth.
 - **`on: { ... }` for custom events**, plugin-emitted events (e.g. `"announcement.broadcast"`) are subscribed to via a keyed object. Authors define their own constants for these strings.
 - **Notifications vs filters**:
   - `on*` handlers, fire-and-forget, plugins run in parallel
   - `filter*` handlers, sequential, priority-ordered, return `filter.pass()` / `.modify(payload)` / `.drop(reason)`. Errors **fail open**.
   - Plugin → host calls via `owncast.chat.send`, `owncast.kv.{get,set}`, `owncast.events.emit`, `owncast.http.fetch`, gated by declared permissions. For HTTP, the manifest must declare `network.fetch` AND `network.allowedHosts` (a list of hostname globs); the host wires those straight into Extism's `AllowedHosts`. The wildcard `"*"` is permitted but must be written explicitly so the manifest reflects the granted scope.
-- **Plugins can serve HTTP**, under `/plugins/<name>/*`, static assets are served directly; unmatched paths fall through to the plugin's `onHttpRequest(req)` handler. Requires `http.serve` permission. Default-public; gate admin-only features on `req.authenticated`. Response headers are filtered through an allowlist (no `Set-Cookie` etc.); request and response bodies are size-capped.
+- **Plugins can serve HTTP**, under `/plugins/<slug>/*`, static assets are served directly; unmatched paths fall through to the plugin's `onHttpRequest(req)` handler. Requires `http.serve` permission. Default-public; gate admin-only features on `req.authenticated`. Response headers are filtered through an allowlist (no `Set-Cookie` etc.); request and response bodies are size-capped.
 - **Two distribution formats:**
-  - **Loose files**, `<name>.wasm` + `<name>.manifest.json` + optional `<name>-assets/` dropped into `plugins/`. Easy to inspect and iterate during dev.
+  - **Loose files**, `<slug>.wasm` + `<slug>.manifest.json` + optional `<slug>-assets/` dropped into `plugins/`. Easy to inspect and iterate during dev.
   - **Single-file `.ocpkg` packages**, bundling `plugin.manifest.json` + the compiled plugin + optional `assets/` into one file. Built via `owncast-plugin package`. The admin uploads it from the **Plugins** page (or drops it into `data/plugins/`) and enables it. Recommended for distribution.
 - **Plugin → plugin** via `owncast.events.emit(type, payload)`, the emitted event re-enters the dispatcher and fans out to subscribers. Recursion is capped at `MaxEmitDepth = 8`.
 - **Per-plugin instance**, Extism plugin instances are reused across calls. Calls into a single plugin are mutex-serialized; different plugins run concurrently.
-- **Plugin config is namespaced per-plugin**, bbolt bucket per plugin name; plugins can't read each other's keys.
+- **Plugin config is namespaced per-plugin**, stored under `plugins.kv.<slug>.` in Owncast's datastore; plugins can't read each other's keys. (The PoC `host-runtime/kv/` package ships bbolt + in-memory impls for the standalone demo binary, the real Owncast host wires `datastoreKVStore` instead.)
 
 ## Run the demo
 
@@ -81,7 +81,7 @@ You should see the chat stream flow through the filter chain (slow-mode, buggy-f
 for ex in examples/js/*/; do tools/owncast-plugin-test "$ex"; done
 ```
 
-Or `cd examples/js/<name> && npm test` for a single plugin (which also rebuilds it first).
+Or `cd examples/js/<slug> && npm test` for a single plugin (which also rebuilds it first).
 
 ## Authoring a plugin
 
@@ -95,7 +95,7 @@ npm run serve                     # localhost dev server at http://localhost:808
 npm run package                   # produces my-plugin.ocpkg, single-file distributable
 ```
 
-Author code goes in `src/plugin.js`. Edit `plugin.manifest.json` to declare permissions (subscriptions are derived from your handler methods). The TypeScript declarations in `@owncast/plugin-sdk` give editor autocomplete. Static assets, HTML pages, images, JS, go in `assets/`; they're served at `/plugins/<name>/...`.
+Author code goes in `src/plugin.js`. Edit `plugin.manifest.json` to declare permissions (subscriptions are derived from your handler methods). The TypeScript declarations in `@owncast/plugin-sdk` give editor autocomplete. Static assets, HTML pages, images, JS, go in `assets/`; they're served at `/plugins/<slug>/...`.
 
 ## Testing
 

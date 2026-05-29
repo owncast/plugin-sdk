@@ -1,7 +1,13 @@
 {
   "api": "1",
-  "name": "fediverse-chat-bridge",
+  "name": "Example Fediverse Chat Bridge",
+  "slug": "fediverse-chat-bridge",
   "version": "0.1.0",
   "description": "Surfaces inbound fediverse mentions and replies as system messages in chat, with the poster's avatar.",
-  "permissions": ["chat.send"]
+  "permissions": [
+    "chat.send"
+  ],
+  "bot": {
+    "displayName": "Example Fediverse"
+  }
 }

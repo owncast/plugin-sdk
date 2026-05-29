@@ -64,7 +64,7 @@ my-plugin/
 ├── icon.png               # optional: shown in the admin plugin list
 ├── src/
 │   └── plugin.js          # your code
-├── assets/                # optional: served at /plugins/<name>/...
+├── assets/                # optional: served at /plugins/<slug>/...
 │   └── index.html
 └── __tests__/
     └── plugin.test.js    # scenarios
@@ -72,7 +72,7 @@ my-plugin/
 
 ### Plugin icon
 
-Drop an `icon.png` at the root of your project (alongside `plugin.manifest.json`) and the packager will bundle it into the `.ocpkg`. The admin UI fetches it from `/api/plugins/<name>/icon` and renders it in the plugin list and in the sidebar entry for any plugin that ships an admin page. No `http.serve` permission required: the host serves this path directly. There's no enforced size, but square images at 128×128 or so look clean at the rendered list (32×32) and sidebar (16×16) sizes. Plugins without an icon fall back to a generic puzzle-piece glyph.
+Drop an `icon.png` at the root of your project (alongside `plugin.manifest.json`) and the packager will bundle it into the `.ocpkg`. The admin UI fetches it from `/api/plugins/<slug>/icon` and renders it in the plugin list and in the sidebar entry for any plugin that ships an admin page. No `http.serve` permission required: the host serves this path directly. There's no enforced size, but square images at 128×128 or so look clean at the rendered list (32×32) and sidebar (16×16) sizes. Plugins without an icon fall back to a generic puzzle-piece glyph.
 
 Per-button icons on action buttons are separate and live wherever you want in `assets/`; see the [Action buttons](#action-buttons) section.
 
@@ -81,14 +81,17 @@ Per-button icons on action buttons are separate and live wherever you want in `a
 ```json
 {
   "api": "1",
-  "name": "my-plugin",
+  "name": "My Plugin",
+  "slug": "my-plugin",
   "version": "0.1.0",
   "description": "Short description for admins",
   "permissions": ["chat.send", "storage.kv"]
 }
 ```
 
-- `name` determines your plugin's URL prefix (`/plugins/<name>/`), plugin-config namespace, and chat bot identity
+- `name` is the human-readable display name (admin lists, registry cards, default chat-bot identity). Any characters allowed.
+- `slug` is the canonical identifier: URL prefix (`/plugins/<slug>/`), plugin-config namespace, on-disk filename, registry primary key. Lowercase letters, digits, and hyphens; starts with a letter; max 64 chars. Optional, the SDK auto-derives one from `name` when you omit it.
+- `bot.displayName` (optional) overrides the chat-bot name when the plugin posts to chat. Defaults to `name`.
 - `permissions` is the list of capabilities your plugin needs (see below)
 
 ## Writing handlers
@@ -200,7 +203,7 @@ Filter errors are treated as `filter.pass()` automatically, a buggy plugin can n
 ```ts
 interface IncomingHttpRequest {
   method: string;
-  path: string; // relative to /plugins/<name>/
+  path: string; // relative to /plugins/<slug>/
   query: Record<string, string>;
   headers: Record<string, string>;
   body: string;
@@ -280,7 +283,7 @@ If you need multiple chat personas, **ship multiple plugins.** One identity per 
 | `videoconfig.read`   | `owncast.videoConfig.read()`, read the output/transcoding config                                                                                  |
 | `videoconfig.write`  | `owncast.videoConfig.write()`, change video config; high-trust. Changes apply on the next stream start (the host does not restart a live stream). |
 | `notifications.send` | `owncast.notifications.discord`, `.browserPush`                                                                                                   |
-| `fediverse.post`     | `owncast.fediverse.post(text)`, high-trust; admin should grant sparingly. Host rate-limits at ~5/hour per plugin.                                 |
+| `fediverse.post`     | `owncast.fediverse.post(text)`, high-trust (posts under the streamer's handle); admin should grant sparingly.                                       |
 | `ui.modify`          | Place UI inside Owncast's own chrome. Required for any plugin that declares `manifest.actions`; the host rejects the load otherwise.              |
 
 Declare only what you need. Admins reviewing your manifest before install make trust decisions based on declared permissions.
@@ -319,7 +322,7 @@ For dynamic endpoints (JSON APIs, webhooks, etc.) write an `onHttpRequest`. Path
 
 For pushing live updates to a browser, an overlay that reacts to chat, a dashboard that ticks viewer counts, an alert widget, declare `http.sse` and use `owncast.sse.send`.
 
-You do **not** open or hold the connection yourself. Your `onHttpRequest` handler can't stream: each call is a single buffered request/response. Instead, the host owns the long-lived connection and exposes a ready-made endpoint at `/plugins/<your-name>/_sse/<channel>`. Your plugin just pushes; the host fans each message out to every connected browser.
+You do **not** open or hold the connection yourself. Your `onHttpRequest` handler can't stream: each call is a single buffered request/response. Instead, the host owns the long-lived connection and exposes a ready-made endpoint at `/plugins/<your-slug>/_sse/<channel>`. Your plugin just pushes; the host fans each message out to every connected browser.
 
 **Plugin side**, push whenever you have something to send (from an event handler, an HTTP handler, anywhere):
 
@@ -327,8 +330,8 @@ You do **not** open or hold the connection yourself. Your `onHttpRequest` handle
 // src/plugin.js
 export function onChatMessage(msg) {
   // Notify every browser watching the "overlay" stream.
-  host.sse.send("overlay", "chat", {
-    from: msg.user.displayName,
+  owncast.sse.send("overlay", "chat", {
+    from: msg.user,
     body: msg.body,
   });
 }
@@ -377,8 +380,8 @@ Plugins can register pages that appear in the Owncast admin UI for configuration
 }
 ```
 
-- `path` is a glob (e.g. `"/admin"`, `"/admin/*"`). Requests under `/plugins/<your-name>/<path>` that match any declared glob are **auth-gated by the host**, unauthenticated requests get `401` before your plugin code ever runs.
-- Owncast's admin renders each declared page as a tab inside `/admin/plugins/configure?name=<your-plugin>`, embedded as an iframe pointed at `/plugins/<your-name>/<path>`. Each plugin gets its own bookmarkable URL plus a sidebar entry under **Plugins** in the admin nav.
+- `path` is a glob (e.g. `"/admin"`, `"/admin/*"`). Requests under `/plugins/<your-slug>/<path>` that match any declared glob are **auth-gated by the host**, unauthenticated requests get `401` before your plugin code ever runs.
+- Owncast's admin renders each declared page as a tab inside `/admin/plugins/configure?slug=<your-slug>`, embedded as an iframe pointed at `/plugins/<your-slug>/<path>`. Each plugin gets its own bookmarkable URL plus a sidebar entry under **Plugins** in the admin nav.
 - Both static assets and dynamic endpoints under matched paths are auth-gated; you don't have to check `req.authenticated` yourself.
 - The host auto-injects an admin-themed stylesheet (`/styles/admin/plugin-iframe.css`) into HTML responses on admin paths so plain `<input>`/`<button>` controls match Owncast's look without you needing to ship CSS. Plugins that prefer their own styling can layer on top.
 
@@ -387,7 +390,7 @@ Author flow:
 1. Put admin HTML/CSS/JS in `assets/admin/index.html` (and friends)
 2. Expose admin APIs via `onHttpRequest` at `/admin/api/...`
 3. Declare both globs (or just `"/admin/*"`) in `manifest.admin.pages[].path`
-4. Visit `/admin/plugins/configure?name=<your-name>` in the admin UI (or `/plugins/<your-name>/admin/` directly), Owncast challenges for admin auth on the first API call, then renders your page
+4. Visit `/admin/plugins/configure?slug=<your-slug>` in the admin UI (or `/plugins/<your-slug>/admin/` directly). Owncast uses your existing admin login to gate the page; no extra prompt.
 
 ## Action buttons
 
@@ -423,7 +426,7 @@ Declare them in the manifest:
 - Exactly one of `url` or `html` is required per entry.
 - **Relative URLs auto-prefix.** `"url": "/"` becomes `/plugins/my-plugin/` at load time. `"/stats"` becomes `/plugins/my-plugin/stats`. Saves you from hard-coding your plugin name in your own manifest.
 - Absolute `https://...` URLs are accepted unchanged, use them for external links (set `openExternally: true` to open in a new tab).
-- If your URL resolves into your own `/plugins/<name>/` namespace, you must also declare `http.serve` so the page actually serves. The host rejects the load with a clear error otherwise.
+- If your URL resolves into your own `/plugins/<slug>/` namespace, you must also declare `http.serve` so the page actually serves. The host rejects the load with a clear error otherwise.
 - You can't point at another plugin's namespace (`/plugins/some-other-plugin/...`), the host rejects that at load to catch typos.
 - **Per-button icons** (`icon` field) follow the same rules as `url`. A relative path like `"/star.png"` auto-prefixes to `/plugins/my-plugin/star.png`, so ship the image under `assets/` and `http.serve` will route it. Absolute `https://cdn.example.com/...` URLs pass through unchanged (use these for external icons that don't need `http.serve`). Cross-plugin icon paths are rejected just like cross-plugin URLs.
 
@@ -512,7 +515,7 @@ Per-step `expect` (on filter and http steps):
 
 Final-state `expect` (on the whole scenario):
 
-- `chatSends`, `chatActions`, `chatAs`, exact-match lists of chat posts
+- `chatSends`, `chatActions`, `chatSystems`, exact-match lists of chat posts (the bot-sent, "/me" action, and system message variants)
 - `videoConfigWrites`, list of partial configs applied via `owncast.videoConfig.write()`
 - `emits`, list of `{eventType, payload}` for custom events
 - `kv`, partial map of plugin-config state after the scenario
@@ -608,9 +611,11 @@ Replies to every chat message.
 ```json
 {
   "api": "1",
-  "name": "echo-bot",
+  "name": "Echo Bot",
+  "slug": "echo-bot",
   "version": "0.1.0",
-  "permissions": ["chat.send"]
+  "permissions": ["chat.send"],
+  "bot": { "displayName": "Echo" }
 }
 ```
 
@@ -692,7 +697,8 @@ Ships an HTML page that polls a JSON endpoint backed by `owncast.chat.history()`
 ```json
 {
   "api": "1",
-  "name": "overlay",
+  "name": "Chat Overlay",
+  "slug": "overlay",
   "version": "0.1.0",
   "permissions": ["http.serve", "chat.history"]
 }
@@ -739,7 +745,8 @@ Visit `/plugins/overlay/` to render. Owncast owns the chat history; your plugin 
 ```json
 {
   "api": "1",
-  "name": "stream-tracker",
+  "name": "Stream Tracker",
+  "slug": "stream-tracker",
   "version": "0.1.0",
   "permissions": ["chat.send", "server.read"]
 }
@@ -817,7 +824,7 @@ The runtime watches for filters that consistently throw or hang. Two protections
 **Strike system.** After **5 consecutive failures** (errors _or_ timeouts) the host auto-disables the plugin for the rest of the session and logs once:
 
 ```
-plugin <name>: auto-disabled after 5 consecutive filter failures
+plugin <slug>: auto-disabled after 5 consecutive filter failures
 ```
 
 Disabled plugins are silently skipped by the filter chain. A successful filter call resets the counter, so transient flakiness doesn't accumulate. To re-enable a disabled plugin, restart the host.

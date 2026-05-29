@@ -1,5 +1,5 @@
 {
-  "name": "__PLUGIN_NAME__",
+  "name": "__PLUGIN_SLUG__",
   "version": "0.1.0",
   "private": true,
   "scripts": {

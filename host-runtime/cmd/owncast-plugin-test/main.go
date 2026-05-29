@@ -5,18 +5,18 @@
 //
 // Usage: owncast-plugin-test [<project-dir>]
 //
-// Auto-discovers plugin.manifest.json, matching <name>.wasm, and
+// Auto-discovers plugin.manifest.json, matching <slug>.wasm, and
 // __tests__/*.test.json files in the project directory (default: cwd).
 package main
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"os"
 	"path/filepath"
 
 	extism "github.com/extism/go-sdk"
+	"github.com/owncast/owncast-plugin-sdk/host-runtime/plugin"
 	"github.com/owncast/owncast-plugin-sdk/host-runtime/plugin/testing"
 )
 
@@ -41,13 +41,16 @@ func main() {
 	if !exists(manifestPath) {
 		fatal("no plugin.manifest.json in %s", abs)
 	}
-	name, err := readManifestName(manifestPath)
+	// Use ParseManifest so the slug is auto-derived from the display
+	// name when the manifest omits `slug`, matching what the build CLI
+	// does when it writes <slug>.wasm.
+	slug, err := readManifestSlug(manifestPath)
 	if err != nil {
 		fatal("read manifest: %v", err)
 	}
-	wasmPath := filepath.Join(abs, name+".wasm")
+	wasmPath := filepath.Join(abs, slug+".wasm")
 	if !exists(wasmPath) {
-		fatal("no %s.wasm in %s, run `npm run build` first", name, abs)
+		fatal("no %s.wasm in %s, run `owncast-plugin package` first", slug, abs)
 	}
 	testsDir := filepath.Join(abs, "__tests__")
 	if !exists(testsDir) {
@@ -95,21 +98,21 @@ func main() {
 	}
 }
 
-func readManifestName(path string) (string, error) {
+// readManifestSlug parses the on-disk manifest through the SDK's full
+// validator so the slug auto-derives from the display name when the
+// manifest omits it, matching what the build CLI does when it writes
+// <slug>.wasm. Returning the resolved slug keeps the binary's
+// "where's my wasm" lookup in lock-step with the build output.
+func readManifestSlug(path string) (string, error) {
 	data, err := os.ReadFile(path)
 	if err != nil {
 		return "", err
 	}
-	var m struct {
-		Name string `json:"name"`
-	}
-	if err := json.Unmarshal(data, &m); err != nil {
+	m, err := plugin.ParseManifest(data)
+	if err != nil {
 		return "", err
 	}
-	if m.Name == "" {
-		return "", fmt.Errorf("manifest.name is empty")
-	}
-	return m.Name, nil
+	return m.Slug, nil
 }
 
 func isVersionArg(arg string) bool {

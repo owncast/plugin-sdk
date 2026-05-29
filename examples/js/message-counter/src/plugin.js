@@ -5,6 +5,6 @@ module.exports = definePlugin({
     const key = `count:${msg.user}`;
     const next = parseInt(owncast.kv.get(key) || "0", 10) + 1;
     owncast.kv.set(key, String(next));
-    console.log(`${msg.user} has sent ${next} message(s) total`);
+    owncast.chat.send(`${msg.user} has sent ${next} message(s) total`);
   }
 });

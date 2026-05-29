@@ -179,16 +179,26 @@ type Manager struct {
 	scanCh       chan struct{}      // pings to force a scan (testing / admin trigger)
 }
 
-// DiscoveredEntry is the public view of a discovered plugin, what the
-// admin UI lists.
+// DiscoveredEntry is the public view of a discovered plugin: what the
+// admin UI lists, and what the registry's install endpoint returns to
+// the host. Two name-like fields:
+//
+//   - Slug is the canonical identifier (URL segment, KV namespace,
+//     file path, registry primary key).
+//   - DisplayName is the human-readable name shown in admin lists.
+//
+// BotDisplayName, when non-empty, overrides DisplayName as the chat
+// identity for plugins that post to chat.
 type DiscoveredEntry struct {
-	Name        string   `json:"name"`
-	Version     string   `json:"version,omitempty"`
-	Description string   `json:"description,omitempty"`
-	Permissions []string `json:"permissions,omitempty"`
-	Path        string   `json:"path"`
-	Enabled     bool     `json:"enabled"`
-	Loaded      bool     `json:"loaded"`
+	Slug           string   `json:"slug"`
+	DisplayName    string   `json:"name"`
+	BotDisplayName string   `json:"botDisplayName,omitempty"`
+	Version        string   `json:"version,omitempty"`
+	Description    string   `json:"description,omitempty"`
+	Permissions    []string `json:"permissions,omitempty"`
+	Path           string   `json:"path"`
+	Enabled        bool     `json:"enabled"`
+	Loaded         bool     `json:"loaded"`
 	// PendingPermissions lists permissions the current manifest declares
 	// that the admin has not yet approved. Non-empty means the plugin
 	// was updated on disk to request more access than was originally
@@ -274,7 +284,7 @@ func (m *Manager) List() []DiscoveredEntry {
 		entry.Loaded = isLoaded
 		out = append(out, entry)
 	}
-	sort.Slice(out, func(i, j int) bool { return out[i].Name < out[j].Name })
+	sort.Slice(out, func(i, j int) bool { return out[i].Slug < out[j].Slug })
 	return out
 }
 
@@ -449,25 +459,29 @@ func (m *Manager) scan(ctx context.Context) error {
 			fmt.Fprintf(os.Stderr, "discover %s: %v\n", name, err)
 			continue
 		}
-		seen[manifest.Name] = true
+		seen[manifest.Slug] = true
 
 		m.mu.Lock()
-		if existing, ok := m.discovered[manifest.Name]; ok {
+		if existing, ok := m.discovered[manifest.Slug]; ok {
 			// Already discovered; refresh manifest metadata in case it changed.
+			existing.DisplayName = manifest.DisplayName
+			existing.BotDisplayName = manifest.Bot.DisplayName
 			existing.Version = manifest.Version
 			existing.Description = manifest.Description
 			existing.Permissions = manifest.Permissions
 			existing.Path = path
-			existing.PendingPermissions = pendingPermissions(manifest.Permissions, m.approvedSet[manifest.Name])
+			existing.PendingPermissions = pendingPermissions(manifest.Permissions, m.approvedSet[manifest.Slug])
 		} else {
-			m.discovered[manifest.Name] = &DiscoveredEntry{
-				Name:               manifest.Name,
+			m.discovered[manifest.Slug] = &DiscoveredEntry{
+				Slug:               manifest.Slug,
+				DisplayName:        manifest.DisplayName,
+				BotDisplayName:     manifest.Bot.DisplayName,
 				Version:            manifest.Version,
 				Description:        manifest.Description,
 				Permissions:        manifest.Permissions,
 				Path:               path,
 				DiscoveredAt:       time.Now(),
-				PendingPermissions: pendingPermissions(manifest.Permissions, m.approvedSet[manifest.Name]),
+				PendingPermissions: pendingPermissions(manifest.Permissions, m.approvedSet[manifest.Slug]),
 			}
 		}
 		m.mu.Unlock()

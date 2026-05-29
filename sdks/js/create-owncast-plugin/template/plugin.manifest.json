@@ -1,7 +1,11 @@
 {
   "api": "1",
-  "name": "__PLUGIN_NAME__",
+  "name": "__PLUGIN_DISPLAY_NAME__",
+  "slug": "__PLUGIN_SLUG__",
   "version": "0.1.0",
   "description": "An Owncast plugin",
-  "permissions": ["chat.send"]
+  "permissions": ["chat.send"],
+  "bot": {
+    "displayName": "__PLUGIN_DISPLAY_NAME__"
+  }
 }
