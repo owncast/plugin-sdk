@@ -329,6 +329,22 @@ async function packageMain() {
   console.log(
     `packaged ${path.relative(cwd, outPath)} (${sizeKb} KB, ${fileCount} files)`,
   );
+
+  // Drop the intermediate <slug>.wasm now that it's bundled inside the
+  // .ocpkg. The .ocpkg is the only artifact authors care about: leaving
+  // the loose .wasm next to it just confuses "what do I ship". Only
+  // runs on a successful package so a mid-pipeline failure leaves the
+  // last good build in place for debugging.
+  try {
+    fs.unlinkSync(wasmPath);
+  } catch (e) {
+    // Don't fail the package step over a cleanup miss. The .ocpkg is
+    // already written; surface the warning so the author notices the
+    // straggler but treat the run as successful.
+    if (e.code !== "ENOENT") {
+      console.warn(`warning: could not clean up ${path.relative(cwd, wasmPath)}: ${e.message}`);
+    }
+  }
 }
 
 function* walkFiles(dir) {
