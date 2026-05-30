@@ -4,7 +4,13 @@
   "slug": "viewer-gate",
   "version": "0.1.0",
   "description": "Shows a confirmation modal when a viewer opens the page. Yes dismisses the modal; No redirects away. Demonstrates combining manifest.styles and manifest.scripts in a single plugin.",
-  "permissions": ["ui.modify", "http.serve"],
-  "styles": ["modal.css"],
-  "scripts": ["gate.js"]
+  "permissions": [
+    "ui.modify"
+  ],
+  "styles": [
+    "modal.css"
+  ],
+  "scripts": [
+    "gate.js"
+  ]
 }

@@ -21,19 +21,18 @@ The manifest declares one JavaScript asset:
 
 ```json
 {
-  "permissions": ["ui.modify", "http.serve"],
+  "permissions": ["ui.modify"],
   "scripts": ["client.js"]
 }
 ```
 
-The host rewrites the bare path to `/plugins/scripts-demo/client.js` and adds the URL to the viewer config's `pluginScripts` list. The viewer page renders a `<script src="..." async>` tag for each entry, alongside the admin's own customJavascript.
+The host reads `client.js` from the plugin's `assets/` directory and concatenates its bytes onto the response served at `/customjavascript`. The viewer loads one `<script>` tag covering admin JS + every loaded plugin's contribution.
 
 ## Permissions
 
 - **ui.modify** — the plugin runs JavaScript in the viewer page's window context.
-- **http.serve** — the host serves the bundled `client.js` from the plugin's namespace.
 
-Both are required by the host before it will load a plugin that uses `manifest.scripts`.
+`http.serve` is not required: the bytes are inlined into the `/customjavascript` response, not served at a URL.
 
 ## When to use this as a template
 

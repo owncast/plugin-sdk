@@ -4,6 +4,10 @@
   "slug": "scripts-demo",
   "version": "0.1.0",
   "description": "Ships a JavaScript file that pins a banner to the bottom of the viewer page (and logs to the console) so an admin can see at a glance that the plugin's script loaded, with no dependency on a live stream or chat.",
-  "permissions": ["ui.modify", "http.serve"],
-  "scripts": ["client.js"]
+  "permissions": [
+    "ui.modify"
+  ],
+  "scripts": [
+    "client.js"
+  ]
 }

@@ -187,11 +187,11 @@ The host surfaces this list on `GET /api/admin/plugins` (as `allowedHosts: []str
 
 ### `manifest.styles[]`
 
-An array of relative paths to CSS files the plugin contributes to the viewer page. The host reads each file's bytes from the plugin and appends them to the admin's customStyles in the `/api/config` response, so a viewer renders one `<style>` block covering admin and plugin contributions. The plugin's own URL space at `/plugins/<name>/<path>.css` continues to serve the bytes, but the page no longer references those URLs.
+An array of relative paths to CSS files the plugin contributes to the viewer page. The host reads each file's bytes from the plugin's `assets/` directory and appends them to the admin's customStyles in the `/api/config` response, so a viewer renders one `<style>` block covering admin and plugin contributions. The file is never reachable through the plugin's URL space.
 
 Per-entry validation:
 
-- `ui.modify` and `http.serve` permissions required (the latter because the host reads the file from the plugin's namespace).
+- `ui.modify` permission required (the file is inlined, not served, so `http.serve` is not required).
 - Bare or single-slash paths (`"theme.css"`, `"/theme.css"`) auto-prefix to `/plugins/<name>/theme.css`.
 - Fully qualified `/plugins/<name>/...` paths pass through.
 - Paths in another plugin's namespace are rejected at load.
@@ -202,9 +202,9 @@ Each plugin contribution in the concatenated response is preceded by a `/* plugi
 
 ### `manifest.scripts[]`
 
-An array of relative paths to JavaScript files the plugin contributes to the viewer page. The host reads each file's bytes and appends them to the response served at `/customjavascript`, so a viewer loads one `<script>` tag covering admin and plugin contributions.
+An array of relative paths to JavaScript files the plugin contributes to the viewer page. The host reads each file's bytes from the plugin's `assets/` directory and appends them to the response served at `/customjavascript`, so a viewer loads one `<script>` tag covering admin and plugin contributions.
 
-Same per-entry rules as `manifest.styles[]`, applied to `.js` files. Contributions are separated by `// plugin: <slug> — <file>\n` delimiter comments. Every plugin's JavaScript runs in the viewer page's shared global scope; authors are expected to wrap their script in an IIFE so top-level declarations don't collide.
+Same per-entry rules as `manifest.styles[]`, applied to `.js` files (only `ui.modify` required; the file is inlined, not served). Contributions are separated by `// plugin: <slug> — <file>\n` delimiter comments. Every plugin's JavaScript runs in the viewer page's shared global scope; authors are expected to wrap their script in an IIFE so top-level declarations don't collide.
 
 ### `manifest.extraPageContent`
 

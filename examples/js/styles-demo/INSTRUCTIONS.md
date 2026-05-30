@@ -16,20 +16,19 @@ The manifest declares one CSS asset:
 
 ```json
 {
-  "permissions": ["ui.modify", "http.serve"],
+  "permissions": ["ui.modify"],
   "styles": ["theme.css"]
 }
 ```
 
-The host rewrites that bare path to `/plugins/styles-demo/theme.css` and adds the URL to the viewer config's `pluginStyles` list. The viewer page renders a `<link rel="stylesheet">` for each entry, alongside the admin's own customStyles.
+The host reads `theme.css` from the plugin's `assets/` directory and concatenates its bytes onto the admin's customStyles on `/api/config`. The viewer renders one inline `<style>` block covering admin CSS + every loaded plugin's contribution.
 
 ## Permissions
 
 - **ui.modify** — the plugin paints inside Owncast's chrome (the banner overlays the page).
-- **http.serve** — the host serves the bundled `theme.css` from the plugin's namespace.
 
-Both are required by the host before it will load a plugin that uses `manifest.styles`.
+`http.serve` is not required: the bytes are inlined into the config response, not served at a URL.
 
 ## When to use this as a template
 
-Start here if you want to ship custom CSS that themes the viewer page — color overrides, layout tweaks, custom fonts via `@font-face` inside the CSS, etc. Everything you can do in CSS is fair game; the host doesn't sandbox the stylesheet beyond serving it from your plugin's URL namespace.
+Start here if you want to ship custom CSS that themes the viewer page — color overrides, layout tweaks, custom fonts via `@font-face` inside the CSS. Everything you can do in CSS is fair game; the host doesn't sandbox the stylesheet beyond reading it out of the plugin's `assets/`.

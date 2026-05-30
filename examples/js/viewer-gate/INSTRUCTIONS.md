@@ -23,7 +23,7 @@ The manifest declares both a stylesheet and a script:
 
 ```json
 {
-  "permissions": ["ui.modify", "http.serve"],
+  "permissions": ["ui.modify"],
   "styles": ["modal.css"],
   "scripts": ["gate.js"]
 }
@@ -34,9 +34,8 @@ The manifest declares both a stylesheet and a script:
 ## Permissions
 
 - **ui.modify** — the plugin paints UI inside the viewer chrome and runs JavaScript in the page's window context.
-- **http.serve** — the host serves both bundled assets (`modal.css`, `gate.js`) from the plugin's namespace.
 
-Both are required by the host before it will load a plugin that uses `manifest.styles` or `manifest.scripts`.
+`http.serve` is not required: each file's bytes are read from `assets/` and inlined into the existing customStyles / `/customjavascript` responses, not served at a URL.
 
 ## When to use this as a template
 

@@ -108,7 +108,7 @@ Drop an `INSTRUCTIONS.md` at the root of your project (alongside `plugin.manifes
 - `permissions` is the list of capabilities your plugin needs (see below)
 - `actions` (optional) declares action buttons that appear under the viewer's stream; requires `ui.modify`. See [Action buttons](#action-buttons).
 - `admin.pages` (optional) declares admin-only routes the host auth-gates. See [Admin pages](#admin-pages).
-- `styles`, `scripts`, `extraPageContent` (optional) inline plugin CSS, JavaScript, and HTML into the viewer page. All three require `ui.modify`; the first two also require `http.serve`. See [Viewer-page injection](#viewer-page-injection).
+- `styles`, `scripts`, `extraPageContent` (optional) inline plugin CSS, JavaScript, and HTML into the viewer page. All three require `ui.modify` (no `http.serve` needed; the host reads from `assets/` and inlines into existing responses). See [Viewer-page injection](#viewer-page-injection).
 - `tabs` (optional) adds tabs to the viewer page's tab row, each with its own HTML body. Requires `ui.modify`. See [Viewer-page tabs](#viewer-page-tabs).
 
 ## Writing handlers
@@ -478,17 +478,17 @@ A common pattern is an admin page that lets the streamer add a custom button (la
 
 Three manifest fields let a plugin contribute content directly to the viewer page: CSS, JavaScript, and a block of HTML. The host inlines plugin contributions into the same response slots Owncast already uses for the admin's custom CSS, custom JS, and extra page content, so a viewer loads one stylesheet, one script, and one extra-content block regardless of how many plugins contributed.
 
-| Manifest field     | Inlined into                          | Required permissions       | Extension |
-| ------------------ | ------------------------------------- | -------------------------- | --------- |
-| `styles`           | `/api/config` → `customStyles`        | `ui.modify`, `http.serve`  | `.css`    |
-| `scripts`          | `/customjavascript`                   | `ui.modify`, `http.serve`  | `.js`     |
-| `extraPageContent` | `/api/config` → `extraPageContent`    | `ui.modify`                | `.html`   |
+| Manifest field     | Inlined into                          | Required permission | Extension |
+| ------------------ | ------------------------------------- | ------------------- | --------- |
+| `styles`           | `/api/config` → `customStyles`        | `ui.modify`         | `.css`    |
+| `scripts`          | `/customjavascript`                   | `ui.modify`         | `.js`     |
+| `extraPageContent` | `/api/config` → `extraPageContent`    | `ui.modify`         | `.html`   |
 
 ### Stylesheets
 
 ```json
 {
-  "permissions": ["ui.modify", "http.serve"],
+  "permissions": ["ui.modify"],
   "styles": ["theme.css", "overrides.css"]
 }
 ```
@@ -507,7 +507,7 @@ Relative `url(...)` references inside the CSS resolve against the viewer page, n
 
 ```json
 {
-  "permissions": ["ui.modify", "http.serve"],
+  "permissions": ["ui.modify"],
   "scripts": ["client.js"]
 }
 ```

@@ -4,12 +4,12 @@ Example plugin that combines `manifest.styles` and `manifest.scripts`. On every 
 
 ```json
 {
-  "permissions": ["ui.modify", "http.serve"],
+  "permissions": ["ui.modify"],
   "styles": ["modal.css"],
   "scripts": ["gate.js"]
 }
 ```
 
-Requires `ui.modify` (the plugin paints UI inside the viewer chrome) and `http.serve` (the host serves both bundled assets from `/plugins/viewer-gate/`).
+Requires `ui.modify` (the plugin paints UI inside the viewer chrome). The host reads both bundled files from `assets/` and inlines them into the existing customStyles / `/customjavascript` responses; no `http.serve` needed.
 
 Useful as a template for plugins that need both CSS and JavaScript to ship together. Every selector in `modal.css` is scoped under `#viewer-gate-overlay`, and the `gate.js` mount routine creates its DOM under that same id so the plugin can't bleed into the host page.
