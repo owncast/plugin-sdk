@@ -23,6 +23,11 @@ One self-contained npm project per directory. Each has its own `README.md` with 
 | [action-buttons](./action-buttons/)               | `manifest.actions` + runtime `owncast.actions.add` (ui.modify), with an admin page that adds buttons.   |
 | [fediverse-chat-bridge](./fediverse-chat-bridge/) | Inbound fediverse mentions → HTML chat system messages with avatars.                                    |
 | [safeguard-stress](./safeguard-stress/)           | Test fixture, misbehaves on demand to verify host sandbox caps.                                         |
+| [styles-demo](./styles-demo/)                     | `manifest.styles[]`, CSS inlined into the viewer page's customStyles.                                   |
+| [scripts-demo](./scripts-demo/)                   | `manifest.scripts[]`, JS inlined into the viewer page's customJavascript.                               |
+| [page-content-demo](./page-content-demo/)         | `manifest.extraPageContent`, HTML prepended to the viewer's extra-content block.                        |
+| [viewer-gate](./viewer-gate/)                     | `manifest.styles` + `manifest.scripts` together: a confirmation modal on page load.                     |
+| [tabs-demo](./tabs-demo/)                         | `manifest.tabs[]`, two tabs added to the viewer page's tab row alongside Followers and About.           |
 
 ## Building and testing
 
