@@ -47,7 +47,7 @@ This plugin's manifest also declares `admin.pages` and asks for `http.serve` + `
 - `GET /admin/api/custom-button` returns the streamer's saved title + url from plugin config (or empty strings if none).
 - `POST /admin/api/custom-button` accepts `{ title, url }`, persists the value to plugin config, then publishes it to the host via `owncast.actions.clear()` followed by `owncast.actions.add({ title, url, ... })`.
 
-The admin form (`assets/admin/index.html`) is auto-themed by the host's plugin-iframe stylesheet, so plain `<input>` and `<button>` controls look like the surrounding Owncast admin without any plugin-side CSS.
+The admin form (`public/admin/index.html`) is auto-themed by the host's plugin-iframe stylesheet, so plain `<input>` and `<button>` controls look like the surrounding Owncast admin without any plugin-side CSS.
 
 ## Build and install
 

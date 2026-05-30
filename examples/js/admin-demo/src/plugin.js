@@ -2,8 +2,8 @@
 // are auth-gated by the host; the plugin doesn't have to check anything.
 //
 // Layout:
-//   GET  /             , public landing page (assets/index.html)
-//   GET  /admin/       , admin-only settings panel (assets/admin/index.html)
+//   GET  /             , public landing page (public/index.html)
+//   GET  /admin/       , admin-only settings panel (public/admin/index.html)
 //   GET  /admin/api/settings , admin-only JSON config read
 //   POST /admin/api/settings , admin-only JSON config write
 const { definePlugin, owncast } = require("@owncast/plugin-sdk");

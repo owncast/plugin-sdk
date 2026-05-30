@@ -6,7 +6,7 @@
 //     effective list. The viewer chrome picks up the new entries on the
 //     next /api/config response without a plugin reload.
 //
-//   - Custom API: the admin page (assets/admin/index.html) talks to
+//   - Custom API: the admin page (public/admin/index.html) talks to
 //     /admin/api/custom-button (a plugin-owned endpoint) which
 //     persists the streamer's input to the plugin's config and pushes
 //     it through to the host. Auth gating on /admin/* comes from the

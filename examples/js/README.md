@@ -14,7 +14,7 @@ One self-contained npm project per directory. Each has its own `README.md` with 
 | [relay](./relay/)                                 | Emits a custom `announcement.broadcast` event (plugin → plugin).                                        |
 | [announcer](./announcer/)                         | Subscribes to `announcement.broadcast` via the `on: { ... }` map.                                       |
 | [ip-bot](./ip-bot/)                               | Outbound HTTP via `owncast.http.fetch`; mocked in tests.                                                |
-| [overlay](./overlay/)                             | `http.serve`, static `assets/` + dynamic JSON endpoint.                                                 |
+| [overlay](./overlay/)                             | `http.serve`, static files from `public/` + dynamic JSON endpoint.                                      |
 | [stream-tracker](./stream-tracker/)               | Every typed lifecycle / chat-user handler + read APIs.                                                  |
 | [stream-ops](./stream-ops/)                       | Broadcast telemetry (`server.read`) + video config read/write (`videoconfig.read`/`videoconfig.write`). |
 | [manual-video-settings](./manual-video-settings/) | Admin form for the video config: latency, codec, and per-variant resolution / framerate / bitrate.      |

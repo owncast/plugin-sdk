@@ -65,17 +65,25 @@ my-plugin/
 ├── INSTRUCTIONS.md        # optional: rendered as a tab in the admin
 ├── src/
 │   └── plugin.js          # your code
-├── assets/                # optional: served at /plugins/<slug>/...
+├── public/                # optional: served at /plugins/<slug>/...
 │   └── index.html
+├── assets/                # optional: host-read for manifest fields that
+│   └── theme.css          # inline content (styles, scripts, extraPageContent);
+                           # never reachable through the plugin's URL space
 └── __tests__/
     └── plugin.test.js    # scenarios
 ```
+
+The two directories serve different purposes:
+
+- `public/` is the web-served root. Files under it are reachable at `/plugins/<your-slug>/<path>` while the plugin is enabled (and the manifest declares `http.serve`).
+- `assets/` is the internal-only root. Files under it are read by the host for manifest fields that inline content (`styles`, `scripts`, `extraPageContent`); they are not reachable through the plugin's URL space.
 
 ### Plugin icon
 
 Drop an `icon.png` at the root of your project (alongside `plugin.manifest.json`) and the packager will bundle it into the `.ocpkg`. The admin UI fetches it from `/api/plugins/<slug>/icon` and renders it in the plugin list and in the sidebar entry for any plugin that ships an admin page. No `http.serve` permission required: the host serves this path directly. There's no enforced size, but square images at 128×128 or so look clean at the rendered list (32×32) and sidebar (16×16) sizes. Plugins without an icon fall back to a generic puzzle-piece glyph.
 
-Per-button icons on action buttons are separate and live wherever you want in `assets/`; see the [Action buttons](#action-buttons) section.
+Per-button icons on action buttons are separate; bundle the image under `public/` so the host serves it at the icon URL, then reference it from the `icon` field of an `actions[]` entry. See the [Action buttons](#action-buttons) section.
 
 ### Instructions
 
@@ -260,7 +268,7 @@ Each method requires the matching permission in your manifest:
 | `owncast.notifications.browserPush({title, body, url?})`                        | `notifications.send` |
 | `owncast.notifications.fediverse({type, body, image?, link?})`                  | `notifications.send` |
 | `owncast.fediverse.post(text)`, public post to the fediverse                    | `fediverse.post`     |
-| `onHttpRequest` + static `assets/`                                              | `http.serve`         |
+| `onHttpRequest` + static files from `public/`                                   | `http.serve`         |
 | `owncast.sse.send(channel, event, data)`, push to browsers                      | `http.sse`           |
 
 Calling an API without its permission throws a clear error.
@@ -313,16 +321,16 @@ Entries are hostname globs, bare hostnames match exactly; `*` is a wildcard segm
 
 ## Serving HTTP
 
-Anything in your `assets/` directory is served at `/plugins/<your-name>/...`. Requests that don't match a file fall through to your `onHttpRequest` handler.
+Anything in your `public/` directory is served at `/plugins/<your-name>/...`. Requests that don't match a file fall through to your `onHttpRequest` handler. The separate `assets/` directory holds files the host reads internally for manifest-inlined content (`styles`, `scripts`, `extraPageContent`) and is never reachable through the plugin's URL space.
 
 ```
 my-plugin/
-└── assets/
+└── public/
     ├── index.html        → /plugins/my-plugin/index.html (and /plugins/my-plugin/)
     └── style.css         → /plugins/my-plugin/style.css
 ```
 
-A request to `/plugins/my-plugin/` serves `assets/index.html` automatically.
+A request to `/plugins/my-plugin/` serves `public/index.html` automatically.
 
 For dynamic endpoints (JSON APIs, webhooks, etc.) write an `onHttpRequest`. Path traversal is blocked, response headers are filtered through an allowlist (allowed: `Content-Type`, `Cache-Control`, `Set-Cookie`, `Location`, `ETag`, `Last-Modified`, `Vary`, `Link`, and CORS headers; blocked: host-owned things like `Server`, CSP, HSTS), and body sizes are capped at 1 MB request / 10 MB response. Cookies you set default to a `Path` scoped to your plugin's namespace.
 
@@ -356,7 +364,7 @@ Sends are fire-and-forget: the call returns immediately and never blocks, even i
 **Browser side**, connect with the standard `EventSource` API, no library needed:
 
 ```html
-<!-- assets/index.html, served at /plugins/my-plugin/ -->
+<!-- public/index.html, served at /plugins/my-plugin/ -->
 <script>
   const events = new EventSource("/plugins/my-plugin/_sse/overlay");
   events.addEventListener("chat", (e) => {
@@ -395,7 +403,7 @@ Plugins can register pages that appear in the Owncast admin UI for configuration
 
 Author flow:
 
-1. Put admin HTML/CSS/JS in `assets/admin/index.html` (and friends)
+1. Put admin HTML/CSS/JS in `public/admin/index.html` (and friends)
 2. Expose admin APIs via `onHttpRequest` at `/admin/api/...`
 3. Declare both globs (or just `"/admin/*"`) in `manifest.admin.pages[].path`
 4. Visit `/admin/plugins/configure?id=<your-slug>` in the admin UI (or `/plugins/<your-slug>/admin/` directly). Owncast uses your existing admin login to gate the page; no extra prompt.
@@ -436,9 +444,9 @@ Declare them in the manifest:
 - Absolute `https://...` URLs are accepted unchanged, use them for external links (set `openExternally: true` to open in a new tab).
 - If your URL resolves into your own `/plugins/<slug>/` namespace, you must also declare `http.serve` so the page actually serves. The host rejects the load with a clear error otherwise.
 - You can't point at another plugin's namespace (`/plugins/some-other-plugin/...`), the host rejects that at load to catch typos.
-- **Per-button icons** (`icon` field) follow the same rules as `url`. A relative path like `"/star.png"` auto-prefixes to `/plugins/my-plugin/star.png`, so ship the image under `assets/` and `http.serve` will route it. Absolute `https://cdn.example.com/...` URLs pass through unchanged (use these for external icons that don't need `http.serve`). Cross-plugin icon paths are rejected just like cross-plugin URLs.
+- **Per-button icons** (`icon` field) follow the same rules as `url`. A relative path like `"/star.png"` auto-prefixes to `/plugins/my-plugin/star.png`, so ship the image under `public/` and `http.serve` will route it. Absolute `https://cdn.example.com/...` URLs pass through unchanged (use these for external icons that don't need `http.serve`). Cross-plugin icon paths are rejected just like cross-plugin URLs.
 
-This pairs naturally with `http.serve`: ship a UI under `assets/` and declare an action button that opens it.
+This pairs naturally with `http.serve`: ship a UI under `public/` and declare an action button that opens it.
 
 ### Adding buttons at runtime
 
@@ -649,7 +657,7 @@ For repeatable assertions use `npm test` (scenario tests); the dev server is for
 
 ## Deployment
 
-A `.ocpkg` is the distribution format: a single file containing your `plugin.manifest.json`, the compiled plugin, your `assets/` directory if you have one, and the optional `icon.png` and `INSTRUCTIONS.md`. It's what a server admin installs into Owncast; they don't see your `package.json`, `node_modules`, or anything else.
+A `.ocpkg` is the distribution format: a single file containing your `plugin.manifest.json`, the compiled plugin, your `public/` and `assets/` directories if you have them, and the optional `icon.png` and `INSTRUCTIONS.md`. It's what a server admin installs into Owncast; they don't see your `package.json`, `node_modules`, or anything else.
 
 Bundle the `.ocpkg`:
 
@@ -791,7 +799,7 @@ module.exports = definePlugin({
 ```
 
 ```html
-<!-- assets/index.html -->
+<!-- public/index.html -->
 <!doctype html>
 <body>
   <div id="messages"></div>

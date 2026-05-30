@@ -3,7 +3,7 @@
 // itself doesn't have to check auth; the host rejects unauthenticated
 // requests before they reach onHttpRequest.
 //
-//   GET  /admin/             , admin form (assets/admin/index.html)
+//   GET  /admin/             , admin form (public/admin/index.html)
 //   GET  /admin/api/config   , current VideoConfig (videoconfig.read)
 //   POST /admin/api/config   , apply a VideoConfigUpdate (videoconfig.write)
 const { definePlugin, owncast } = require("@owncast/plugin-sdk");

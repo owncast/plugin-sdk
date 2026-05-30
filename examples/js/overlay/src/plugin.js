@@ -1,4 +1,4 @@
-// overlay plugin: ships a static HTML overlay (assets/index.html) and a
+// overlay plugin: ships a static HTML overlay (public/index.html) and a
 // dynamic JSON API at /api/messages that reads recent chat history from
 // Owncast. The page polls the API to render messages live.
 const { definePlugin, owncast } = require("@owncast/plugin-sdk");

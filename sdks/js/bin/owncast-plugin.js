@@ -238,21 +238,28 @@ module.exports = { register, on_event, on_filter, on_http_request };
     env,
   });
 
-  // If the project ships static assets in ./assets/, mirror them to the
-  // canonical deployment layout (<name>-assets/) so plugin.Server finds them
-  // without per-deployment renames. We use a symlink so edits to assets/
-  // show up live during dev (no rebuild needed for HTML/CSS changes).
-  const assetsSrc = path.join(cwd, "assets");
-  if (fs.existsSync(assetsSrc) && fs.statSync(assetsSrc).isDirectory()) {
-    const assetsDest = path.join(cwd, `${slug}-assets`);
+  // Mirror the project's ./public/ and ./assets/ to the canonical
+  // deployment layout (<name>-public/ and <name>-assets/) so the host
+  // finds them without per-deployment renames. Symlinks so edits show
+  // up live during dev (no rebuild needed for HTML/CSS changes).
+  // - public/ holds files served at /plugins/<slug>/<path>.
+  // - assets/ holds files the host reads internally for manifest
+  //   fields that inline content (styles, scripts, extraPageContent);
+  //   never reachable through the plugin's URL space.
+  for (const dir of ["public", "assets"]) {
+    const src = path.join(cwd, dir);
+    if (!fs.existsSync(src) || !fs.statSync(src).isDirectory()) {
+      continue;
+    }
+    const dest = path.join(cwd, `${slug}-${dir}`);
     let needsLink = true;
-    // Use lstatSync (not existsSync), existsSync follows symlinks and
+    // Use lstatSync (not existsSync); existsSync follows symlinks and
     // returns false for a dangling link, but the link's inode is still
     // there and would make symlinkSync below fail with EEXIST. lstatSync
     // sees the link itself regardless of whether its target resolves.
     let st;
     try {
-      st = fs.lstatSync(assetsDest);
+      st = fs.lstatSync(dest);
     } catch {
       // path doesn't exist at all, fall through to create it.
     }
@@ -262,17 +269,17 @@ module.exports = { register, on_event, on_filter, on_http_request };
         // realpathSync throws on dangling links; treat that as "doesn't
         // match, replace it" rather than letting it abort the build.
         try {
-          target = fs.realpathSync(assetsDest);
+          target = fs.realpathSync(dest);
         } catch {}
       }
-      if (target && target === fs.realpathSync(assetsSrc)) {
+      if (target && target === fs.realpathSync(src)) {
         needsLink = false;
       } else {
-        fs.rmSync(assetsDest, { recursive: true, force: true });
+        fs.rmSync(dest, { recursive: true, force: true });
       }
     }
     if (needsLink) {
-      fs.symlinkSync(path.resolve(assetsSrc), assetsDest, "dir");
+      fs.symlinkSync(path.resolve(src), dest, "dir");
     }
   }
 
@@ -280,8 +287,9 @@ module.exports = { register, on_event, on_filter, on_http_request };
 }
 
 // `owncast-plugin package`, bundle the project into a single .ocpkg file
-// (zip archive with plugin.manifest.json, plugin.wasm, and optional assets/).
-// Builds the wasm first if it doesn't exist.
+// (zip archive with plugin.manifest.json, plugin.wasm, and optional
+// public/ and assets/ directories). Builds the wasm first if it
+// doesn't exist.
 async function packageMain() {
   const cwd = process.cwd();
   const manifestPath = path.join(cwd, "plugin.manifest.json");
@@ -296,6 +304,7 @@ async function packageMain() {
     await buildMain();
   }
 
+  const publicDir = path.join(cwd, "public");
   const assetsDir = path.join(cwd, "assets");
   const zip = new JSZip();
   zip.file("plugin.manifest.json", fs.readFileSync(manifestPath));
@@ -319,6 +328,17 @@ async function packageMain() {
     zip.file("INSTRUCTIONS.md", fs.readFileSync(instructionsPath));
     fileCount++;
   }
+  // public/ → /plugins/<slug>/<path>, served by the host.
+  if (fs.existsSync(publicDir) && fs.statSync(publicDir).isDirectory()) {
+    for (const file of walkFiles(publicDir)) {
+      const rel = path.relative(publicDir, file).split(path.sep).join("/");
+      zip.file(`public/${rel}`, fs.readFileSync(file));
+      fileCount++;
+    }
+  }
+  // assets/ → host reads internally for manifest fields that inline
+  // file contents (styles, scripts, extraPageContent). Not served at
+  // a URL.
   if (fs.existsSync(assetsDir) && fs.statSync(assetsDir).isDirectory()) {
     for (const file of walkFiles(assetsDir)) {
       const rel = path.relative(assetsDir, file).split(path.sep).join("/");
@@ -358,8 +378,9 @@ async function packageMain() {
 
 function* walkFiles(dir) {
   for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
-    // Resolve symlinks so the assets/ → <name>-assets/ link the build CLI
-    // makes doesn't cause us to skip files. statSync follows.
+    // Resolve symlinks so the public/ → <name>-public/ and
+    // assets/ → <name>-assets/ links the build CLI makes don't
+    // cause us to skip files. statSync follows.
     const full = path.join(dir, entry.name);
     let info;
     try {
