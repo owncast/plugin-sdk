@@ -1,0 +1,9 @@
+{
+  "api": "1",
+  "name": "Example Page Content",
+  "slug": "page-content-demo",
+  "version": "0.1.0",
+  "description": "Ships an HTML file that the host inlines at the top of the viewer page's extra-content block. Demonstrates the manifest.extraPageContent capability with no dependency on a live stream or chat.",
+  "permissions": ["ui.modify"],
+  "extraPageContent": "content.html"
+}

@@ -76,6 +76,14 @@ type Manifest struct {
 	// viewer page, so the code runs in the chrome's window context.
 	// Requires the ui.modify and http.serve permissions.
 	Scripts []string `json:"scripts,omitempty"`
+	// ExtraPageContent is an HTML file the plugin contributes to the
+	// viewer page's extra-content block. Same path rules as styles
+	// and scripts, applied to a single .html entry. The host reads
+	// the file's bytes and prepends them to the admin's
+	// extraPageContent in the /api/config response. Requires
+	// ui.modify; http.serve is not required since the HTML is
+	// inlined, not served as a URL.
+	ExtraPageContent string `json:"extraPageContent,omitempty"`
 }
 
 // BotConfig is the chat-bot configuration for plugins that post to
@@ -348,6 +356,42 @@ func (m *Manifest) Validate() error {
 			}
 			m.Scripts[i] = path
 		}
+	}
+	// manifest.extraPageContent: one HTML file inlined into the
+	// admin's extraPageContent on /api/config. Same path-shape rules
+	// as styles/scripts but http.serve is not required (the file is
+	// not served as a URL).
+	if m.ExtraPageContent != "" {
+		if !hasUIModify {
+			return errors.New(
+				"manifest.extraPageContent is set but the manifest does " +
+					"not declare the \"ui.modify\" permission; plugins that " +
+					"inject HTML into the viewer page must opt in to " +
+					"ui.modify so it's visible to anyone reviewing the " +
+					"manifest that the plugin paints inside Owncast's chrome")
+		}
+		raw := m.ExtraPageContent
+		if strings.TrimSpace(raw) == "" {
+			return errors.New("manifest.extraPageContent is empty")
+		}
+		if strings.HasPrefix(raw, "http://") || strings.HasPrefix(raw, "https://") {
+			return fmt.Errorf("manifest.extraPageContent cannot be an absolute URL (%q); bundle the file under assets/ and reference it by path", raw)
+		}
+		path := raw
+		switch {
+		case strings.HasPrefix(path, "/plugins/"):
+		case strings.HasPrefix(path, "/"):
+			path = pluginPrefix + strings.TrimPrefix(path, "/")
+		default:
+			path = pluginPrefix + path
+		}
+		if !strings.HasPrefix(path, pluginPrefix) {
+			return fmt.Errorf("manifest.extraPageContent points at another plugin's namespace: %s", path)
+		}
+		if !strings.HasSuffix(strings.ToLower(path), ".html") {
+			return fmt.Errorf("manifest.extraPageContent must end in .html (got %q)", raw)
+		}
+		m.ExtraPageContent = path
 	}
 	return nil
 }

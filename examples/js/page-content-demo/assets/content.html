@@ -1,0 +1,36 @@
+<!-- page-content-demo: plugin-contributed HTML for the viewer page's
+     extra-content block. The integration test asserts on the id
+     below so the contribution is detectable in /api/config without
+     a headless browser. -->
+<aside
+  id="plugin-page-content-demo-banner"
+  style="
+    margin: 12px 0;
+    padding: 12px 16px;
+    background: #fef3c7;
+    color: #78350f;
+    border-left: 4px solid #f59e0b;
+    border-radius: 4px;
+    font:
+      14px/1.5 -apple-system,
+      BlinkMacSystemFont,
+      &quot;Segoe UI&quot;,
+      Roboto,
+      sans-serif;
+  "
+>
+  <strong>page-content-demo</strong>: HTML reached the viewer page's
+  extra-content block.
+</aside>
+
+<h2>This is a plugin</h2>
+<p>
+  This content is provided by the page-content-demo plugin. It is used to
+  demonstrate how to contribute content to the viewer page. You can customize
+  this page as needed for your plugin by editing the content in the plugin's
+  assets/content.html file.
+</p>
+
+<marquee behavior="scroll" direction="left" scrollamount="5">
+  This is a scrolling marquee added by the page-content-demo plugin.
+</marquee>

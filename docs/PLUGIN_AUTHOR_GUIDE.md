@@ -98,6 +98,9 @@ Drop an `INSTRUCTIONS.md` at the root of your project (alongside `plugin.manifes
 - `slug` is the canonical identifier: URL prefix (`/plugins/<slug>/`), plugin-config namespace, on-disk filename, registry primary key. Lowercase letters, digits, and hyphens; starts with a letter; max 64 chars. Optional, the SDK auto-derives one from `name` when you omit it.
 - `bot.displayName` (optional) overrides the chat-bot name when the plugin posts to chat. Defaults to `name`.
 - `permissions` is the list of capabilities your plugin needs (see below)
+- `actions` (optional) declares action buttons that appear under the viewer's stream; requires `ui.modify`. See [Action buttons](#action-buttons).
+- `admin.pages` (optional) declares admin-only routes the host auth-gates. See [Admin pages](#admin-pages).
+- `styles`, `scripts`, `extraPageContent` (optional) inline plugin CSS, JavaScript, and HTML into the viewer page. All three require `ui.modify`; the first two also require `http.serve`. See [Viewer-page injection](#viewer-page-injection).
 
 ## Writing handlers
 
@@ -289,7 +292,7 @@ If you need multiple chat personas, **ship multiple plugins.** One identity per 
 | `videoconfig.write`  | `owncast.videoConfig.write()`, change video config; high-trust. Changes apply on the next stream start (the host does not restart a live stream). |
 | `notifications.send` | `owncast.notifications.discord`, `.browserPush`                                                                                                   |
 | `fediverse.post`     | `owncast.fediverse.post(text)`, high-trust (posts under the streamer's handle); admin should grant sparingly.                                       |
-| `ui.modify`          | Place UI inside Owncast's own chrome. Required for any plugin that declares `manifest.actions`; the host rejects the load otherwise.              |
+| `ui.modify`          | Place UI inside Owncast's own chrome. Required for `manifest.actions`, `manifest.styles`, `manifest.scripts`, and `manifest.extraPageContent`.    |
 
 Declare only what you need. Admins reviewing your manifest before install make trust decisions based on declared permissions.
 
@@ -386,7 +389,7 @@ Plugins can register pages that appear in the Owncast admin UI for configuration
 ```
 
 - `path` is a glob (e.g. `"/admin"`, `"/admin/*"`). Requests under `/plugins/<your-slug>/<path>` that match any declared glob are **auth-gated by the host**, unauthenticated requests get `401` before your plugin code ever runs.
-- Owncast's admin renders each declared page as a tab inside `/admin/plugins/configure?slug=<your-slug>`, embedded as an iframe pointed at `/plugins/<your-slug>/<path>`. Each plugin gets its own bookmarkable URL plus a sidebar entry under **Plugins** in the admin nav.
+- Owncast's admin renders each declared page as a tab inside `/admin/plugins/configure?id=<your-slug>`, embedded as an iframe pointed at `/plugins/<your-slug>/<path>`. Each plugin gets its own bookmarkable URL plus a sidebar entry under **Plugins** in the admin nav.
 - Both static assets and dynamic endpoints under matched paths are auth-gated; you don't have to check `req.authenticated` yourself.
 - The host auto-injects an admin-themed stylesheet (`/styles/admin/plugin-iframe.css`) into HTML responses on admin paths so plain `<input>`/`<button>` controls match Owncast's look without you needing to ship CSS. Plugins that prefer their own styling can layer on top.
 
@@ -395,7 +398,7 @@ Author flow:
 1. Put admin HTML/CSS/JS in `assets/admin/index.html` (and friends)
 2. Expose admin APIs via `onHttpRequest` at `/admin/api/...`
 3. Declare both globs (or just `"/admin/*"`) in `manifest.admin.pages[].path`
-4. Visit `/admin/plugins/configure?slug=<your-slug>` in the admin UI (or `/plugins/<your-slug>/admin/` directly). Owncast uses your existing admin login to gate the page; no extra prompt.
+4. Visit `/admin/plugins/configure?id=<your-slug>` in the admin UI (or `/plugins/<your-slug>/admin/` directly). Owncast uses your existing admin login to gate the page; no extra prompt.
 
 ## Action buttons
 
@@ -461,6 +464,66 @@ owncast.actions.clear();
 The host validates each entry with the same rules as `manifest.actions` (title required, exactly one of `url` / `html`, relative URLs and icons auto-prefixed, cross-plugin URLs/icons rejected) and persists the result in the plugin's config so the additions survive a reload. The next viewer `/api/config` request returns `manifest.actions` ++ the runtime list. Requires `ui.modify`.
 
 A common pattern is an admin page that lets the streamer add a custom button (label + URL) on top of the plugin's defaults; the `action-buttons` example in the SDK ships a working version.
+
+## Viewer-page injection
+
+Three manifest fields let a plugin contribute content directly to the viewer page: CSS, JavaScript, and a block of HTML. The host inlines plugin contributions into the same response slots Owncast already uses for the admin's custom CSS, custom JS, and extra page content, so a viewer loads one stylesheet, one script, and one extra-content block regardless of how many plugins contributed.
+
+| Manifest field     | Inlined into                          | Required permissions       | Extension |
+| ------------------ | ------------------------------------- | -------------------------- | --------- |
+| `styles`           | `/api/config` → `customStyles`        | `ui.modify`, `http.serve`  | `.css`    |
+| `scripts`          | `/customjavascript`                   | `ui.modify`, `http.serve`  | `.js`     |
+| `extraPageContent` | `/api/config` → `extraPageContent`    | `ui.modify`                | `.html`   |
+
+### Stylesheets
+
+```json
+{
+  "permissions": ["ui.modify", "http.serve"],
+  "styles": ["theme.css", "overrides.css"]
+}
+```
+
+Bundle the CSS files under `assets/` and reference them by path. The host strips the plugin prefix, reads each file's bytes, and concatenates them in front of a `/* plugin: <slug> — <file> */` delimiter so a reader can attribute a rule back to whichever plugin shipped it. Disabling the plugin drops its contribution.
+
+Path rules match action-button URLs:
+
+* Bare `"theme.css"` and single-slash `"/theme.css"` resolve to `/plugins/<slug>/theme.css`.
+* Fully qualified `/plugins/<slug>/...` paths pass through.
+* Paths in another plugin's namespace, `http(s)://` URLs, or non-`.css` extensions are rejected at load.
+
+Relative `url(...)` references inside the CSS resolve against the viewer page, not against the plugin's namespace. Use an absolute path like `/plugins/<slug>/logo.png` when referencing bundled images or fonts.
+
+### Scripts
+
+```json
+{
+  "permissions": ["ui.modify", "http.serve"],
+  "scripts": ["client.js"]
+}
+```
+
+Same path and permission rules as `styles`, applied to `.js` files. The host prefixes each contribution with `// plugin: <slug> — <file>`.
+
+Two things to keep in mind about execution:
+
+* Every plugin's script runs in the viewer page's window, sharing the global scope with the admin's customJavascript and every other plugin. Wrap your script in an IIFE so top-level declarations don't collide.
+* Plugin scripts are concatenated into one `<script>` tag, so an uncaught error in one plugin's body can short-circuit later plugins. Defensive `try`/`catch` around branches that might throw is sensible if your plugin ships alongside others.
+
+### Extra page content
+
+```json
+{
+  "permissions": ["ui.modify"],
+  "extraPageContent": "content.html"
+}
+```
+
+One HTML file inlined at the top of the viewer's extra-content block, above whatever the admin has configured. Wrapped with `<!-- plugin: <slug> — <file> -->` for attribution. Path rules match `styles` and `scripts` but the entry has to end in `.html`. `http.serve` is not required because the HTML is folded into the `/api/config` response, not served as a URL.
+
+The admin's extra page content goes through the markdown processor; plugin HTML does not (the host renders the admin's markdown first, then prepends your raw bytes). Tags and attributes pass through as written, so escape any untrusted strings you embed.
+
+A combined plugin shipping all three fields is the common pattern when you need behavior and presentation together (the `viewer-gate` example in the SDK pairs a CSS file with a JavaScript file; `page-content-demo` ships a single HTML block).
 
 ## Plugin-to-plugin events
 

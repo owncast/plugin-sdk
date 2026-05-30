@@ -106,7 +106,7 @@ Host functions are wired in conditionally based on the manifest's declared permi
 ### `ui.modify`
 
 - Not a custom host function. Gates UI surfaces that place plugin-contributed elements inside Owncast's own chrome.
-- Required when the manifest declares `actions[]`, and required at runtime by `owncast_add_actions` / `owncast_clear_actions`. Manifests that declare `actions[]` without `ui.modify` are rejected at load; runtime calls return a permission error.
+- Required when the manifest declares `actions[]`, `styles[]`, `scripts[]`, or `extraPageContent`, and required at runtime by `owncast_add_actions` / `owncast_clear_actions`. Manifests that declare any of those fields without `ui.modify` are rejected at load; runtime calls return a permission error.
 - `owncast_add_actions(jsonPtr: PTR): u64`, append one or more `ActionButton` entries on top of `manifest.actions`. Argument is a JSON array; the host validates each entry with the same rules as the manifest (title required, exactly one of `url` / `html`, relative URLs and icons auto-prefixed to the plugin's namespace, cross-plugin paths rejected) and persists the merged set to the plugin's config. Returns the host call envelope (success indicator + optional error string).
 - `owncast_clear_actions(jsonPtr: PTR): u64`, drop every runtime addition. `manifest.actions` are untouched. Argument is an empty JSON object (`"{}"`) for API symmetry; returns the host call envelope.
 
@@ -182,6 +182,41 @@ Glob-matched routes inside `/plugins/<name>/...` that the host auth-gates before
 ### `manifest.network.allowedHosts[]`
 
 Hostname globs the plugin is allowed to reach via `owncast.http.fetch`. Passed straight through to Extism's `AllowedHosts`. Required when `network.fetch` is granted; the wildcard `"*"` is permitted but must be written explicitly so the manifest reflects the granted scope.
+
+The host surfaces this list on `GET /api/admin/plugins` (as `allowedHosts: []string` on each `DiscoveredEntry`) and the admin UI renders it alongside the `network.fetch` row in the Permissions tab, so an admin reviewing a plugin sees exactly which hosts it can reach without unpacking the `.ocpkg`.
+
+### `manifest.styles[]`
+
+An array of relative paths to CSS files the plugin contributes to the viewer page. The host reads each file's bytes from the plugin and appends them to the admin's customStyles in the `/api/config` response, so a viewer renders one `<style>` block covering admin and plugin contributions. The plugin's own URL space at `/plugins/<name>/<path>.css` continues to serve the bytes, but the page no longer references those URLs.
+
+Per-entry validation:
+
+- `ui.modify` and `http.serve` permissions required (the latter because the host reads the file from the plugin's namespace).
+- Bare or single-slash paths (`"theme.css"`, `"/theme.css"`) auto-prefix to `/plugins/<name>/theme.css`.
+- Fully qualified `/plugins/<name>/...` paths pass through.
+- Paths in another plugin's namespace are rejected at load.
+- `http://` and `https://` URLs are rejected at load.
+- Each entry must end in `.css`.
+
+Each plugin contribution in the concatenated response is preceded by a `/* plugin: <slug> — <file> */\n` comment so devtools "view source" can attribute a rule back to whichever plugin shipped it. Disabling the plugin drops its contribution on the next `/api/config` request.
+
+### `manifest.scripts[]`
+
+An array of relative paths to JavaScript files the plugin contributes to the viewer page. The host reads each file's bytes and appends them to the response served at `/customjavascript`, so a viewer loads one `<script>` tag covering admin and plugin contributions.
+
+Same per-entry rules as `manifest.styles[]`, applied to `.js` files. Contributions are separated by `// plugin: <slug> — <file>\n` delimiter comments. Every plugin's JavaScript runs in the viewer page's shared global scope; authors are expected to wrap their script in an IIFE so top-level declarations don't collide.
+
+### `manifest.extraPageContent`
+
+A single relative path to an HTML file the plugin contributes to the viewer's extra-content block. The host reads the file's bytes and prepends them to the admin's rendered `extraPageContent` on `/api/config`, so plugin HTML lands above the admin's prose.
+
+Per-entry validation:
+
+- `ui.modify` permission required.
+- `http.serve` is **not** required: the HTML is inlined into the API response, not served at a URL.
+- Same path-shape rules as `manifest.styles[]`, applied to a single `.html` entry.
+
+Each contribution is wrapped with an `<!-- plugin: <slug> — <file> -->\n` comment for in-page attribution. The admin's content goes through the markdown processor before plugin HTML is prepended; plugin HTML is left raw so tags and attributes pass through as written.
 
 ## Payload types
 
