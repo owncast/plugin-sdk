@@ -2,7 +2,7 @@
   "api": "1",
   "name": "Example Echo Bot",
   "slug": "echo-bot",
-  "version": "0.1.0",
+  "version": "0.2.1",
   "description": "Echoes chat messages back with a prefix",
   "permissions": [
     "chat.send"

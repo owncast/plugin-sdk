@@ -2,7 +2,7 @@
   "api": "1",
   "name": "Example Stream Tracker",
   "slug": "stream-tracker",
-  "version": "0.1.0",
+  "version": "0.2.1",
   "description": "Tracks stream lifecycle + chat user activity; responds to !uptime and !who",
   "permissions": [
     "chat.send",

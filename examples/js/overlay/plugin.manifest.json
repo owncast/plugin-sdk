@@ -2,7 +2,7 @@
   "api": "1",
   "name": "Example Chat Overlay",
   "slug": "overlay",
-  "version": "0.1.0",
+  "version": "0.2.1",
   "description": "Ships a static HTML overlay page and a JSON API at /plugins/overlay/api/messages backed by owncast.chat.history()",
   "permissions": [
     "http.serve",

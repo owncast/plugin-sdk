@@ -2,7 +2,7 @@
   "api": "1",
   "name": "Example Announcement Relay",
   "slug": "relay",
-  "version": "0.1.0",
+  "version": "0.2.1",
   "description": "Listens for /announce <text>, re-emits as announcement.broadcast",
   "permissions": [
     "events.emit"

@@ -2,7 +2,7 @@
   "api": "1",
   "name": "Example Safeguard Stress (demo)",
   "slug": "safeguard-stress",
-  "version": "0.1.0",
+  "version": "0.2.1",
   "description": "Misbehaves on demand, exists only to exercise host sandbox safeguards",
   "permissions": [
     "http.serve",

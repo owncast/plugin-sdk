@@ -2,7 +2,7 @@
   "api": "1",
   "name": "Example Buggy Filter (demo)",
   "slug": "buggy-filter",
-  "version": "0.1.0",
+  "version": "0.2.1",
   "description": "Always throws, exercises fail-open behavior",
   "permissions": [
     "chat.filter"

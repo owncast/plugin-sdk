@@ -2,7 +2,7 @@
   "api": "1",
   "name": "Hello World",
   "slug": "hello-world",
-  "version": "0.1.0",
+  "version": "0.2.1",
   "description": "Minimal plugin proving the load path works",
   "permissions": []
 }

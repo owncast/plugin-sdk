@@ -2,7 +2,7 @@
   "api": "1",
   "name": "Example Chat Logger",
   "slug": "chat-logger",
-  "version": "0.1.0",
+  "version": "0.2.1",
   "description": "Logs every chat message via console.log (host stderr)",
   "permissions": []
 }
