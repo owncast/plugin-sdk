@@ -109,6 +109,7 @@ Drop an `INSTRUCTIONS.md` at the root of your project (alongside `plugin.manifes
 - `actions` (optional) declares action buttons that appear under the viewer's stream; requires `ui.modify`. See [Action buttons](#action-buttons).
 - `admin.pages` (optional) declares admin-only routes the host auth-gates. See [Admin pages](#admin-pages).
 - `styles`, `scripts`, `extraPageContent` (optional) inline plugin CSS, JavaScript, and HTML into the viewer page. All three require `ui.modify`; the first two also require `http.serve`. See [Viewer-page injection](#viewer-page-injection).
+- `tabs` (optional) adds tabs to the viewer page's tab row, each with its own HTML body. Requires `ui.modify`. See [Viewer-page tabs](#viewer-page-tabs).
 
 ## Writing handlers
 
@@ -532,6 +533,32 @@ One HTML file inlined at the top of the viewer's extra-content block, above what
 The admin's extra page content goes through the markdown processor; plugin HTML does not (the host renders the admin's markdown first, then prepends your raw bytes). Tags and attributes pass through as written, so escape any untrusted strings you embed.
 
 A combined plugin shipping all three fields is the common pattern when you need behavior and presentation together (the `viewer-gate` example in the SDK pairs a CSS file with a JavaScript file; `page-content-demo` ships a single HTML block).
+
+## Viewer-page tabs
+
+Plugins can add tabs to the viewer page's tab row (alongside the built-in **About** and **Followers** tabs) with `manifest.tabs[]`. Each entry has a `title` and a `content` path to an HTML file under `assets/`:
+
+```json
+{
+  "permissions": ["ui.modify"],
+  "tabs": [
+    { "title": "Music", "content": "music.html" },
+    { "title": "Schedule", "content": "schedule.html" }
+  ]
+}
+```
+
+Requires `ui.modify`. `http.serve` is **not** required: each tab's HTML is read from `assets/` and inlined into the `pluginTabs[]` array on `/api/config`. The viewer page renders one AntD tab per entry with the title as the label and the inlined HTML as the body.
+
+Per-entry rules (`content`):
+
+- Bare paths auto-prefix to the plugin's namespace (`"music.html"` → `/plugins/<slug>/music.html`).
+- Fully qualified `/plugins/<slug>/...` paths pass through.
+- Paths in another plugin's namespace, `http(s)://` URLs, or non-`.html` extensions are rejected at load.
+
+Tab keys are derived from the plugin's slug so a tab only unmounts when the plugin is disabled/removed, not on every render. Plugin tabs appear after the built-ins in the declaration order. Keep titles short — anything past ~16 characters won't render cleanly on mobile.
+
+The `tabs-demo` example in the SDK ships two minimal tabs (Music, Schedule) and is the recommended starting point.
 
 ## Plugin-to-plugin events
 

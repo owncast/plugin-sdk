@@ -1,0 +1,12 @@
+{
+  "api": "1",
+  "name": "Example Tabs Demo",
+  "slug": "tabs-demo",
+  "version": "0.1.0",
+  "description": "Adds two tabs to the viewer page (alongside Followers and About). Demonstrates the manifest.tabs capability with no dependency on a live stream or chat.",
+  "permissions": ["ui.modify"],
+  "tabs": [
+    { "title": "Music", "content": "music.html" },
+    { "title": "Schedule", "content": "schedule.html" }
+  ]
+}

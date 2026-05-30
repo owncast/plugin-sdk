@@ -106,7 +106,7 @@ Host functions are wired in conditionally based on the manifest's declared permi
 ### `ui.modify`
 
 - Not a custom host function. Gates UI surfaces that place plugin-contributed elements inside Owncast's own chrome.
-- Required when the manifest declares `actions[]`, `styles[]`, `scripts[]`, or `extraPageContent`, and required at runtime by `owncast_add_actions` / `owncast_clear_actions`. Manifests that declare any of those fields without `ui.modify` are rejected at load; runtime calls return a permission error.
+- Required when the manifest declares `actions[]`, `styles[]`, `scripts[]`, `extraPageContent`, or `tabs[]`, and required at runtime by `owncast_add_actions` / `owncast_clear_actions`. Manifests that declare any of those fields without `ui.modify` are rejected at load; runtime calls return a permission error.
 - `owncast_add_actions(jsonPtr: PTR): u64`, append one or more `ActionButton` entries on top of `manifest.actions`. Argument is a JSON array; the host validates each entry with the same rules as the manifest (title required, exactly one of `url` / `html`, relative URLs and icons auto-prefixed to the plugin's namespace, cross-plugin paths rejected) and persists the merged set to the plugin's config. Returns the host call envelope (success indicator + optional error string).
 - `owncast_clear_actions(jsonPtr: PTR): u64`, drop every runtime addition. `manifest.actions` are untouched. Argument is an empty JSON object (`"{}"`) for API symmetry; returns the host call envelope.
 
@@ -217,6 +217,26 @@ Per-entry validation:
 - Same path-shape rules as `manifest.styles[]`, applied to a single `.html` entry.
 
 Each contribution is wrapped with an `<!-- plugin: <slug> — <file> -->\n` comment for in-page attribution. The admin's content goes through the markdown processor before plugin HTML is prepended; plugin HTML is left raw so tags and attributes pass through as written.
+
+### `manifest.tabs[]`
+
+An array of viewer-page tabs the plugin contributes alongside the built-in tabs (Followers, About). Each entry's `content` is a relative path to an HTML file the host reads from the plugin's assets/ directory at request time.
+
+```json
+{
+  "title": "string (required)",
+  "content": "string (required, relative path to assets/<file>.html)"
+}
+```
+
+Per-entry validation:
+
+- `ui.modify` permission required.
+- `http.serve` is **not** required: each tab's HTML is inlined into the response, not served at a URL.
+- Title must be non-empty.
+- `content` path follows the same rules as `manifest.extraPageContent` (auto-prefix to the plugin's namespace, cross-plugin paths and `http(s)://` URLs rejected, must end in `.html`).
+
+The host emits the tab list on `GET /api/config` under `pluginTabs[]` as `[{slug, title, html}]` entries. The viewer page maps each entry to a tab whose body renders the inlined HTML. Slug doubles as the React key so a tab only unmounts when the source plugin is disabled/removed.
 
 ## Payload types
 

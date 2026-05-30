@@ -84,6 +84,19 @@ type Manifest struct {
 	// ui.modify; http.serve is not required since the HTML is
 	// inlined, not served as a URL.
 	ExtraPageContent string `json:"extraPageContent,omitempty"`
+	// Tabs is the list of viewer-page tabs the plugin contributes
+	// alongside the built-in tabs (Followers, About). Each entry's
+	// content path follows the same rules as ExtraPageContent
+	// (.html under assets/, plugin namespace).
+	Tabs []Tab `json:"tabs,omitempty"`
+}
+
+// Tab declares one viewer-page tab. Title is the tab label; Content
+// is the relative path to the HTML file under assets/ whose bytes the
+// host inlines into the tab body.
+type Tab struct {
+	Title   string `json:"title"`
+	Content string `json:"content"`
 }
 
 // BotConfig is the chat-bot configuration for plugins that post to
@@ -392,6 +405,51 @@ func (m *Manifest) Validate() error {
 			return fmt.Errorf("manifest.extraPageContent must end in .html (got %q)", raw)
 		}
 		m.ExtraPageContent = path
+	}
+	// manifest.tabs: viewer-page tabs the plugin contributes. Each
+	// entry's content path follows the same rules as
+	// extraPageContent; only ui.modify is required.
+	if len(m.Tabs) > 0 {
+		if !hasUIModify {
+			return errors.New(
+				"manifest.tabs is set but the manifest does not declare " +
+					"the \"ui.modify\" permission; plugins that add tabs " +
+					"to the viewer page must opt in to ui.modify so it's " +
+					"visible to anyone reviewing the manifest that the " +
+					"plugin paints inside Owncast's chrome")
+		}
+		seenTitles := make(map[string]bool, len(m.Tabs))
+		for i := range m.Tabs {
+			if strings.TrimSpace(m.Tabs[i].Title) == "" {
+				return fmt.Errorf("manifest.tabs[%d].title is required", i)
+			}
+			if seenTitles[m.Tabs[i].Title] {
+				return fmt.Errorf("manifest.tabs[%d].title %q is a duplicate; tab titles must be unique within a plugin", i, m.Tabs[i].Title)
+			}
+			seenTitles[m.Tabs[i].Title] = true
+			raw := m.Tabs[i].Content
+			if strings.TrimSpace(raw) == "" {
+				return fmt.Errorf("manifest.tabs[%d].content is empty", i)
+			}
+			if strings.HasPrefix(raw, "http://") || strings.HasPrefix(raw, "https://") {
+				return fmt.Errorf("manifest.tabs[%d].content cannot be an absolute URL (%q); bundle the file under assets/ and reference it by path", i, raw)
+			}
+			path := raw
+			switch {
+			case strings.HasPrefix(path, "/plugins/"):
+			case strings.HasPrefix(path, "/"):
+				path = pluginPrefix + strings.TrimPrefix(path, "/")
+			default:
+				path = pluginPrefix + path
+			}
+			if !strings.HasPrefix(path, pluginPrefix) {
+				return fmt.Errorf("manifest.tabs[%d].content points at another plugin's namespace: %s", i, path)
+			}
+			if !strings.HasSuffix(strings.ToLower(path), ".html") {
+				return fmt.Errorf("manifest.tabs[%d].content must end in .html (got %q)", i, raw)
+			}
+			m.Tabs[i].Content = path
+		}
 	}
 	return nil
 }
