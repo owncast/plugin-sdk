@@ -17,6 +17,7 @@ One self-contained npm project per directory. Each has its own `README.md` with 
 | [overlay](./overlay/)                             | `http.serve`, static `assets/` + dynamic JSON endpoint.                                                 |
 | [stream-tracker](./stream-tracker/)               | Every typed lifecycle / chat-user handler + read APIs.                                                  |
 | [stream-ops](./stream-ops/)                       | Broadcast telemetry (`server.read`) + video config read/write (`videoconfig.read`/`videoconfig.write`). |
+| [manual-video-settings](./manual-video-settings/) | Admin form for the video config: latency, codec, and per-variant resolution / framerate / bitrate.      |
 | [engagement-bot](./engagement-bot/)               | Discord + browser-push + fediverse notifier on stream / fediverse events; small inline spam filter.     |
 | [admin-demo](./admin-demo/)                       | `manifest.admin.pages`, host-gated admin routes.                                                        |
 | [action-buttons](./action-buttons/)               | `manifest.actions` + runtime `owncast.actions.add` (ui.modify), with an admin page that adds buttons.   |
