@@ -310,6 +310,15 @@ async function packageMain() {
     zip.file("icon.png", fs.readFileSync(iconPath));
     fileCount++;
   }
+  // Bundle a top-level INSTRUCTIONS.md if the plugin source root has one.
+  // The host serves it to the admin (which renders it as markdown in a
+  // details tab); like icon.png it needs no manifest field and no
+  // http.serve permission. The filename is fixed for simplicity.
+  const instructionsPath = path.join(cwd, "INSTRUCTIONS.md");
+  if (fs.existsSync(instructionsPath) && fs.statSync(instructionsPath).isFile()) {
+    zip.file("INSTRUCTIONS.md", fs.readFileSync(instructionsPath));
+    fileCount++;
+  }
   if (fs.existsSync(assetsDir) && fs.statSync(assetsDir).isDirectory()) {
     for (const file of walkFiles(assetsDir)) {
       const rel = path.relative(assetsDir, file).split(path.sep).join("/");

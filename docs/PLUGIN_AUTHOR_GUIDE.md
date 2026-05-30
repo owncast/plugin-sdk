@@ -62,6 +62,7 @@ my-plugin/
 ├── package.json
 ├── plugin.manifest.json   # name, version, permissions, bots
 ├── icon.png               # optional: shown in the admin plugin list
+├── INSTRUCTIONS.md        # optional: rendered as a tab in the admin
 ├── src/
 │   └── plugin.js          # your code
 ├── assets/                # optional: served at /plugins/<slug>/...
@@ -75,6 +76,10 @@ my-plugin/
 Drop an `icon.png` at the root of your project (alongside `plugin.manifest.json`) and the packager will bundle it into the `.ocpkg`. The admin UI fetches it from `/api/plugins/<slug>/icon` and renders it in the plugin list and in the sidebar entry for any plugin that ships an admin page. No `http.serve` permission required: the host serves this path directly. There's no enforced size, but square images at 128×128 or so look clean at the rendered list (32×32) and sidebar (16×16) sizes. Plugins without an icon fall back to a generic puzzle-piece glyph.
 
 Per-button icons on action buttons are separate and live wherever you want in `assets/`; see the [Action buttons](#action-buttons) section.
+
+### Instructions
+
+Drop an `INSTRUCTIONS.md` at the root of your project (alongside `plugin.manifest.json`) and the packager bundles it into the `.ocpkg`. The admin UI renders it as markdown in an **Instructions** tab on the plugin's details page — every plugin gets a details page, so this is the place for setup steps, configuration notes, or an explanation of why each permission is requested. The filename is fixed (`INSTRUCTIONS.md`) and the file is optional; no `http.serve` permission is required, since the host serves the content to the admin directly. Plugins without one simply show no Instructions tab.
 
 ## The manifest
 
@@ -581,7 +586,7 @@ For repeatable assertions use `npm test` (scenario tests); the dev server is for
 
 ## Deployment
 
-A `.ocpkg` is the distribution format: a single file containing your `plugin.manifest.json`, the compiled plugin, and your `assets/` directory if you have one. It's what a server admin installs into Owncast; they don't see your `package.json`, `node_modules`, or anything else.
+A `.ocpkg` is the distribution format: a single file containing your `plugin.manifest.json`, the compiled plugin, your `assets/` directory if you have one, and the optional `icon.png` and `INSTRUCTIONS.md`. It's what a server admin installs into Owncast; they don't see your `package.json`, `node_modules`, or anything else.
 
 Bundle the `.ocpkg`:
 

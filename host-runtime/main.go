@@ -311,11 +311,8 @@ func registerAdminRoutes(mux *http.ServeMux, mgr *plugin.Manager, ctx context.Co
 	})
 
 	// POST /api/admin/plugins/<name>/{enable,disable,reload}
+	// GET  /api/admin/plugins/<name>/instructions
 	mux.HandleFunc("/api/admin/plugins/", requireAdmin(func(w http.ResponseWriter, r *http.Request) {
-		if r.Method != http.MethodPost {
-			http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
-			return
-		}
 		rest := r.URL.Path[len("/api/admin/plugins/"):]
 		slash := -1
 		for i := 0; i < len(rest); i++ {
@@ -329,6 +326,29 @@ func registerAdminRoutes(mux *http.ServeMux, mgr *plugin.Manager, ctx context.Co
 			return
 		}
 		name, action := rest[:slash], rest[slash+1:]
+
+		// GET <name>/instructions serves the bundled INSTRUCTIONS.md as raw
+		// markdown; the admin UI renders it in a details tab.
+		if action == "instructions" {
+			if r.Method != http.MethodGet {
+				http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+				return
+			}
+			data, err := mgr.InstructionsBytes(name)
+			if err != nil {
+				http.NotFound(w, r)
+				return
+			}
+			w.Header().Set("Content-Type", "text/markdown; charset=utf-8")
+			w.Header().Set("Cache-Control", "no-cache")
+			_, _ = w.Write(data)
+			return
+		}
+
+		if r.Method != http.MethodPost {
+			http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+			return
+		}
 		var err error
 		switch action {
 		case "enable":

@@ -7,6 +7,8 @@ import (
 	"path/filepath"
 	"testing"
 	"time"
+
+	"github.com/gobwas/glob"
 )
 
 // makePluginFiles drops a sidecar wasm + manifest pair into dir. The manifest
@@ -183,5 +185,45 @@ func TestManager_EnableUnknownPluginErrors(t *testing.T) {
 	err := mgr.Enable(context.Background(), "does-not-exist")
 	if err == nil {
 		t.Error("expected error enabling unknown plugin")
+	}
+}
+
+func TestLoaded_IsAdminPath(t *testing.T) {
+	compile := func(paths ...string) *Loaded {
+		t.Helper()
+		l := &Loaded{}
+		for _, p := range paths {
+			g, err := glob.Compile(p)
+			if err != nil {
+				t.Fatalf("compile %q: %v", p, err)
+			}
+			l.adminGlobs = append(l.adminGlobs, g)
+			l.adminPaths = append(l.adminPaths, p)
+		}
+		return l
+	}
+
+	cases := []struct {
+		name       string
+		pagePaths  []string
+		path       string
+		wantGated  bool
+	}{
+		{"literal page gates itself", []string{"/admin"}, "/admin", true},
+		{"literal page gates trailing-slash variant", []string{"/admin"}, "/admin/", true},
+		{"literal page gates descendant", []string{"/admin"}, "/admin/api/settings", true},
+		{"literal page does not gate sibling prefix", []string{"/admin"}, "/administration", false},
+		{"literal page does not gate unrelated path", []string{"/admin"}, "/public/index.html", false},
+		{"glob page matches via wildcard", []string{"/admin/*"}, "/admin/foo", true},
+		{"multiple pages: descendant of either gated", []string{"/admin", "/manage"}, "/manage/users", true},
+		{"empty page list never gates", nil, "/admin", false},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			l := compile(tc.pagePaths...)
+			if got := l.IsAdminPath(tc.path); got != tc.wantGated {
+				t.Errorf("IsAdminPath(%q) with pages %v = %v, want %v", tc.path, tc.pagePaths, got, tc.wantGated)
+			}
+		})
 	}
 }

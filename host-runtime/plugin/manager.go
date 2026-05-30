@@ -1,6 +1,7 @@
 package plugin
 
 import (
+	"archive/zip"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -36,6 +37,7 @@ type Loaded struct {
 	WasmPath    string
 	AssetsFS    fs.FS
 	adminGlobs  []glob.Glob // compiled from manifest.admin.pages[].path
+	adminPaths  []string    // original path strings, used for "page gates descendants" prefix-matching
 	plugin      *extism.Plugin
 	mu          sync.Mutex
 	failureMu   sync.Mutex
@@ -126,11 +128,21 @@ func (l *Loaded) recordFilterSuccess() {
 }
 
 // IsAdminPath reports whether the request path (relative to the plugin's
-// namespace, e.g. "/admin/foo") matches any of the declared admin page
-// globs. Used by Server to require authentication on admin-only routes.
+// namespace, e.g. "/admin/foo") is gated by one of the declared admin
+// pages. A declared page path gates itself, anything under it as a path
+// prefix (so "/admin" gates "/admin/api/x"), and anything its glob
+// matches (so "/admin/*" still works as it did when authors wrote an
+// explicit wildcard). Used by Server to require authentication on
+// admin-only routes.
 func (l *Loaded) IsAdminPath(path string) bool {
-	for _, g := range l.adminGlobs {
+	for i, g := range l.adminGlobs {
 		if g.Match(path) {
+			return true
+		}
+		// Page paths gate their descendants too, so a declaration of
+		// "/admin" automatically covers "/admin/api/settings" without
+		// the author having to spell out a glob.
+		if lit := l.adminPaths[i]; lit != "" && strings.HasPrefix(path, lit+"/") {
 			return true
 		}
 	}
@@ -199,6 +211,12 @@ type DiscoveredEntry struct {
 	Path           string   `json:"path"`
 	Enabled        bool     `json:"enabled"`
 	Loaded         bool     `json:"loaded"`
+	// HasInstructions reports whether the plugin ships an INSTRUCTIONS.md
+	// alongside its manifest (top-level in the .ocpkg, or
+	// <base>.INSTRUCTIONS.md next to a loose .wasm). The admin UI fetches
+	// the markdown from /api/admin/plugins/<slug>/instructions and renders
+	// it in a details tab when this is true; no permission required.
+	HasInstructions bool `json:"hasInstructions,omitempty"`
 	// PendingPermissions lists permissions the current manifest declares
 	// that the admin has not yet approved. Non-empty means the plugin
 	// was updated on disk to request more access than was originally
@@ -461,6 +479,11 @@ func (m *Manager) scan(ctx context.Context) error {
 		}
 		seen[manifest.Slug] = true
 
+		// Cheap presence check outside the lock (one zip central-directory
+		// read for .ocpkg, a stat for loose files). Done at scan time so it
+		// reflects on discovered-but-unloaded plugins too.
+		hasInstructions := hasPluginInstructions(path)
+
 		m.mu.Lock()
 		if existing, ok := m.discovered[manifest.Slug]; ok {
 			// Already discovered; refresh manifest metadata in case it changed.
@@ -470,6 +493,7 @@ func (m *Manager) scan(ctx context.Context) error {
 			existing.Description = manifest.Description
 			existing.Permissions = manifest.Permissions
 			existing.Path = path
+			existing.HasInstructions = hasInstructions
 			existing.PendingPermissions = pendingPermissions(manifest.Permissions, m.approvedSet[manifest.Slug])
 		} else {
 			m.discovered[manifest.Slug] = &DiscoveredEntry{
@@ -480,6 +504,7 @@ func (m *Manager) scan(ctx context.Context) error {
 				Description:        manifest.Description,
 				Permissions:        manifest.Permissions,
 				Path:               path,
+				HasInstructions:    hasInstructions,
 				DiscoveredAt:       time.Now(),
 				PendingPermissions: pendingPermissions(manifest.Permissions, m.approvedSet[manifest.Slug]),
 			}
@@ -673,6 +698,85 @@ func (m *Manager) EnabledFilePath() string {
 	return m.enabledFile
 }
 
+// PluginInstructionsFilename is the conventional filename a plugin uses to
+// ship author-written usage instructions. For .ocpkg plugins it lives at
+// the root of the zip; for loose .wasm files it sits next to the wasm as
+// "<base>.INSTRUCTIONS.md" so multiple plugins in one directory don't
+// collide. The content is markdown, rendered by the admin UI.
+const PluginInstructionsFilename = "INSTRUCTIONS.md"
+
+// hasPluginInstructions reports whether the plugin at path bundles an
+// INSTRUCTIONS.md. Called per-scan, so it has to be cheap — a single zip
+// central-directory read for packaged plugins, or a stat for loose files.
+func hasPluginInstructions(path string) bool {
+	switch {
+	case strings.HasSuffix(path, packageSuffix):
+		zr, err := zip.OpenReader(path)
+		if err != nil {
+			return false
+		}
+		defer zr.Close()
+		for _, f := range zr.File {
+			if f.Name == PluginInstructionsFilename {
+				return true
+			}
+		}
+		return false
+	case strings.HasSuffix(path, ".wasm"):
+		instructionsPath := strings.TrimSuffix(path, ".wasm") + "." + PluginInstructionsFilename
+		_, err := os.Stat(instructionsPath)
+		return err == nil
+	}
+	return false
+}
+
+// InstructionsBytes returns the raw markdown of the plugin's
+// INSTRUCTIONS.md, or an error if the plugin isn't discovered or doesn't
+// ship one. Callers should serve the bytes with content-type text/markdown.
+//
+// Read on-demand from disk on each call: instructions are small, requests
+// are rare (admin UI only), and reading fresh means an admin who swaps the
+// file between two scans gets the new content without a host restart.
+func (m *Manager) InstructionsBytes(name string) ([]byte, error) {
+	m.mu.RLock()
+	entry, ok := m.discovered[name]
+	if !ok {
+		m.mu.RUnlock()
+		return nil, fmt.Errorf("plugin %q not discovered", name)
+	}
+	path := entry.Path
+	has := entry.HasInstructions
+	m.mu.RUnlock()
+	if !has {
+		return nil, fmt.Errorf("plugin %q has no instructions", name)
+	}
+
+	switch {
+	case strings.HasSuffix(path, packageSuffix):
+		zr, err := zip.OpenReader(path)
+		if err != nil {
+			return nil, fmt.Errorf("open package %s: %w", path, err)
+		}
+		defer zr.Close()
+		for _, f := range zr.File {
+			if f.Name != PluginInstructionsFilename {
+				continue
+			}
+			rc, err := f.Open()
+			if err != nil {
+				return nil, fmt.Errorf("open instructions entry: %w", err)
+			}
+			defer rc.Close()
+			return io.ReadAll(rc)
+		}
+		return nil, fmt.Errorf("plugin %q instructions entry vanished between scan and read", name)
+	case strings.HasSuffix(path, ".wasm"):
+		instructionsPath := strings.TrimSuffix(path, ".wasm") + "." + PluginInstructionsFilename
+		return os.ReadFile(instructionsPath) //nolint:gosec // G304: plugin paths are admin-controlled, not user input
+	}
+	return nil, fmt.Errorf("plugin %q: unsupported file type for instructions lookup", name)
+}
+
 // LoadPlugin loads a single plugin given explicit wasm and manifest paths
 // (the loose-files layout). Used by the test runner so it shares the exact
 // same load + register + validate path that production uses via Start.
@@ -765,6 +869,7 @@ func loadFromBytes(ctx context.Context, env *HostEnv, manifestBytes, wasmBytes [
 	manifest.Subscriptions = runtime.Subscriptions
 
 	var adminGlobs []glob.Glob
+	var adminPaths []string
 	for _, page := range manifest.Admin.Pages {
 		g, err := glob.Compile(page.Path)
 		if err != nil {
@@ -772,9 +877,10 @@ func loadFromBytes(ctx context.Context, env *HostEnv, manifestBytes, wasmBytes [
 			return nil, fmt.Errorf("manifest.admin.pages: invalid path glob %q: %w", page.Path, err)
 		}
 		adminGlobs = append(adminGlobs, g)
+		adminPaths = append(adminPaths, page.Path)
 	}
 
-	return &Loaded{Manifest: manifest, plugin: p, adminGlobs: adminGlobs}, nil
+	return &Loaded{Manifest: manifest, plugin: p, adminGlobs: adminGlobs, adminPaths: adminPaths}, nil
 }
 
 // requireChatFilterPermission rejects a runtime registration that

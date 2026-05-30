@@ -56,6 +56,26 @@ type Manifest struct {
 	Admin         AdminConfig            `json:"admin,omitempty"`
 	Actions       []ActionButton         `json:"actions,omitempty"`
 	Network       NetworkConfig          `json:"network,omitempty"`
+	// Styles is a list of CSS files the plugin contributes to the
+	// viewer page (the public streaming page). Each entry is a path
+	// relative to the plugin's own URL namespace: bare paths like
+	// "theme.css" and "/theme.css" auto-prefix to
+	// /plugins/<slug>/theme.css, fully-qualified plugin paths like
+	// "/plugins/<slug>/theme.css" pass through as-is, and paths in
+	// any other plugin's namespace are rejected. CSS injects into
+	// the global scope, so a plugin author can restyle anything the
+	// viewer page renders. Requires the ui.modify permission and the
+	// plugin must ship the referenced files (typically under
+	// `assets/`) with http.serve declared.
+	Styles []string `json:"styles,omitempty"`
+	// Scripts is a list of JavaScript files the plugin contributes
+	// to the viewer page. Path rules and permission gating mirror
+	// Styles: bare/relative paths auto-prefix to /plugins/<slug>/,
+	// cross-plugin and http(s):// URLs are rejected, and the entry
+	// has to end in .js. Each becomes a <script src=...> tag on the
+	// viewer page, so the code runs in the chrome's window context.
+	// Requires the ui.modify and http.serve permissions.
+	Scripts []string `json:"scripts,omitempty"`
 }
 
 // BotConfig is the chat-bot configuration for plugins that post to
@@ -186,7 +206,7 @@ func (m *Manifest) Validate() error {
 				"the \"ui.modify\" permission. Plugins that contribute viewer " +
 				"action buttons must opt in to ui.modify so it's visible to " +
 				"anyone reviewing the manifest that the plugin places UI " +
-				"inside Owncast's chrome.")
+				"inside Owncast's chrome")
 	}
 	for i, page := range m.Admin.Pages {
 		if page.Title == "" {
@@ -238,6 +258,96 @@ func (m *Manifest) Validate() error {
 			return fmt.Errorf("manifest.actions[%d].icon: %w", i, err)
 		}
 		a.Icon = rewritten
+	}
+	// manifest.styles: CSS files the plugin contributes to the viewer
+	// page. Same path-handling rules as actions (relative paths
+	// auto-prefix to /plugins/<slug>/, cross-plugin paths rejected),
+	// stricter on external URLs (rejected outright so admins see
+	// every URL that will land in their viewer's global CSS scope).
+	// Requires ui.modify (this restyles Owncast's chrome) and
+	// http.serve (the host serves the bytes from the plugin's
+	// namespace).
+	if len(m.Styles) > 0 {
+		if !hasUIModify {
+			return errors.New(
+				"manifest.styles is set but the manifest does not declare " +
+					"the \"ui.modify\" permission; plugins that inject CSS " +
+					"into the viewer's global scope must opt in to ui.modify " +
+					"so it's visible to anyone reviewing the manifest that " +
+					"the plugin restyles Owncast's UI")
+		}
+		if !hasHttpServe {
+			return errors.New(
+				"manifest.styles requires the \"http.serve\" permission so " +
+					"the host can serve the bundled CSS files at " +
+					"/plugins/<slug>/ URLs")
+		}
+		for i, raw := range m.Styles {
+			if strings.TrimSpace(raw) == "" {
+				return fmt.Errorf("manifest.styles[%d] is empty", i)
+			}
+			if strings.HasPrefix(raw, "http://") || strings.HasPrefix(raw, "https://") {
+				return fmt.Errorf("manifest.styles[%d] cannot be an absolute URL (%q); bundle CSS files under assets/ and reference them by path", i, raw)
+			}
+			path := raw
+			switch {
+			case strings.HasPrefix(path, "/plugins/"):
+				// Already-absolute plugin path; checked below.
+			case strings.HasPrefix(path, "/"):
+				path = pluginPrefix + strings.TrimPrefix(path, "/")
+			default:
+				path = pluginPrefix + path
+			}
+			if !strings.HasPrefix(path, pluginPrefix) {
+				return fmt.Errorf("manifest.styles[%d] points at another plugin's namespace: %s", i, path)
+			}
+			if !strings.HasSuffix(strings.ToLower(path), ".css") {
+				return fmt.Errorf("manifest.styles[%d] must end in .css (got %q)", i, raw)
+			}
+			m.Styles[i] = path
+		}
+	}
+	// manifest.scripts: JS files the plugin contributes to the
+	// viewer page. Same rules as styles, applied to .js entries.
+	if len(m.Scripts) > 0 {
+		if !hasUIModify {
+			return errors.New(
+				"manifest.scripts is set but the manifest does not declare " +
+					"the \"ui.modify\" permission; plugins that inject " +
+					"JavaScript into the viewer page must opt in to " +
+					"ui.modify so it's visible to anyone reviewing the " +
+					"manifest that the plugin runs code inside Owncast's chrome")
+		}
+		if !hasHttpServe {
+			return errors.New(
+				"manifest.scripts requires the \"http.serve\" permission " +
+					"so the host can serve the bundled JavaScript files at " +
+					"/plugins/<slug>/ URLs")
+		}
+		for i, raw := range m.Scripts {
+			if strings.TrimSpace(raw) == "" {
+				return fmt.Errorf("manifest.scripts[%d] is empty", i)
+			}
+			if strings.HasPrefix(raw, "http://") || strings.HasPrefix(raw, "https://") {
+				return fmt.Errorf("manifest.scripts[%d] cannot be an absolute URL (%q); bundle JavaScript files under assets/ and reference them by path", i, raw)
+			}
+			path := raw
+			switch {
+			case strings.HasPrefix(path, "/plugins/"):
+				// Already-absolute plugin path; checked below.
+			case strings.HasPrefix(path, "/"):
+				path = pluginPrefix + strings.TrimPrefix(path, "/")
+			default:
+				path = pluginPrefix + path
+			}
+			if !strings.HasPrefix(path, pluginPrefix) {
+				return fmt.Errorf("manifest.scripts[%d] points at another plugin's namespace: %s", i, path)
+			}
+			if !strings.HasSuffix(strings.ToLower(path), ".js") {
+				return fmt.Errorf("manifest.scripts[%d] must end in .js (got %q)", i, raw)
+			}
+			m.Scripts[i] = path
+		}
 	}
 	return nil
 }

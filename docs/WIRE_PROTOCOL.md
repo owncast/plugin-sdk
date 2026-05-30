@@ -123,6 +123,10 @@ These paths under `/plugins/<name>/` are owned by the host. The plugin's `on_htt
 
 Returns the raw bytes of the plugin's `icon.png` if one was bundled at the root of the `.ocpkg` (or sits next to the `.wasm` as `<base>.icon.png` for the loose-files layout). 404 when no icon is present. No `http.serve` permission required: this is a host endpoint, served independently of the plugin's own routes, so a plugin that ships an icon for the admin UI doesn't need any HTTP surface of its own. Returned with `Content-Type: image/png` and `Cache-Control: no-cache` so a swapped icon shows up on the next admin reload.
 
+### `GET /api/admin/plugins/<name>/instructions`
+
+Returns the raw markdown of the plugin's `INSTRUCTIONS.md` if one was bundled at the root of the `.ocpkg` (or sits next to the `.wasm` as `<base>.INSTRUCTIONS.md` for the loose-files layout). 404 when none is present. Admin-authenticated, since it's part of the plugin-management API rather than a public asset. No `http.serve` permission required. Returned with `Content-Type: text/markdown` and `Cache-Control: no-cache` so swapped instructions show up on the next admin reload; the admin UI renders the markdown in an **Instructions** tab on the plugin's details page.
+
 ### `GET /plugins/<name>/_sse/<channel>`
 
 A long-lived [Server-Sent-Events](https://developer.mozilla.org/en-US/docs/Web/API/Server-sent_events) stream. The browser opens it with `EventSource`; the host holds the connection open and writes each frame the plugin pushes via `owncast.sse.send(channel, …)`. The segment after `_sse/` is the channel name (empty selects the default channel), letting one plugin run several independent streams (e.g. `overlay` and `admin-stats`).

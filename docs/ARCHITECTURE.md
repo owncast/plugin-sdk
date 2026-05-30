@@ -131,8 +131,8 @@ project into a `.wasm`:
    `index.d.ts` that declares exactly the host imports the manifest's permissions
    allow.
 3. **binaryen** (`wasm-merge`/`wasm-opt`) post-processes the module.
-4. `owncast-plugin package` zips the manifest + wasm + `assets/` into a single
-   `.ocpkg`.
+4. `owncast-plugin package` zips the manifest + wasm + `assets/` (plus the
+   optional `icon.png` and `INSTRUCTIONS.md`) into a single `.ocpkg`.
 
 The toolchain binaries are fetched by the npm `postinstall`
 (`sdks/js/scripts/postinstall.js`) into `sdks/js/bin/.cache`:
