@@ -1,0 +1,240 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <title>Manual Video Settings</title>
+    <style>
+      body {
+        font-family: system-ui, sans-serif;
+        max-width: 880px;
+        margin: 2rem auto;
+        padding: 0 1rem;
+        color: #1a1a1a;
+      }
+      h1 { margin-bottom: 0.25rem; }
+      p.lead { color: #555; margin-top: 0; }
+      fieldset {
+        border: 1px solid #d4d4d4;
+        border-radius: 6px;
+        padding: 1rem 1.25rem;
+        margin-bottom: 1rem;
+      }
+      legend { font-weight: 600; padding: 0 0.4rem; }
+      label { display: block; margin: 0.5rem 0; }
+      label > span {
+        display: inline-block;
+        min-width: 8rem;
+        color: #333;
+      }
+      input[type="number"], input[type="text"], select {
+        padding: 4px 6px;
+        font-size: 0.95rem;
+        min-width: 8rem;
+      }
+      table { border-collapse: collapse; width: 100%; margin-top: 0.5rem; }
+      th, td { padding: 6px 8px; text-align: left; border-bottom: 1px solid #eee; }
+      th { background: #fafafa; font-weight: 600; }
+      td input[type="number"] { width: 6rem; }
+      .row-actions { white-space: nowrap; }
+      button {
+        background: #1f6feb;
+        color: white;
+        border: 0;
+        border-radius: 4px;
+        padding: 6px 12px;
+        cursor: pointer;
+        font-size: 0.9rem;
+      }
+      button.secondary {
+        background: #e7e7e7;
+        color: #1a1a1a;
+      }
+      button.danger { background: #c0392b; }
+      button:disabled { opacity: 0.5; cursor: default; }
+      .toolbar { display: flex; gap: 0.5rem; margin-top: 1rem; align-items: center; }
+      #status { color: #2a7a2a; font-size: 0.9rem; }
+      #status.error { color: #c0392b; }
+    </style>
+  </head>
+  <body>
+    <h1>Manual Video Settings</h1>
+    <p class="lead">
+      Edit the host's live transcoding config: HLS latency level, output codec,
+      and each output variant's resolution / framerate / video bitrate. Changes
+      are applied via <code>owncast.videoConfig.write</code>.
+    </p>
+
+    <form id="form">
+      <fieldset>
+        <legend>Output</legend>
+        <label>
+          <span>Latency level</span>
+          <select name="latencyLevel">
+            <option value="0">0 — lowest (most rebuffering)</option>
+            <option value="1">1</option>
+            <option value="2">2 — balanced (default)</option>
+            <option value="3">3</option>
+            <option value="4">4 — highest (most stable)</option>
+          </select>
+        </label>
+        <label>
+          <span>Codec</span>
+          <select name="codec">
+            <option value="libx264">libx264 (software H.264)</option>
+            <option value="h264_vaapi">h264_vaapi (Linux GPU)</option>
+            <option value="h264_nvenc">h264_nvenc (NVIDIA GPU)</option>
+            <option value="h264_qsv">h264_qsv (Intel Quick Sync)</option>
+            <option value="h264_omx">h264_omx (Raspberry Pi)</option>
+            <option value="h264_v4l2m2m">h264_v4l2m2m (V4L2 M2M)</option>
+            <option value="h264_videotoolbox">h264_videotoolbox (macOS)</option>
+          </select>
+        </label>
+      </fieldset>
+
+      <fieldset>
+        <legend>Output variants</legend>
+        <table id="variants">
+          <thead>
+            <tr>
+              <th>Width</th>
+              <th>Height</th>
+              <th>FPS</th>
+              <th>Video kbps</th>
+              <th>Passthrough</th>
+              <th class="row-actions"></th>
+            </tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+        <div class="toolbar">
+          <button type="button" class="secondary" id="add-variant">+ Add variant</button>
+        </div>
+      </fieldset>
+
+      <div class="toolbar">
+        <button type="submit">Save</button>
+        <button type="button" class="secondary" id="reload">Reload</button>
+        <span id="status"></span>
+      </div>
+    </form>
+
+    <script>
+      const tbody = document.querySelector("#variants tbody");
+      const status = document.getElementById("status");
+      const form = document.getElementById("form");
+
+      function variantRow(v) {
+        const tr = document.createElement("tr");
+        // Audio bitrate is part of the host's variant shape but isn't
+        // exposed in this form. Stash it on the row so save() echoes it
+        // back instead of clobbering it with 0.
+        tr.dataset.audioBitrate = String(v.audioBitrate ?? 0);
+        tr.innerHTML = `
+          <td><input type="number" name="width" min="0" value="${v.width ?? 0}" /></td>
+          <td><input type="number" name="height" min="0" value="${v.height ?? 0}" /></td>
+          <td><input type="number" name="framerate" min="0" value="${v.framerate ?? 0}" /></td>
+          <td><input type="number" name="videoBitrate" min="0" value="${v.videoBitrate ?? 0}" /></td>
+          <td><input type="checkbox" name="isPassthrough" ${v.isPassthrough ? "checked" : ""} /></td>
+          <td class="row-actions">
+            <button type="button" class="danger" data-action="remove">Remove</button>
+          </td>
+        `;
+        return tr;
+      }
+
+      function readForm() {
+        const data = new FormData(form);
+        const variants = [...tbody.querySelectorAll("tr")].map((row) => ({
+          width: Number(row.querySelector("[name=width]").value) || 0,
+          height: Number(row.querySelector("[name=height]").value) || 0,
+          framerate: Number(row.querySelector("[name=framerate]").value) || 0,
+          videoBitrate: Number(row.querySelector("[name=videoBitrate]").value) || 0,
+          audioBitrate: Number(row.dataset.audioBitrate) || 0,
+          isPassthrough: row.querySelector("[name=isPassthrough]").checked,
+        }));
+        return {
+          latencyLevel: Number(data.get("latencyLevel")),
+          codec: data.get("codec"),
+          variants,
+        };
+      }
+
+      function paint(config) {
+        const latency = form.querySelector("[name=latencyLevel]");
+        if ([...latency.options].some((o) => o.value === String(config.latencyLevel))) {
+          latency.value = String(config.latencyLevel);
+        }
+        const codec = form.querySelector("[name=codec]");
+        if (![...codec.options].some((o) => o.value === config.codec) && config.codec) {
+          // Show a custom codec if the host reports something the dropdown
+          // doesn't know about, so we don't silently overwrite it on save.
+          const opt = document.createElement("option");
+          opt.value = config.codec;
+          opt.textContent = config.codec + " (current)";
+          codec.appendChild(opt);
+        }
+        codec.value = config.codec || "libx264";
+
+        tbody.innerHTML = "";
+        (config.variants || []).forEach((v) => tbody.appendChild(variantRow(v)));
+      }
+
+      async function load() {
+        status.textContent = "Loading…";
+        status.classList.remove("error");
+        try {
+          const res = await fetch("./api/config");
+          if (!res.ok) throw new Error("HTTP " + res.status);
+          paint(await res.json());
+          status.textContent = "";
+        } catch (e) {
+          status.textContent = "Failed to load: " + e.message;
+          status.classList.add("error");
+        }
+      }
+
+      document.getElementById("add-variant").addEventListener("click", () => {
+        tbody.appendChild(
+          variantRow({
+            width: 1280,
+            height: 720,
+            framerate: 30,
+            videoBitrate: 2500,
+            isPassthrough: false,
+          }),
+        );
+      });
+
+      document.getElementById("reload").addEventListener("click", load);
+
+      tbody.addEventListener("click", (e) => {
+        if (e.target.dataset.action === "remove") {
+          e.target.closest("tr").remove();
+        }
+      });
+
+      form.addEventListener("submit", async (e) => {
+        e.preventDefault();
+        status.classList.remove("error");
+        status.textContent = "Saving…";
+        try {
+          const res = await fetch("./api/config", {
+            method: "POST",
+            headers: { "content-type": "application/json" },
+            body: JSON.stringify(readForm()),
+          });
+          if (!res.ok) {
+            const body = await res.text();
+            throw new Error("HTTP " + res.status + (body ? ": " + body : ""));
+          }
+          status.textContent = "Saved.";
+        } catch (e) {
+          status.textContent = "Save failed: " + e.message;
+          status.classList.add("error");
+        }
+      });
+
+      load();
+    </script>
+  </body>
+</html>
