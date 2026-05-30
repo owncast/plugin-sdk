@@ -238,50 +238,10 @@ module.exports = { register, on_event, on_filter, on_http_request };
     env,
   });
 
-  // Mirror the project's ./public/ and ./assets/ to the canonical
-  // deployment layout (<name>-public/ and <name>-assets/) so the host
-  // finds them without per-deployment renames. Symlinks so edits show
-  // up live during dev (no rebuild needed for HTML/CSS changes).
-  // - public/ holds files served at /plugins/<slug>/<path>.
-  // - assets/ holds files the host reads internally for manifest
-  //   fields that inline content (styles, scripts, extraPageContent);
-  //   never reachable through the plugin's URL space.
-  for (const dir of ["public", "assets"]) {
-    const src = path.join(cwd, dir);
-    if (!fs.existsSync(src) || !fs.statSync(src).isDirectory()) {
-      continue;
-    }
-    const dest = path.join(cwd, `${slug}-${dir}`);
-    let needsLink = true;
-    // Use lstatSync (not existsSync); existsSync follows symlinks and
-    // returns false for a dangling link, but the link's inode is still
-    // there and would make symlinkSync below fail with EEXIST. lstatSync
-    // sees the link itself regardless of whether its target resolves.
-    let st;
-    try {
-      st = fs.lstatSync(dest);
-    } catch {
-      // path doesn't exist at all, fall through to create it.
-    }
-    if (st) {
-      let target;
-      if (st.isSymbolicLink()) {
-        // realpathSync throws on dangling links; treat that as "doesn't
-        // match, replace it" rather than letting it abort the build.
-        try {
-          target = fs.realpathSync(dest);
-        } catch {}
-      }
-      if (target && target === fs.realpathSync(src)) {
-        needsLink = false;
-      } else {
-        fs.rmSync(dest, { recursive: true, force: true });
-      }
-    }
-    if (needsLink) {
-      fs.symlinkSync(path.resolve(src), dest, "dir");
-    }
-  }
+  // public/ and assets/ live at the source root; the host's
+  // loose-files loader picks them up as siblings of the built
+  // <slug>.wasm without any rename, so the build CLI doesn't need to
+  // create or mirror anything for them.
 
   console.log(`built ${path.relative(cwd, wasmOut)}`);
 }
@@ -378,9 +338,9 @@ async function packageMain() {
 
 function* walkFiles(dir) {
   for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
-    // Resolve symlinks so the public/ → <name>-public/ and
-    // assets/ → <name>-assets/ links the build CLI makes don't
-    // cause us to skip files. statSync follows.
+    // statSync (not lstatSync) so a symlinked file or directory in
+    // the source tree resolves to its target and we read its contents
+    // rather than skipping it.
     const full = path.join(dir, entry.name);
     let info;
     try {
