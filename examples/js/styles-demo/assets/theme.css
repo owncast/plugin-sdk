@@ -1,0 +1,29 @@
+/* Plugin-contributed CSS injected into the viewer page's global scope.
+ * The integration test asserts on the selectors and custom property
+ * below so loading is observable without screenshot comparison. The
+ * effect is intentionally page-level (a fixed banner pinned to the
+ * top of the viewport) so it's visible whether or not a stream or
+ * chat is active. */
+
+:root {
+  --plugin-styles-demo-loaded: 1;
+}
+
+/* Always-visible banner so an admin can see at a glance that the
+ * plugin's stylesheet is reaching the viewer page. Uses body::before
+ * to avoid touching any of Owncast's own DOM and to render whether
+ * or not a stream or chat is currently active. */
+body::before {
+  content: "styles-demo: CSS reached the viewer page";
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 999999;
+  padding: 4px 8px;
+  background: #ff6f61;
+  color: #fff;
+  font: 12px / 1.4 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  text-align: center;
+  pointer-events: none;
+}
