@@ -49,6 +49,16 @@ Host functions are wired in conditionally based on the manifest's declared permi
 
 - `owncast_storage_upload(namePtr: PTR, dataPtr: PTR): PTR`, returns JSON `{url}` or 0-offset on failure
 
+### `storage.fs`
+
+Sandboxed per-plugin filesystem under `data/plugin-data/<slug>/`. The host confines every path to the plugin's own directory.
+
+- `owncast_fs_read(pathPtr: PTR): PTR`, returns the file's raw bytes, or 0-offset when missing/unreadable
+- `owncast_fs_write(pathPtr: PTR, dataPtr: PTR): PTR`, returns JSON `{ok, error?}`
+- `owncast_fs_list(dirPtr: PTR): PTR`, returns JSON `string[]` of entry names (missing dir → empty)
+- `owncast_fs_delete(pathPtr: PTR): PTR`, returns JSON `{ok, error?}`
+- `owncast_fs_exists(pathPtr: PTR): I32`, returns 1 if the path exists, 0 otherwise
+
 ### `events.emit`
 
 - `owncast_emit_event(eventTypePtr: PTR, payloadPtr: PTR): void`, payload is a JSON-encoded value

@@ -204,10 +204,10 @@ func TestLoaded_IsAdminPath(t *testing.T) {
 	}
 
 	cases := []struct {
-		name       string
-		pagePaths  []string
-		path       string
-		wantGated  bool
+		name      string
+		pagePaths []string
+		path      string
+		wantGated bool
 	}{
 		{"literal page gates itself", []string{"/admin"}, "/admin", true},
 		{"literal page gates trailing-slash variant", []string{"/admin"}, "/admin/", true},

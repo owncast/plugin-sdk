@@ -24,6 +24,9 @@ const Events = Object.freeze({
   StreamStarted: "stream.started",
   StreamStopped: "stream.stopped",
   StreamTitleChanged: "stream.title.changed",
+  // SSE connection lifecycle (who connected to / left a plugin's stream)
+  SseConnect: "sse.connect",
+  SseDisconnect: "sse.disconnect",
   // Fediverse, engagement (metadata only) + inbound posts (with content)
   FediverseFollow: "fediverse.follow",
   FediverseLike: "fediverse.like",
@@ -103,6 +106,9 @@ const HANDLERS = Object.freeze({
     event: Events.StreamTitleChanged,
     kind: HandlerKind.Notify,
   },
+  // SSE connection lifecycle
+  onSseConnect: { event: Events.SseConnect, kind: HandlerKind.Notify },
+  onSseDisconnect: { event: Events.SseDisconnect, kind: HandlerKind.Notify },
   // Fediverse engagement (actor + target metadata)
   onFediverseFollow: {
     event: Events.FediverseFollow,

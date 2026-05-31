@@ -1,0 +1,49 @@
+[
+  {
+    "name": "GET /api/me reflects the chat user the host resolved",
+    "events": [
+      {
+        "http": {
+          "method": "GET",
+          "path": "/api/me",
+          "user": {
+            "id": "u-test",
+            "displayName": "Tester",
+            "isAuthenticated": true
+          },
+          "expect": {
+            "status": 200,
+            "body": "{\"identified\":true,\"user\":{\"id\":\"u-test\",\"displayName\":\"Tester\",\"isAuthenticated\":true}}"
+          }
+        }
+      }
+    ]
+  },
+  {
+    "name": "GET /api/me returns 401 when there is no chat identity",
+    "events": [
+      {
+        "http": {
+          "method": "GET",
+          "path": "/api/me",
+          "expect": {
+            "status": 401,
+            "body": "{\"identified\":false,\"message\":\"No chat identity on this request. Join the chat, then reload.\"}"
+          }
+        }
+      }
+    ]
+  },
+  {
+    "name": "unknown path returns 404",
+    "events": [
+      {
+        "http": {
+          "method": "GET",
+          "path": "/api/nope",
+          "expect": { "status": 404 }
+        }
+      }
+    ]
+  }
+]

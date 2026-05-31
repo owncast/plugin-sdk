@@ -226,6 +226,7 @@ interface IncomingHttpRequest {
   body: string;
   remoteAddr: string;
   authenticated: boolean; // came from an authenticated Owncast admin
+  user?: ChatUser; // the chat user the request came from, when known
 }
 
 interface OutgoingHttpResponse {
@@ -236,6 +237,18 @@ interface OutgoingHttpResponse {
 ```
 
 Endpoints are public by default. Gate admin features with `req.authenticated`.
+
+`req.user` is the chat user the request came from, if Owncast could identify
+one. The host resolves it from the visitor's chat identity cookie, which is set
+when they register or connect to chat, so it is available on normal viewer
+requests such as the page behind an action button. You don't need an access
+token in the URL, and you don't do the lookup yourself.
+
+The field is optional. It's set when the request came from a known chat user
+and is `undefined` otherwise, so check for it before reading it. Your plugin
+never receives the raw access token: the `Cookie` header and any `accessToken`
+query parameter are removed from `req.headers` and `req.query` before your
+handler runs. The `whoami` example shows the whole flow.
 
 ## Owncast APIs
 
@@ -255,6 +268,7 @@ Each method requires the matching permission in your manifest:
 | `owncast.users.banIP(ip)`                                                       | `users.moderate`     |
 | `owncast.kv.get(key)` / `.set(key, value)`                                      | `storage.kv`         |
 | `owncast.storage.upload(name, bytes)`, returns `{url}`                          | `storage.upload`     |
+| `owncast.fs.read/readText/write/list/delete/exists(...)`, sandboxed disk        | `storage.fs`         |
 | `owncast.http.fetch(url, opts?)`                                                | `network.fetch`      |
 | `owncast.events.emit(eventType, payload)`                                       | `events.emit`        |
 | `owncast.stream.current()`, live stream state                                   | `server.read`        |
@@ -292,6 +306,7 @@ If you need multiple chat personas, **ship multiple plugins.** One identity per 
 | `users.moderate`     | `owncast.users.setEnabled`, `.banIP`                                                                                                              |
 | `storage.kv`         | Per-plugin namespaced key/value store                                                                                                             |
 | `storage.upload`     | `owncast.storage.upload`, upload files, get a public URL                                                                                          |
+| `storage.fs`         | `owncast.fs.*`, private sandboxed disk under `data/plugin-data/<slug>/` (server-side only, never served over HTTP)                                 |
 | `network.fetch`      | Outbound HTTP, also requires `network.allowedHosts` (see below)                                                                                   |
 | `events.emit`        | Emit custom events for other plugins to subscribe to                                                                                              |
 | `http.serve`         | Serve HTTP at `/plugins/<your-name>/*`                                                                                                            |
@@ -381,6 +396,25 @@ Notes:
 - If the channel matches one of your `admin.pages[]` globs it's auth-gated like any admin route, handy for an admin-only stats stream.
 - The endpoint is host-owned and reserved: your `onHttpRequest` never sees `/_sse/...` requests, and you can't serve your own route there.
 
+### Knowing who is connected
+
+When you declare `http.sse`, the host tells you whenever a browser opens or closes one of your streams, so you can track who's connected:
+
+```js
+const present = new Map(); // connectionId -> user (or undefined)
+
+definePlugin({
+  onSseConnect({ channel, connectionId, user }) {
+    present.set(connectionId, user); // user is undefined for anonymous viewers
+  },
+  onSseDisconnect({ connectionId }) {
+    present.delete(connectionId);
+  },
+});
+```
+
+The host resolves the connecting chat user from their identity cookie, the same `user` shape your HTTP handlers get on `req.user`, and it's omitted when the viewer hasn't joined chat. `connectionId` is unique per connection, so a disconnect pairs with its connect and one user open in several tabs counts as several connections. These arrive on the normal event path (no extra permission beyond `http.sse`), and a connect/disconnect you don't handle is simply ignored.
+
 ## Admin pages
 
 Plugins can register pages that appear in the Owncast admin UI for configuration. Declare them in the manifest:
@@ -401,6 +435,7 @@ Plugins can register pages that appear in the Owncast admin UI for configuration
 - Owncast's admin renders each declared page as a tab inside `/admin/plugins/configure?id=<your-slug>`, embedded as an iframe pointed at `/plugins/<your-slug>/<path>`. Each plugin gets its own bookmarkable URL plus a sidebar entry under **Plugins** in the admin nav.
 - Both static assets and dynamic endpoints under matched paths are auth-gated; you don't have to check `req.authenticated` yourself.
 - The host auto-injects an admin-themed stylesheet (`/styles/admin/plugin-iframe.css`) into HTML responses on admin paths so plain `<input>`/`<button>` controls match Owncast's look without you needing to ship CSS. Plugins that prefer their own styling can layer on top.
+- The iframe is sandboxed but permits what an admin page normally needs: your scripts, form submits, same-origin `fetch` to your own endpoints, popups, **file downloads** (a blob/data-URL `<a download>` clicked from script), and **`confirm()`/`alert()`/`prompt()`** dialogs. If a browser feature seems silently blocked, suspect the iframe sandbox first.
 
 Author flow:
 

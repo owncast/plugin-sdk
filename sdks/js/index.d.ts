@@ -115,6 +115,8 @@ export const Events: {
   readonly StreamStarted: "stream.started";
   readonly StreamStopped: "stream.stopped";
   readonly StreamTitleChanged: "stream.title.changed";
+  readonly SseConnect: "sse.connect";
+  readonly SseDisconnect: "sse.disconnect";
   readonly FediverseFollow: "fediverse.follow";
   readonly FediverseLike: "fediverse.like";
   readonly FediverseRepost: "fediverse.repost";
@@ -264,6 +266,18 @@ export interface OutgoingHttpResponse {
   body?: string;
 }
 
+/** Payload for the sse.connect / sse.disconnect events. Fired when a browser
+ *  opens or closes one of the plugin's `/plugins/<name>/_sse/<channel>`
+ *  streams, so the plugin can track who is connected. `connectionId` is unique
+ *  per connection for the life of the host process, so a disconnect can be
+ *  paired with its connect and the same user counted across several tabs.
+ *  `user` is present only when the connection carried a chat identity. */
+export interface SSEConnectionEvent {
+  channel: string;
+  connectionId: number;
+  user?: ChatUser;
+}
+
 export interface PluginDef {
   /** Notification handler for chat messages. Fire-and-forget. */
   onChatMessage?(msg: ChatMessage): void | Promise<void>;
@@ -287,6 +301,13 @@ export interface PluginDef {
   onStreamStopped?(info: StreamLifecycleEvent): void | Promise<void>;
   /** Stream title was updated. */
   onStreamTitleChanged?(change: StreamTitleChange): void | Promise<void>;
+
+  /** A browser opened one of this plugin's SSE streams. Use it to track who
+   *  is connected. Requires the `http.sse` permission. */
+  onSseConnect?(event: SSEConnectionEvent): void | Promise<void>;
+  /** A browser closed one of this plugin's SSE streams (same connectionId as
+   *  the matching onSseConnect). Requires the `http.sse` permission. */
+  onSseDisconnect?(event: SSEConnectionEvent): void | Promise<void>;
 
   /** Someone on the fediverse followed the streamer's account. */
   onFediverseFollow?(event: FediverseEngagement): void | Promise<void>;

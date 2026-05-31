@@ -20,6 +20,7 @@ One self-contained npm project per directory. Each has its own `README.md` with 
 | [manual-video-settings](./manual-video-settings/) | Admin form for the video config: latency, codec, and per-variant resolution / framerate / bitrate.      |
 | [engagement-bot](./engagement-bot/)               | Discord + browser-push + fediverse notifier on stream / fediverse events; small inline spam filter.     |
 | [admin-demo](./admin-demo/)                       | `manifest.admin.pages`, host-gated admin routes.                                                        |
+| [file-manager](./file-manager/)                   | `storage.fs`, admin page to browse/upload/download/delete files in the plugin's private sandbox.        |
 | [action-buttons](./action-buttons/)               | `manifest.actions` + runtime `owncast.actions.add` (ui.modify), with an admin page that adds buttons.   |
 | [fediverse-chat-bridge](./fediverse-chat-bridge/) | Inbound fediverse mentions → HTML chat system messages with avatars.                                    |
 | [safeguard-stress](./safeguard-stress/)           | Test fixture, misbehaves on demand to verify host sandbox caps.                                         |

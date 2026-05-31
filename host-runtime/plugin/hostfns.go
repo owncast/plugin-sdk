@@ -213,6 +213,19 @@ type UploadResult struct {
 	URL string `json:"url"`
 }
 
+// SSEConnectionEvent is the payload for the sse.connect / sse.disconnect
+// events, fired when a browser opens or closes one of the plugin's
+// Server-Sent-Events streams. ConnectionID is unique for the life of the host
+// process, so a plugin can pair a disconnect with its connect and count
+// distinct connections (e.g. one user open in several tabs). User is the
+// resolved chat user when the connection carried a chat identity, and is
+// omitted for anonymous viewers.
+type SSEConnectionEvent struct {
+	Channel      string    `json:"channel"`
+	ConnectionID uint64    `json:"connectionId"`
+	User         *HostUser `json:"user,omitempty"`
+}
+
 // HostEnv is everything host functions need to do their job. Function-pointer
 // fields are wired by the host (the production Owncast binary, the demo
 // binary, or the test runner); each host function reads them lazily at call
