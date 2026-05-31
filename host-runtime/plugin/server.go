@@ -301,6 +301,36 @@ func serveAssetFile(w http.ResponseWriter, r *http.Request, root fs.FS, name str
 	http.ServeContent(w, r, path.Base(name), modtime, bytes.NewReader(data))
 }
 
+// buildRequestEnvelope marshals the JSON envelope passed to a plugin's
+// on_http_request export.
+func (s *Server) buildRequestEnvelope(r *http.Request, requestPath string, authenticated bool, body []byte) ([]byte, error) {
+	// Redact the credentials a request may carry so a sandboxed plugin never
+	// sees the raw access token. Identity reaches the plugin only via the
+	// host-resolved, trusted req.user below. The Cookie header carries the
+	// chat identity cookie (and admin session); the accessToken query param
+	// is the legacy token source.
+	headers := flattenValues(r.Header)
+	delete(headers, "Cookie")
+	query := flattenValues(r.URL.Query())
+	delete(query, "accessToken")
+
+	envelope := map[string]any{
+		"method":        r.Method,
+		"path":          requestPath,
+		"query":         query,
+		"headers":       headers,
+		"body":          string(body),
+		"remoteAddr":    r.RemoteAddr,
+		"authenticated": authenticated,
+	}
+	if s.GetRequestUser != nil {
+		if user := s.GetRequestUser(r); user != nil {
+			envelope["user"] = user
+		}
+	}
+	return json.Marshal(envelope)
+}
+
 func (s *Server) serveDynamic(w http.ResponseWriter, r *http.Request, p *Loaded, requestPath string, authenticated bool) {
 	// p.plugin can be nil during shutdown (Loaded.Close clears it) or in
 	// tests that only exercise the static path. Either way, no plugin
@@ -320,21 +350,7 @@ func (s *Server) serveDynamic(w http.ResponseWriter, r *http.Request, p *Loaded,
 		return
 	}
 
-	envelope := map[string]any{
-		"method":        r.Method,
-		"path":          requestPath,
-		"query":         flattenValues(r.URL.Query()),
-		"headers":       flattenValues(r.Header),
-		"body":          string(body),
-		"remoteAddr":    r.RemoteAddr,
-		"authenticated": authenticated,
-	}
-	if s.GetRequestUser != nil {
-		if user := s.GetRequestUser(r); user != nil {
-			envelope["user"] = user
-		}
-	}
-	envelopeJSON, err := json.Marshal(envelope)
+	envelopeJSON, err := s.buildRequestEnvelope(r, requestPath, authenticated, body)
 	if err != nil {
 		http.Error(w, "internal error", http.StatusInternalServerError)
 		return

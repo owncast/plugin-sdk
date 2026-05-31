@@ -161,6 +161,7 @@ export const Permissions: {
   readonly ChatFilter: "chat.filter";
   readonly StorageKV: "storage.kv";
   readonly StorageUpload: "storage.upload";
+  readonly StorageFS: "storage.fs";
   readonly EventsEmit: "events.emit";
   readonly NetworkFetch: "network.fetch";
   readonly HttpServe: "http.serve";
@@ -226,6 +227,13 @@ export interface ChatClient {
 /** Result of owncast.storage.upload(). */
 export interface UploadResult {
   url: string;
+}
+
+/** Result of a mutating owncast.fs call (write/delete). `ok` is false and
+ *  `error` is set when the host rejected the operation. */
+export interface FsResult {
+  ok: boolean;
+  error?: string;
 }
 
 export const filter: {
@@ -348,6 +356,23 @@ export const owncast: {
    *  public URL. Requires `storage.upload`. */
   storage: {
     upload(name: string, data: Uint8Array | string): UploadResult | null;
+  };
+  /** Private, sandboxed filesystem under data/plugin-data/<slug>/. The bytes
+   *  stay server-side (never served over HTTP) and the host confines every
+   *  path to this plugin's own directory. All methods require `storage.fs`. */
+  fs: {
+    /** Read a file's raw bytes, or null if it doesn't exist. */
+    read(path: string): Uint8Array | null;
+    /** Read a file as UTF-8 text, or null if it doesn't exist. */
+    readText(path: string): string | null;
+    /** Write bytes or a string, creating parent directories as needed. */
+    write(path: string, data: Uint8Array | string): FsResult;
+    /** List entry names directly inside dir; missing dir lists as empty. */
+    list(dir: string): string[];
+    /** Remove a single file or empty directory. */
+    delete(path: string): FsResult;
+    /** Report whether a path exists inside the sandbox. */
+    exists(path: string): boolean;
   };
   /** Post to the fediverse on the streamer's behalf. Requires `fediverse.post`,
    *  which is high-trust (posts go out under the streamer's own handle);

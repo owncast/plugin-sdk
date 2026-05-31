@@ -64,6 +64,15 @@ func main() {
 		fatal("resolve path: %v", err)
 	}
 
+	// Where storage.fs data lives in dev. Rooted next to the plugin project
+	// (or the package's directory) so it persists across restarts and is easy
+	// to find/inspect/delete.
+	devDataBase := abs
+	if info, statErr := os.Stat(abs); statErr == nil && !info.IsDir() {
+		devDataBase = filepath.Dir(abs)
+	}
+	devDataRoot := filepath.Join(devDataBase, ".owncast-dev-data", "plugin-data")
+
 	ctx := context.Background()
 	extism.SetLogLevel(extism.LogLevelError)
 
@@ -192,6 +201,70 @@ func main() {
 			url := fmt.Sprintf("http://localhost:%s/dev-uploads/%s/%s", port, pluginName, name)
 			logHostCall("storage.upload", pluginName, "%s (%d bytes) → %s", name, len(data), url)
 			return url, nil
+		},
+
+		// storage.fs: a real sandboxed filesystem under .owncast-dev-data/, so
+		// a plugin's owncast.fs.* calls behave the same in dev as in production
+		// (data persists across requests, wiped only when you delete the dir).
+		FSRead: func(pluginName, p string) ([]byte, error) {
+			full, err := fsSandboxPath(devDataRoot, pluginName, p)
+			if err != nil {
+				return nil, err
+			}
+			data, err := os.ReadFile(full)
+			logHostCall("fs.read", pluginName, "%s (%d bytes)", p, len(data))
+			return data, err
+		},
+		FSWrite: func(pluginName, p string, data []byte) error {
+			full, err := fsSandboxPath(devDataRoot, pluginName, p)
+			if err != nil {
+				return err
+			}
+			if err := os.MkdirAll(filepath.Dir(full), 0o700); err != nil {
+				return err
+			}
+			logHostCall("fs.write", pluginName, "%s (%d bytes)", p, len(data))
+			return os.WriteFile(full, data, 0o600)
+		},
+		FSList: func(pluginName, dir string) ([]string, error) {
+			full, err := fsSandboxPath(devDataRoot, pluginName, dir)
+			if err != nil {
+				return nil, err
+			}
+			entries, err := os.ReadDir(full)
+			if err != nil {
+				if os.IsNotExist(err) {
+					return []string{}, nil
+				}
+				return nil, err
+			}
+			names := make([]string, 0, len(entries))
+			for _, e := range entries {
+				names = append(names, e.Name())
+			}
+			logHostCall("fs.list", pluginName, "%s → %d entries", dir, len(names))
+			return names, nil
+		},
+		FSDelete: func(pluginName, p string) error {
+			full, err := fsSandboxPath(devDataRoot, pluginName, p)
+			if err != nil {
+				return err
+			}
+			logHostCall("fs.delete", pluginName, "%s", p)
+			return os.Remove(full)
+		},
+		FSExists: func(pluginName, p string) (bool, error) {
+			full, err := fsSandboxPath(devDataRoot, pluginName, p)
+			if err != nil {
+				return false, err
+			}
+			if _, err := os.Stat(full); err != nil {
+				if os.IsNotExist(err) {
+					return false, nil
+				}
+				return false, err
+			}
+			return true, nil
 		},
 
 		// Dev convenience: any request with `Authorization: Bearer admin`
@@ -407,6 +480,23 @@ func devRequestUser(r *http.Request) *plugin.HostUser {
 		DisplayName:     name,
 		IsAuthenticated: true,
 	}
+}
+
+// fsSandboxPath maps a plugin-supplied relative path to an absolute path
+// inside root/<slug> and refuses to escape it. Mirrors the production host's
+// storage.fs sandboxing (rel is rooted at "/" then cleaned, so "../" and
+// absolute paths collapse back inside) so `owncast-plugin serve` behaves like
+// real Owncast.
+func fsSandboxPath(root, pluginName, rel string) (string, error) {
+	sandbox, err := filepath.Abs(filepath.Join(root, pluginName))
+	if err != nil {
+		return "", err
+	}
+	full := filepath.Join(sandbox, filepath.Clean("/"+rel))
+	if full != sandbox && !strings.HasPrefix(full, sandbox+string(os.PathSeparator)) {
+		return "", fmt.Errorf("path %q escapes the plugin sandbox", rel)
+	}
+	return full, nil
 }
 
 func logHostCall(hook, pluginName, format string, args ...any) {

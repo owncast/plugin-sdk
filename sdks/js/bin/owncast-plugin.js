@@ -398,6 +398,13 @@ function generateInterface(manifest) {
   if (perms.has("storage.upload")) {
     imports.push("owncast_storage_upload(namePtr: PTR, dataPtr: PTR): PTR");
   }
+  if (perms.has("storage.fs")) {
+    imports.push("owncast_fs_read(pathPtr: PTR): PTR");
+    imports.push("owncast_fs_write(pathPtr: PTR, dataPtr: PTR): PTR");
+    imports.push("owncast_fs_list(dirPtr: PTR): PTR");
+    imports.push("owncast_fs_delete(pathPtr: PTR): PTR");
+    imports.push("owncast_fs_exists(pathPtr: PTR): I32");
+  }
   if (perms.has("fediverse.post")) {
     imports.push("owncast_fediverse_post(textPtr: PTR): PTR");
   }

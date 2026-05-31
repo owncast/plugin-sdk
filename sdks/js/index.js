@@ -39,6 +39,7 @@ const Permissions = Object.freeze({
   ChatFilter: "chat.filter",
   StorageKV: "storage.kv",
   StorageUpload: "storage.upload",
+  StorageFS: "storage.fs",
   EventsEmit: "events.emit",
   NetworkFetch: "network.fetch",
   HttpServe: "http.serve",
@@ -339,6 +340,80 @@ const owncast = {
       );
       if (offset == 0) return null;
       return JSON.parse(Memory.find(offset).readString());
+    },
+  },
+  // Private, sandboxed filesystem under data/plugin-data/<slug>/. Unlike
+  // storage.upload (which publishes browser-accessible files), these bytes
+  // stay server-side. The host confines every path to this plugin's own
+  // directory. All methods require the 'storage.fs' permission.
+  fs: {
+    // Read a file's raw bytes. Returns a Uint8Array, or null if the file
+    // doesn't exist (or can't be read).
+    read(path) {
+      const fns = Host.getFunctions();
+      if (!fns.owncast_fs_read)
+        throw new Error(`permission '${Permissions.StorageFS}' not granted`);
+      const offset = fns.owncast_fs_read(Memory.fromString(path).offset);
+      if (offset == 0) return null;
+      return new Uint8Array(Memory.find(offset).readBytes());
+    },
+    // Read a file as UTF-8 text. Returns a string, or null if the file
+    // doesn't exist. (The Extism boundary decodes the bytes as UTF-8.)
+    readText(path) {
+      const fns = Host.getFunctions();
+      if (!fns.owncast_fs_read)
+        throw new Error(`permission '${Permissions.StorageFS}' not granted`);
+      const offset = fns.owncast_fs_read(Memory.fromString(path).offset);
+      if (offset == 0) return null;
+      return Memory.find(offset).readString();
+    },
+    // Write bytes (Uint8Array) or a string to a file, creating parent
+    // directories as needed. Returns { ok, error? }.
+    write(path, data) {
+      const fns = Host.getFunctions();
+      if (!fns.owncast_fs_write)
+        throw new Error(`permission '${Permissions.StorageFS}' not granted`);
+      const dataMem =
+        data instanceof Uint8Array
+          ? Memory.fromBuffer(
+              data.buffer.slice(
+                data.byteOffset,
+                data.byteOffset + data.byteLength,
+              ),
+            )
+          : Memory.fromString(String(data));
+      const offset = fns.owncast_fs_write(
+        Memory.fromString(path).offset,
+        dataMem.offset,
+      );
+      if (offset == 0) return { ok: false, error: "write failed" };
+      return JSON.parse(Memory.find(offset).readString());
+    },
+    // List the entry names (files and subdirectories) directly inside dir.
+    // A missing directory lists as empty. Returns string[].
+    list(dir) {
+      const fns = Host.getFunctions();
+      if (!fns.owncast_fs_list)
+        throw new Error(`permission '${Permissions.StorageFS}' not granted`);
+      const offset = fns.owncast_fs_list(Memory.fromString(dir || "").offset);
+      if (offset == 0) return [];
+      return JSON.parse(Memory.find(offset).readString());
+    },
+    // Remove a single file or empty directory. Returns { ok, error? }.
+    delete(path) {
+      const fns = Host.getFunctions();
+      if (!fns.owncast_fs_delete)
+        throw new Error(`permission '${Permissions.StorageFS}' not granted`);
+      const offset = fns.owncast_fs_delete(Memory.fromString(path).offset);
+      if (offset == 0) return { ok: false, error: "delete failed" };
+      return JSON.parse(Memory.find(offset).readString());
+    },
+    // Report whether a path exists inside the sandbox. Returns boolean.
+    exists(path) {
+      const fns = Host.getFunctions();
+      if (!fns.owncast_fs_exists)
+        throw new Error(`permission '${Permissions.StorageFS}' not granted`);
+      return fns.owncast_fs_exists(Memory.fromString(path).offset) === 1;
     },
   },
   fediverse: {

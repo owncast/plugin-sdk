@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"path"
 	"strings"
 	"sync"
 
@@ -94,6 +95,11 @@ type MockHost struct {
 	userMods          []RecordedUserModeration
 	bannedIPs         []string
 	uploads           []RecordedUpload
+	// fsFiles is the in-memory backing store for storage.fs, keyed by
+	// plugin slug then by cleaned relative path. Lets scenario tests
+	// exercise owncast.fs.* round-trips (write then read/list/delete)
+	// without touching the real disk.
+	fsFiles           map[string]map[string][]byte
 	fediversePosts    []RecordedFediverse
 	fediverseOutbox   []string
 	chatTo            []RecordedChatTo
@@ -116,7 +122,15 @@ type MockHost struct {
 }
 
 func NewMockHost() *MockHost {
-	return &MockHost{store: kv.NewMemory()}
+	return &MockHost{store: kv.NewMemory(), fsFiles: map[string]map[string][]byte{}}
+}
+
+// mockFSClean normalizes a plugin-supplied path the way the production
+// storage.fs sandbox does: rooted at "/" then cleaned, so "../" and
+// absolute paths collapse back inside the sandbox. Returns a slash-style
+// key relative to the plugin's root ("" for the root itself).
+func mockFSClean(rel string) string {
+	return strings.TrimPrefix(path.Clean("/"+rel), "/")
 }
 
 // IsAuthenticated is the auth predicate the test runner installs on
@@ -301,6 +315,69 @@ func (m *MockHost) HostEnv() *plugin.HostEnv {
 			copy(cp, data)
 			m.uploads = append(m.uploads, RecordedUpload{Name: name, Data: cp, URL: url})
 			return url, nil
+		},
+		FSRead: func(pluginName, p string) ([]byte, error) {
+			m.mu.Lock()
+			defer m.mu.Unlock()
+			data, ok := m.fsFiles[pluginName][mockFSClean(p)]
+			if !ok {
+				return nil, fmt.Errorf("open %s: file does not exist", p)
+			}
+			return append([]byte(nil), data...), nil
+		},
+		FSWrite: func(pluginName, p string, data []byte) error {
+			m.mu.Lock()
+			defer m.mu.Unlock()
+			if m.fsFiles[pluginName] == nil {
+				m.fsFiles[pluginName] = map[string][]byte{}
+			}
+			m.fsFiles[pluginName][mockFSClean(p)] = append([]byte(nil), data...)
+			return nil
+		},
+		FSList: func(pluginName, dir string) ([]string, error) {
+			m.mu.Lock()
+			defer m.mu.Unlock()
+			prefix := mockFSClean(dir)
+			seen := map[string]bool{}
+			names := []string{}
+			for key := range m.fsFiles[pluginName] {
+				var rest string
+				switch {
+				case prefix == "":
+					rest = key
+				case key == prefix:
+					continue
+				case strings.HasPrefix(key, prefix+"/"):
+					rest = key[len(prefix)+1:]
+				default:
+					continue
+				}
+				child := rest
+				if i := strings.IndexByte(rest, '/'); i >= 0 {
+					child = rest[:i] // immediate subdirectory name
+				}
+				if !seen[child] {
+					seen[child] = true
+					names = append(names, child)
+				}
+			}
+			return names, nil
+		},
+		FSDelete: func(pluginName, p string) error {
+			m.mu.Lock()
+			defer m.mu.Unlock()
+			key := mockFSClean(p)
+			if _, ok := m.fsFiles[pluginName][key]; !ok {
+				return fmt.Errorf("remove %s: file does not exist", p)
+			}
+			delete(m.fsFiles[pluginName], key)
+			return nil
+		},
+		FSExists: func(pluginName, p string) (bool, error) {
+			m.mu.Lock()
+			defer m.mu.Unlock()
+			_, ok := m.fsFiles[pluginName][mockFSClean(p)]
+			return ok, nil
 		},
 	}
 }

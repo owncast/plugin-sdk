@@ -7,13 +7,26 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"path"
 	"path/filepath"
+	"strings"
 	"time"
 
 	extism "github.com/extism/go-sdk"
 	"github.com/owncast/owncast-plugin-sdk/host-runtime/kv"
 	"github.com/owncast/owncast-plugin-sdk/host-runtime/plugin"
 )
+
+// demoFS is the in-memory storage.fs backing for the demo host, keyed by
+// plugin slug then cleaned path. Production wires this to a real sandboxed
+// directory under data/plugin-data/<slug>/.
+var demoFS = map[string]map[string][]byte{}
+
+// demoFSClean normalizes a plugin path the way the real sandbox does: rooted
+// at "/" then cleaned, so "../" and absolute paths collapse back inside.
+func demoFSClean(rel string) string {
+	return strings.TrimPrefix(path.Clean("/"+rel), "/")
+}
 
 func extismSetLogLevel() {
 	extism.SetLogLevel(extism.LogLevelInfo)
@@ -119,6 +132,64 @@ func main() {
 			url := fmt.Sprintf("https://demo.owncast.example/uploads/%s/%s", pluginName, name)
 			fmt.Printf("[storage.upload by %s] %s (%d bytes) → %s\n", pluginName, name, len(data), url)
 			return url, nil
+		},
+
+		// storage.fs: in-memory sandbox for the demo, keyed by plugin slug
+		// then cleaned path, so owncast.fs.* round-trips work without writing
+		// to disk. Production wires this to data/plugin-data/<slug>/.
+		FSRead: func(pluginName, p string) ([]byte, error) {
+			data, ok := demoFS[pluginName][demoFSClean(p)]
+			if !ok {
+				return nil, fmt.Errorf("open %s: file does not exist", p)
+			}
+			return append([]byte(nil), data...), nil
+		},
+		FSWrite: func(pluginName, p string, data []byte) error {
+			if demoFS[pluginName] == nil {
+				demoFS[pluginName] = map[string][]byte{}
+			}
+			demoFS[pluginName][demoFSClean(p)] = append([]byte(nil), data...)
+			fmt.Printf("[storage.fs.write by %s] %s (%d bytes)\n", pluginName, p, len(data))
+			return nil
+		},
+		FSList: func(pluginName, dir string) ([]string, error) {
+			prefix := demoFSClean(dir)
+			seen := map[string]bool{}
+			names := []string{}
+			for key := range demoFS[pluginName] {
+				var rest string
+				switch {
+				case prefix == "":
+					rest = key
+				case key == prefix:
+					continue
+				case strings.HasPrefix(key, prefix+"/"):
+					rest = key[len(prefix)+1:]
+				default:
+					continue
+				}
+				child := rest
+				if i := strings.IndexByte(rest, '/'); i >= 0 {
+					child = rest[:i]
+				}
+				if !seen[child] {
+					seen[child] = true
+					names = append(names, child)
+				}
+			}
+			return names, nil
+		},
+		FSDelete: func(pluginName, p string) error {
+			key := demoFSClean(p)
+			if _, ok := demoFS[pluginName][key]; !ok {
+				return fmt.Errorf("remove %s: file does not exist", p)
+			}
+			delete(demoFS[pluginName], key)
+			return nil
+		},
+		FSExists: func(pluginName, p string) (bool, error) {
+			_, ok := demoFS[pluginName][demoFSClean(p)]
+			return ok, nil
 		},
 		IsAuthenticated: isAuthenticatedHeader,
 		Socials: func() []plugin.SocialHandle {

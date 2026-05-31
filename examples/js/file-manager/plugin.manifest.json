@@ -1,0 +1,20 @@
+{
+  "api": "1",
+  "name": "Example File Manager",
+  "slug": "file-manager",
+  "version": "0.1.0",
+  "description": "Browse, upload, and delete files in the plugin's own private sandboxed storage (storage.fs), from an admin page.",
+  "permissions": [
+    "http.serve",
+    "storage.fs"
+  ],
+  "admin": {
+    "pages": [
+      {
+        "title": "Files",
+        "path": "/admin",
+        "icon": "folder"
+      }
+    ]
+  }
+}
