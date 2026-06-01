@@ -637,6 +637,18 @@ const owncast = {
       );
     },
   },
+  config: {
+    // get returns the effective value of a manifest-declared config key (the
+    // admin-set override, else the declared default), already parsed to its
+    // declared type. Returns `fallback` (default undefined) for an unknown key
+    // or one with no value. Ambient — no permission required.
+    get(key, fallback) {
+      const fns = Host.getFunctions();
+      const offset = fns.owncast_config_get(Memory.fromString(key).offset);
+      if (offset == 0) return fallback;
+      return JSON.parse(Memory.find(offset).readString());
+    },
+  },
   events: {
     emit(eventType, payload) {
       const fns = Host.getFunctions();

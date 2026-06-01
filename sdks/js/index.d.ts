@@ -453,6 +453,15 @@ export const owncast: {
     get(key: string): string | null;
     set(key: string, value: string | number): void;
   };
+  /** Read this plugin's admin-configurable settings, declared under
+   *  `config` in the manifest. Ambient — no permission required. */
+  config: {
+    /** The effective value of a manifest-declared config key (admin override,
+     *  else the declared default), parsed to its declared type. Returns
+     *  `fallback` (default `undefined`) for an unknown key or one with no
+     *  value. */
+    get<T = unknown>(key: string, fallback?: T): T;
+  };
   events: {
     emit(eventType: string, payload: unknown): void;
   };

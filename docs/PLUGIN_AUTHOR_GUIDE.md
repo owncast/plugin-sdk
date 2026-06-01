@@ -320,6 +320,7 @@ Each method requires the matching permission in your manifest:
 | `onHttpRequest` + static files from `public/`                                   | `http.serve`         |
 | `owncast.sse.send(channel, event, data)`, push to browsers                      | `http.sse`           |
 | `owncast.timer.setTimeout/setInterval/clear(...)`, schedule callbacks           | none (ambient)       |
+| `owncast.config.get(key, fallback?)`, read manifest-declared config             | none (ambient)       |
 
 Calling an API without its permission throws a clear error.
 
@@ -503,6 +504,34 @@ definePlugin({
 ### Telling the time
 
 `Date` works normally for formatting and arithmetic, and the clock is real: `Date.now()` and `new Date()` return the actual current time, and `performance.now()` is a real monotonic clock. (`onTick`/timer payloads also carry the host time, handy if you don't want to call `Date` yourself.) `setTimeout`/`setInterval` as JS globals do **not** exist, use `owncast.timer` instead.
+
+## Config
+
+Declare admin-configurable settings under `config` in the manifest, each with a
+type, a default, and a description:
+
+```json
+{
+  "config": {
+    "greeting": { "type": "string", "default": "welcome!", "description": "First-join message" },
+    "cooldownMs": { "type": "number", "default": 2000, "description": "Per-user command cooldown" },
+    "modOnly": { "type": "boolean", "default": false, "description": "Restrict to moderators" }
+  }
+}
+```
+
+Read them from plugin code with `owncast.config.get(key)`, which returns the
+admin-set value when present and the declared default otherwise, already parsed
+to the declared type:
+
+```js
+const cooldown = owncast.config.get("cooldownMs"); // number, e.g. 2000
+const greeting = owncast.config.get("greeting", "hi"); // 2nd arg is a fallback for unknown keys
+```
+
+`config.get` is ambient (no permission). Reading an undeclared key returns the
+`fallback` (or `undefined`). This is the recommended way to expose simple knobs
+— prefer it over building a bespoke settings page and KV plumbing.
 
 ## Admin pages
 

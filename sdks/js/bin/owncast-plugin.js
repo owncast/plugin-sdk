@@ -370,6 +370,9 @@ function generateInterface(manifest) {
   // a plugin can't setTimeout in the sandbox.
   imports.push("owncast_timer_set(id: I64, delayMs: I64, repeat: I32): I32");
   imports.push("owncast_timer_clear(id: I64): void");
+  // Config is ambient too: a plugin reading its own manifest-declared config
+  // (admin override falling back to the declared default) needs no permission.
+  imports.push("owncast_config_get(keyPtr: PTR): PTR");
   if (perms.has("chat.send")) {
     imports.push("owncast_send_chat(textPtr: PTR): void");
     imports.push("owncast_send_chat_action(textPtr: PTR): void");
