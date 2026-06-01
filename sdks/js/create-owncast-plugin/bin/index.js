@@ -37,6 +37,12 @@ const displayName = slug
 
 const templateDir = path.join(__dirname, "..", "template");
 
+// Pin the new project to the SDK version that matches this scaffolder.
+// create-owncast-plugin and @owncast/plugin-sdk are released in lockstep, so
+// the scaffolder's own version is the right pin — this keeps the template from
+// drifting behind the SDK (it used to hardcode an older "^0.3.1").
+const sdkVersion = require("../package.json").version;
+
 function copyRecursive(src, dst) {
   const stat = fs.statSync(src);
   if (stat.isDirectory()) {
@@ -48,7 +54,8 @@ function copyRecursive(src, dst) {
     let content = fs.readFileSync(src, "utf8");
     content = content
       .replaceAll("__PLUGIN_SLUG__", slug)
-      .replaceAll("__PLUGIN_DISPLAY_NAME__", displayName);
+      .replaceAll("__PLUGIN_DISPLAY_NAME__", displayName)
+      .replaceAll("__SDK_VERSION__", sdkVersion);
     fs.writeFileSync(dst, content);
   }
 }
