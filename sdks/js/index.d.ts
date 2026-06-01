@@ -209,6 +209,12 @@ export interface SocialHandle {
   icon?: string;
 }
 
+/** A custom chat emote from owncast.server.emotes(). */
+export interface Emote {
+  name: string; // the `:code:` chat clients substitute
+  url: string; // image the emote renders to
+}
+
 export interface FederationInfo {
   enabled: boolean;
   username?: string;
@@ -501,6 +507,8 @@ export const owncast: {
   server: {
     info(): ServerInfo;
     socials(): SocialHandle[];
+    /** Custom chat emotes (`:code:` → image URL) configured on this server. */
+    emotes(): Emote[];
     federation(): FederationInfo;
     tags(): string[];
   };

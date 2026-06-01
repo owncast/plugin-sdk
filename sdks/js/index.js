@@ -562,6 +562,14 @@ const owncast = {
       if (offset == 0) return [];
       return JSON.parse(Memory.find(offset).readString());
     },
+    emotes() {
+      const fns = Host.getFunctions();
+      if (!fns.owncast_server_emotes)
+        throw new Error(`permission '${Permissions.ServerRead}' not granted`);
+      const offset = fns.owncast_server_emotes();
+      if (offset == 0) return [];
+      return JSON.parse(Memory.find(offset).readString());
+    },
     federation() {
       const fns = Host.getFunctions();
       if (!fns.owncast_server_federation)
