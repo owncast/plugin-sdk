@@ -438,6 +438,8 @@ Entries are hostname globs, bare hostnames match exactly; `*` is a wildcard segm
 
 Anything in your `public/` directory is served at `/plugins/<your-name>/...`. Requests that don't match a file fall through to your `onHttpRequest` handler. The separate `assets/` directory holds files the host reads internally for manifest-inlined content (`styles`, `scripts`, `extraPageContent`) and is never reachable through the plugin's URL space.
 
+> **Host-version note.** `public/`-as-web-root is the current convention and what every Owncast host from the 0.4.x line onward serves. The standalone `owncast-plugin-serve` **v0.4.0** release binary predates it and serves static files from `assets/` instead — so a plugin authored per these docs (pages in `public/`) shows 404s for its pages on that one older binary. If you must support it, bundle the same files under both directories (e.g. an `assets/` → `public/` symlink). Newer hosts and the bundled dev server (`owncast-plugin serve`) serve `public/` directly, so this only affects that specific downloadable binary.
+
 ```
 my-plugin/
 └── public/
