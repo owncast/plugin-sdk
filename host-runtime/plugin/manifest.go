@@ -281,11 +281,12 @@ func (m *Manifest) Validate() error {
 		a.Icon = rewritten
 	}
 	// manifest.styles: CSS files the plugin contributes to the viewer
-	// page. The host reads each file from assets/ and concatenates the
-	// bytes into the customStyles response on /api/config, so only
-	// ui.modify is required (the plugin paints inside Owncast's
-	// chrome). Path rules mirror actions (relative paths auto-prefix
-	// to /plugins/<slug>/, cross-plugin paths rejected); external
+	// page. The host serves each file from the plugin's own URL
+	// namespace (/plugins/<slug>/...) and injects it into the viewer,
+	// so both ui.modify (the plugin paints inside Owncast's chrome)
+	// and http.serve (the host serves the bytes) are required. Path
+	// rules mirror actions (relative paths auto-prefix to
+	// /plugins/<slug>/, cross-plugin paths rejected); external
 	// http(s):// targets are rejected outright so admins see every
 	// file that will land in their viewer's global CSS scope.
 	if len(m.Styles) > 0 {
@@ -296,6 +297,11 @@ func (m *Manifest) Validate() error {
 					"into the viewer's global scope must opt in to ui.modify " +
 					"so it's visible to anyone reviewing the manifest that " +
 					"the plugin restyles Owncast's UI")
+		}
+		if !hasHttpServe {
+			return errors.New(
+				"manifest.styles requires the \"http.serve\" permission so the " +
+					"host can serve the bundled CSS files at /plugins/<slug>/ URLs")
 		}
 		for i, raw := range m.Styles {
 			if strings.TrimSpace(raw) == "" {
@@ -324,8 +330,8 @@ func (m *Manifest) Validate() error {
 	}
 	// manifest.scripts: JS files the plugin contributes to the
 	// viewer page. Same rules as styles, applied to .js entries;
-	// inlined into /customjavascript by the host, so only ui.modify
-	// is required.
+	// the host serves them from /plugins/<slug>/ and loads them into
+	// the viewer page, so ui.modify + http.serve are required.
 	if len(m.Scripts) > 0 {
 		if !hasUIModify {
 			return errors.New(
@@ -334,6 +340,11 @@ func (m *Manifest) Validate() error {
 					"JavaScript into the viewer page must opt in to " +
 					"ui.modify so it's visible to anyone reviewing the " +
 					"manifest that the plugin runs code inside Owncast's chrome")
+		}
+		if !hasHttpServe {
+			return errors.New(
+				"manifest.scripts requires the \"http.serve\" permission so the " +
+					"host can serve the bundled JavaScript files at /plugins/<slug>/ URLs")
 		}
 		for i, raw := range m.Scripts {
 			if strings.TrimSpace(raw) == "" {

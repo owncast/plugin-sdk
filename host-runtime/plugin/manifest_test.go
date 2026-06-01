@@ -172,6 +172,62 @@ func TestAgreesWith_SidecarMayDeclareMoreThanRuntimeUses(t *testing.T) {
 	}
 }
 
+func TestParseManifest_StylesRequireHTTPServe(t *testing.T) {
+	_, err := ParseManifest([]byte(`{
+		"api": "1", "name": "styles-demo", "version": "1.0",
+		"permissions": ["ui.modify"],
+		"styles": ["theme.css"]
+	}`))
+	if err == nil {
+		t.Fatal("expected error for styles without http.serve")
+	}
+	if !strings.Contains(err.Error(), "http.serve") {
+		t.Errorf("expected error mentioning http.serve, got: %v", err)
+	}
+}
+
+func TestParseManifest_ScriptsRequireHTTPServe(t *testing.T) {
+	_, err := ParseManifest([]byte(`{
+		"api": "1", "name": "scripts-demo", "version": "1.0",
+		"permissions": ["ui.modify"],
+		"scripts": ["client.js"]
+	}`))
+	if err == nil {
+		t.Fatal("expected error for scripts without http.serve")
+	}
+	if !strings.Contains(err.Error(), "http.serve") {
+		t.Errorf("expected error mentioning http.serve, got: %v", err)
+	}
+}
+
+func TestParseManifest_StylesAllowHTTPServeAndRewritePath(t *testing.T) {
+	m, err := ParseManifest([]byte(`{
+		"api": "1", "name": "styles-demo", "version": "1.0",
+		"permissions": ["ui.modify", "http.serve"],
+		"styles": ["theme.css"]
+	}`))
+	if err != nil {
+		t.Fatalf("parse: %v", err)
+	}
+	if len(m.Styles) != 1 || m.Styles[0] != "/plugins/styles-demo/theme.css" {
+		t.Errorf("style should rewrite into plugin namespace, got %v", m.Styles)
+	}
+}
+
+func TestParseManifest_ScriptsAllowHTTPServeAndRewritePath(t *testing.T) {
+	m, err := ParseManifest([]byte(`{
+		"api": "1", "name": "scripts-demo", "version": "1.0",
+		"permissions": ["ui.modify", "http.serve"],
+		"scripts": ["client.js"]
+	}`))
+	if err != nil {
+		t.Fatalf("parse: %v", err)
+	}
+	if len(m.Scripts) != 1 || m.Scripts[0] != "/plugins/scripts-demo/client.js" {
+		t.Errorf("script should rewrite into plugin namespace, got %v", m.Scripts)
+	}
+}
+
 func TestParseManifest_Action_RelativeURLIsRewritten(t *testing.T) {
 	m, err := ParseManifest([]byte(`{
 		"api": "1", "name": "stats", "version": "1.0",
