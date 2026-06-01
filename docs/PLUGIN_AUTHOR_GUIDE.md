@@ -308,6 +308,7 @@ Each method requires the matching permission in your manifest:
 | `owncast.stream.broadcaster()`, inbound encode telemetry (read-only)            | `server.read`        |
 | `owncast.server.info()`, server name, version, etc.                             | `server.read`        |
 | `owncast.server.socials()`, `[{platform, url, icon}]`                           | `server.read`        |
+| `owncast.server.emotes()`, custom chat emotes `[{name, url}]`                    | `server.read`        |
 | `owncast.server.federation()`, `{enabled, username, isPrivate}`                 | `server.read`        |
 | `owncast.server.tags()`, `[string]`                                             | `server.read`        |
 | `owncast.videoConfig.read()`, `{latencyLevel, codec, variants}`                 | `videoconfig.read`   |

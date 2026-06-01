@@ -428,6 +428,7 @@ function generateInterface(manifest) {
     imports.push("owncast_stream_current(): PTR");
     imports.push("owncast_server_info(): PTR");
     imports.push("owncast_server_socials(): PTR");
+    imports.push("owncast_server_emotes(): PTR");
     imports.push("owncast_server_federation(): PTR");
     imports.push("owncast_stream_broadcaster(): PTR");
     imports.push("owncast_server_tags(): PTR");
