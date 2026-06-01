@@ -366,6 +366,10 @@ function generateInterface(manifest) {
 
   const perms = new Set(manifest.permissions || []);
   const imports = [];
+  // Timers are ambient (no permission): the host always provides them, since
+  // a plugin can't setTimeout in the sandbox.
+  imports.push("owncast_timer_set(id: I64, delayMs: I64, repeat: I32): I32");
+  imports.push("owncast_timer_clear(id: I64): void");
   if (perms.has("chat.send")) {
     imports.push("owncast_send_chat(textPtr: PTR): void");
     imports.push("owncast_send_chat_action(textPtr: PTR): void");

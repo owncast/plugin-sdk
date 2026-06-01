@@ -7,6 +7,14 @@
 
 let registered = null;
 
+// Host-driven timers. The sandbox has no setTimeout, so owncast.timer.* asks
+// the host to schedule a callback and call back via the internal "timer.fire"
+// event. The author's callback stays here in the long-lived instance, keyed by
+// a guest-allocated id the host echoes back. State persists across calls
+// because the plugin instance is reused; timers are dropped on reload.
+let nextTimerId = 1;
+const timerCallbacks = new Map(); // id -> { fn, repeat }
+
 const FilterAction = Object.freeze({
   Pass: "pass",
   Modify: "modify",
@@ -27,6 +35,8 @@ const Events = Object.freeze({
   // SSE connection lifecycle (who connected to / left a plugin's stream)
   SseConnect: "sse.connect",
   SseDisconnect: "sse.disconnect",
+  // Once-a-second tick for periodic work (opt in by defining onTick)
+  Tick: "tick",
   // Fediverse, engagement (metadata only) + inbound posts (with content)
   FediverseFollow: "fediverse.follow",
   FediverseLike: "fediverse.like",
@@ -109,6 +119,8 @@ const HANDLERS = Object.freeze({
   // SSE connection lifecycle
   onSseConnect: { event: Events.SseConnect, kind: HandlerKind.Notify },
   onSseDisconnect: { event: Events.SseDisconnect, kind: HandlerKind.Notify },
+  // Once-a-second tick
+  onTick: { event: Events.Tick, kind: HandlerKind.Notify },
   // Fediverse engagement (actor + target metadata)
   onFediverseFollow: {
     event: Events.FediverseFollow,
@@ -170,8 +182,20 @@ function describeSubscriptions() {
 }
 
 function dispatchEvent(envelope) {
-  if (!registered) return;
   const { eventType, payload } = envelope;
+  // Internal: a host-scheduled timer elapsed. Run the author's callback,
+  // dropping one-shot entries first so a throw still cleans up. Not routed to
+  // user handlers or the `on` map.
+  if (eventType === "timer.fire") {
+    const id = payload && payload.id;
+    const entry = timerCallbacks.get(id);
+    if (entry) {
+      if (!entry.repeat) timerCallbacks.delete(id);
+      entry.fn();
+    }
+    return;
+  }
+  if (!registered) return;
   for (const [method, info] of Object.entries(HANDLERS)) {
     if (
       info.kind === HandlerKind.Notify &&
@@ -226,6 +250,27 @@ function permError(apiName, perm) {
   const msg = `${apiName} requires the '${perm}' permission. Add it to your plugin.manifest.json's "permissions" array.`;
   console.error(`[owncast-plugin] ${msg}`);
   return new Error(msg);
+}
+
+// scheduleTimer registers a callback and asks the host to schedule it. The id
+// is guest-allocated and echoed back on "timer.fire". Throws if the host
+// rejects the schedule (per-plugin pending-timer cap).
+function scheduleTimer(fn, ms, repeat) {
+  if (typeof fn !== "function") {
+    throw new Error("owncast.timer: callback must be a function");
+  }
+  const id = nextTimerId++;
+  const delay = Math.max(0, Math.floor(Number(ms) || 0));
+  const fns = Host.getFunctions();
+  if (!fns.owncast_timer_set) {
+    throw new Error("owncast.timer is unavailable in this host");
+  }
+  const ok = fns.owncast_timer_set(BigInt(id), BigInt(delay), repeat ? 1 : 0);
+  if (ok !== 1) {
+    throw new Error("owncast.timer: too many pending timers");
+  }
+  timerCallbacks.set(id, { fn, repeat });
+  return id;
 }
 
 const owncast = {
@@ -625,6 +670,26 @@ const owncast = {
         Memory.fromString(event || "").offset,
         Memory.fromString(payload).offset,
       );
+    },
+  },
+  timer: {
+    // setTimeout(fn, ms) runs fn once after ~ms milliseconds. setInterval
+    // repeats until clear(id). The host drives the schedule (the sandbox has
+    // no setTimeout); your callback runs in this instance when it fires.
+    // Returns an id for clear(). Very small delays are clamped up by the host,
+    // and there's a per-plugin cap on pending timers (throws past it).
+    // Note: timers are in-memory and do not survive a plugin reload or a host
+    // restart. No permission required.
+    setTimeout(fn, ms) {
+      return scheduleTimer(fn, ms, false);
+    },
+    setInterval(fn, ms) {
+      return scheduleTimer(fn, ms, true);
+    },
+    clear(id) {
+      timerCallbacks.delete(id);
+      const fns = Host.getFunctions();
+      if (fns.owncast_timer_clear) fns.owncast_timer_clear(BigInt(id));
     },
   },
   http: {

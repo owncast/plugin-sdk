@@ -117,6 +117,7 @@ export const Events: {
   readonly StreamTitleChanged: "stream.title.changed";
   readonly SseConnect: "sse.connect";
   readonly SseDisconnect: "sse.disconnect";
+  readonly Tick: "tick";
   readonly FediverseFollow: "fediverse.follow";
   readonly FediverseLike: "fediverse.like";
   readonly FediverseRepost: "fediverse.repost";
@@ -278,6 +279,12 @@ export interface SSEConnectionEvent {
   user?: ChatUser;
 }
 
+/** Payload for the once-a-second tick event (onTick). `now` is the host
+ *  wall-clock time in unix milliseconds when the tick fired. */
+export interface TickEvent {
+  now: number;
+}
+
 export interface PluginDef {
   /** Notification handler for chat messages. Fire-and-forget. */
   onChatMessage?(msg: ChatMessage): void | Promise<void>;
@@ -308,6 +315,10 @@ export interface PluginDef {
   /** A browser closed one of this plugin's SSE streams (same connectionId as
    *  the matching onSseConnect). Requires the `http.sse` permission. */
   onSseDisconnect?(event: SSEConnectionEvent): void | Promise<void>;
+
+  /** Fires once a second for periodic work. `now` is the host wall-clock time
+   *  in unix milliseconds. Defining this opts the plugin into the tick. */
+  onTick?(event: TickEvent): void | Promise<void>;
 
   /** Someone on the fediverse followed the streamer's account. */
   onFediverseFollow?(event: FediverseEngagement): void | Promise<void>;
@@ -446,6 +457,20 @@ export const owncast: {
      *  slow client are dropped rather than blocking the plugin. Requires the
      *  `http.sse` permission. */
     send(channel: string, event: string, data: unknown): void;
+  };
+  /** Host-driven timers. The sandbox has no setTimeout; these ask the host to
+   *  call your callback back later (in this instance). No permission required.
+   *  Timers do not survive a plugin reload or host restart. */
+  timer: {
+    /** Run `fn` once after ~`ms` milliseconds. Returns an id for `clear()`.
+     *  Very small delays are clamped up by the host; throws past the
+     *  per-plugin pending-timer cap. */
+    setTimeout(fn: () => void, ms: number): number;
+    /** Run `fn` every ~`ms` milliseconds until `clear()`. The next run is
+     *  scheduled only after the previous one returns. Returns an id. */
+    setInterval(fn: () => void, ms: number): number;
+    /** Cancel a pending timeout or interval by its id. */
+    clear(id: number): void;
   };
   http: {
     fetch(url: string, opts?: HttpRequestOpts): HttpResponse;

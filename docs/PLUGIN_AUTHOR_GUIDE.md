@@ -285,6 +285,7 @@ Each method requires the matching permission in your manifest:
 | `owncast.fediverse.post(text)`, public post to the fediverse                    | `fediverse.post`     |
 | `onHttpRequest` + static files from `public/`                                   | `http.serve`         |
 | `owncast.sse.send(channel, event, data)`, push to browsers                      | `http.sse`           |
+| `owncast.timer.setTimeout/setInterval/clear(...)`, schedule callbacks           | none (ambient)       |
 
 Calling an API without its permission throws a clear error.
 
@@ -414,6 +415,38 @@ definePlugin({
 ```
 
 The host resolves the connecting chat user from their identity cookie, the same `user` shape your HTTP handlers get on `req.user`, and it's omitted when the viewer hasn't joined chat. `connectionId` is unique per connection, so a disconnect pairs with its connect and one user open in several tabs counts as several connections. These arrive on the normal event path (no extra permission beyond `http.sse`), and a connect/disconnect you don't handle is simply ignored.
+
+## Timers and the tick
+
+There is no `setTimeout` in the sandbox: a handler runs to completion and then your plugin is idle until the host calls it again, so nothing can run "later" on its own. Two host-driven mechanisms cover delayed and periodic work. Neither needs a permission.
+
+`owncast.timer` schedules a callback the host runs for you later, in this same instance:
+
+```js
+// Send a message 30 seconds from now:
+const id = owncast.timer.setTimeout(() => owncast.chat.send("starting now!"), 30_000);
+
+// Repeat until cleared:
+const ping = owncast.timer.setInterval(() => owncast.chat.send("still live"), 60_000);
+
+owncast.timer.clear(id); // cancel either kind
+```
+
+`setTimeout`/`setInterval` return an id for `clear()`. Very small delays are clamped up by the host, there's a per-plugin cap on pending timers (scheduling past it throws), and an interval's next run is scheduled only after the previous one returns, so a slow callback can't pile up. **Timers are in-memory: they do not survive a plugin reload or a host restart.** For "remind me even if Owncast restarts" you'd persist the target time yourself (e.g. in `storage.kv`) and re-arm on load.
+
+`onTick({ now })` fires once a second for open-ended periodic work. Define it to opt in; `now` is the host wall-clock time in unix milliseconds.
+
+```js
+definePlugin({
+  onTick({ now }) {
+    // runs every ~1s while the plugin is enabled
+  },
+});
+```
+
+### Telling the time
+
+`Date` works normally for formatting and arithmetic, and the clock is real: `Date.now()` and `new Date()` return the actual current time, and `performance.now()` is a real monotonic clock. (`onTick`/timer payloads also carry the host time, handy if you don't want to call `Date` yourself.) `setTimeout`/`setInterval` as JS globals do **not** exist, use `owncast.timer` instead.
 
 ## Admin pages
 

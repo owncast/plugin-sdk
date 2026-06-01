@@ -288,6 +288,24 @@ func main() {
 	sseHub := plugin.NewSSEHub()
 	env.SSE = sseHub
 
+	timerHub := plugin.NewTimerHub(func(slug string) *plugin.Loaded {
+		if loaded != nil && loaded.Manifest.Slug == slug {
+			return loaded
+		}
+		return nil
+	})
+	env.Timer = timerHub
+
+	// Fire a tick once a second so onTick handlers and host-driven timers
+	// work when iterating in the dev server.
+	go func() {
+		t := time.NewTicker(time.Second)
+		defer t.Stop()
+		for range t.C {
+			dispatcher.Notify(ctx, plugin.EventTick, plugin.TickEvent{Now: time.Now().UnixMilli()})
+		}
+	}()
+
 	server := plugin.NewServer([]*plugin.Loaded{loaded})
 	server.IsAuthenticated = env.IsAuthenticated
 	server.SSE = sseHub
