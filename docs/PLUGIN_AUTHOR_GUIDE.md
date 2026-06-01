@@ -14,6 +14,7 @@ How to write, test, and ship a plugin. Aimed at JavaScript developers. Write som
 - [Owncast APIs](#owncast-apis)
   - [Chat identity](#chat-identity)
 - [Permissions](#permissions)
+- [Limits](#limits)
 - [Serving HTTP](#serving-http)
 - [Realtime updates (Server-Sent Events)](#realtime-updates-server-sent-events)
 - [Admin pages](#admin-pages)
@@ -433,6 +434,28 @@ Declare only what you need. Admins reviewing your manifest before install make t
 ```
 
 Entries are hostname globs, bare hostnames match exactly; `*` is a wildcard segment. The wildcard `"*"` matches any host but **must be written explicitly** (`"network": { "allowedHosts": ["*"] }`) so admins reviewing the manifest see the scope they're granting. Most plugins should list the specific hosts they actually call.
+
+## Limits
+
+The host enforces these caps per plugin. They're generous for normal use; size pages, APIs, and JSON payloads against them so you don't get truncated or timed out.
+
+| Limit | Value | Applies to |
+| --- | --- | --- |
+| Wasm linear memory | 64 MiB | the whole plugin instance |
+| `on_filter` (chat filter) runtime | 50 ms | each `filterChatMessage` call |
+| `on_event` (notification) runtime | 500 ms | each event handler (`onChatMessage`, `onStreamStarted`, `onTick`, …) |
+| `on_http_request` runtime | 5 s | each HTTP handler call |
+| Hard per-call ceiling | 10 s | any single export call (backstop above the above) |
+| `register()` output | 256 KiB | the subscription/manifest JSON your build emits |
+| `on_filter` output | 1 MiB | the (modified) message a filter returns |
+| HTTP request body delivered to your handler | 1 MB | inbound `onHttpRequest` body |
+| HTTP response body | 10 MB | what `onHttpRequest` returns |
+| `on_http_request` envelope output | 12 MiB | the full encoded response envelope |
+| Pending timers | 64 | `owncast.timer.setTimeout`/`setInterval` outstanding at once |
+| Timer delay | 100 ms – 24 h | clamped into this range |
+| SSE connections | 64 | concurrent browser clients on your event stream |
+
+`owncast.kv` values have no hard size cap, but it's a config/state store, not a blob store — keep values small (use `storage.upload` or `storage.fs` for large data). Timeouts mean a handler that blocks (a slow `owncast.http.fetch`, a tight loop) is cancelled, so keep event/filter work quick and push slow work elsewhere.
 
 ## Serving HTTP
 
