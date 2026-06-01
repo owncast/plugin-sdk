@@ -79,6 +79,13 @@ type RecordedChatTo struct {
 	Text     string
 }
 
+// RecordedSSE captures an owncast.sse.send call.
+type RecordedSSE struct {
+	Channel string
+	Event   string
+	Data    string
+}
+
 type MockHost struct {
 	store             kv.Store
 	mu                sync.Mutex
@@ -103,6 +110,7 @@ type MockHost struct {
 	fediversePosts    []RecordedFediverse
 	fediverseOutbox   []string
 	chatTo            []RecordedChatTo
+	sseSends          []RecordedSSE
 	socials           []plugin.SocialHandle
 	federation        plugin.FederationInfo
 	videoConfigWrites []plugin.VideoConfigUpdate
@@ -297,6 +305,11 @@ func (m *MockHost) HostEnv() *plugin.HostEnv {
 			defer m.mu.Unlock()
 			m.chatTo = append(m.chatTo, RecordedChatTo{ClientID: clientID, Text: text})
 		},
+		OnSSESend: func(_, channel, event string, data []byte) {
+			m.mu.Lock()
+			defer m.mu.Unlock()
+			m.sseSends = append(m.sseSends, RecordedSSE{Channel: channel, Event: event, Data: string(data)})
+		},
 		PostFediverse: func(pluginName, text string) (string, error) {
 			m.mu.Lock()
 			defer m.mu.Unlock()
@@ -424,6 +437,12 @@ func (m *MockHost) ChatTo() []RecordedChatTo {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	return append([]RecordedChatTo(nil), m.chatTo...)
+}
+
+func (m *MockHost) SSESends() []RecordedSSE {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	return append([]RecordedSSE(nil), m.sseSends...)
 }
 
 func (m *MockHost) FediverseOutbox() []string {
