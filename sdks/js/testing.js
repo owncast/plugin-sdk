@@ -78,28 +78,40 @@ function findCacheDir() {
  * dir that links to your manifest + wasm and contains only the generated
  * scenarios it's running.
  *
- * Exits the process with status 0 if every scenario passed, non-zero otherwise.
+ * Sets `process.exitCode` to non-zero if any scenario failed (never resets a
+ * previously-failed code), and returns true on success / false on failure
+ * WITHOUT exiting the process. That lets one node process run several test
+ * files in a row (see runScenarioFiles); the process ends with the right code
+ * once the event loop drains.
  *
  * @param {Array<object>} scenarios, scenario objects: { name, given?, events, expect? }
  * @param {object}        [opts]
  * @param {string}        [opts.cwd], plugin project directory (default: process.cwd())
+ * @returns {boolean} true if every scenario passed
  */
+function fail(code) {
+  // Record a non-zero exit code without clobbering an earlier failure or
+  // aborting sibling test files. Returns false for `return fail(...)`.
+  if (!process.exitCode) process.exitCode = code;
+  return false;
+}
+
 function runScenarios(scenarios, opts = {}) {
   if (!Array.isArray(scenarios) || scenarios.length === 0) {
     console.error("runScenarios: no scenarios provided");
-    process.exit(2);
+    return fail(2);
   }
 
   const cwd = opts.cwd ? path.resolve(opts.cwd) : process.cwd();
   const manifestPath = path.join(cwd, "plugin.manifest.json");
   if (!fs.existsSync(manifestPath)) {
     console.error(`plugin.manifest.json not found in ${cwd}`);
-    process.exit(2);
+    return fail(2);
   }
   const manifest = JSON.parse(fs.readFileSync(manifestPath, "utf8"));
   if (!manifest.name) {
     console.error("manifest.name is required");
-    process.exit(2);
+    return fail(2);
   }
   // wasm + symlink filenames key off slug (the identifier), not the
   // display name. Derive the slug here the same way the build CLI
@@ -109,14 +121,14 @@ function runScenarios(scenarios, opts = {}) {
     console.error(
       `could not derive slug from manifest.name ${JSON.stringify(manifest.name)}; set manifest.slug explicitly`,
     );
-    process.exit(2);
+    return fail(2);
   }
   const wasmPath = path.join(cwd, `${slug}.wasm`);
   if (!fs.existsSync(wasmPath)) {
     console.error(
       `${slug}.wasm not found at ${wasmPath}, run \`owncast-plugin package\` first`,
     );
-    process.exit(2);
+    return fail(2);
   }
 
   const cache = findCacheDir();
@@ -126,7 +138,7 @@ function runScenarios(scenarios, opts = {}) {
       `owncast-plugin-test not found at ${bin}\n` +
         `Reinstall @owncast/plugin-sdk to fetch the host toolchain (postinstall handles it).`,
     );
-    process.exit(2);
+    return fail(2);
   }
 
   // Build a temp project dir that links to the wasm + manifest and contains
@@ -156,11 +168,46 @@ function runScenarios(scenarios, opts = {}) {
     try {
       execFileSync(bin, [tmp], { stdio: "inherit", env });
     } catch (e) {
-      process.exit(typeof e.status === "number" ? e.status : 1);
+      return fail(typeof e.status === "number" ? e.status : 1);
     }
   } finally {
     fs.rmSync(tmp, { recursive: true, force: true });
   }
+  return true;
 }
 
-module.exports = { runScenarios };
+/**
+ * Discover and run every `__tests__/*.test.js` file in one node process,
+ * aggregating their exit status. Lets you organize scenarios across multiple
+ * files (by module/feature) without a shell loop spawning a process per file.
+ * Each discovered file is expected to call runScenarios() at load time.
+ *
+ * @param {object} [opts]
+ * @param {string} [opts.cwd], plugin project directory (default: process.cwd())
+ * @returns {boolean} true if every file's scenarios passed
+ */
+function runScenarioFiles(opts = {}) {
+  const cwd = opts.cwd ? path.resolve(opts.cwd) : process.cwd();
+  const dir = path.join(cwd, "__tests__");
+  if (!fs.existsSync(dir)) {
+    console.error(`no __tests__ directory in ${cwd}`);
+    return fail(2);
+  }
+  const files = fs
+    .readdirSync(dir)
+    .filter((f) => f.endsWith(".test.js"))
+    .sort()
+    .map((f) => path.join(dir, f));
+  if (files.length === 0) {
+    console.error(`no *.test.js files in ${dir}`);
+    return fail(2);
+  }
+  for (const f of files) {
+    // Each file runs its own runScenarios() at require time, which records a
+    // non-zero process.exitCode on failure but no longer aborts the process.
+    require(f);
+  }
+  return !process.exitCode;
+}
+
+module.exports = { runScenarios, runScenarioFiles };
