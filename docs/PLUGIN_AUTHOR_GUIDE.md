@@ -291,6 +291,7 @@ Each method requires the matching permission in your manifest:
 | `owncast.chat.send(text)`                                                       | `chat.send`          |
 | `owncast.chat.sendAction(text)` (italic style)                                  | `chat.send`          |
 | `owncast.chat.sendTo(clientId, text)`, private message                          | `chat.send`          |
+| `owncast.chat.replyTo(msg, text)`, whisper back to a message's sender           | `chat.send`          |
 | `owncast.chat.history(limit?)`, recent messages                                 | `chat.history`       |
 | `owncast.chat.clients()`, connected chat clients                                | `chat.history`       |
 | `owncast.chat.deleteMessage(messageId)`                                         | `chat.moderate`      |
@@ -326,6 +327,28 @@ Calling an API without its permission throws a clear error.
 Every plugin has **exactly one chat identity**, the auto-bot Owncast provisions when your plugin is installed. The display name is your plugin's `name` (e.g. `echo-bot`), with `IsBot: true`. `owncast.chat.send(text)` and `owncast.chat.sendAction(text)` both post as this identity, through Owncast's normal chat pipeline (filters, rate limits, persistence, moderation, same as any user).
 
 If you need multiple chat personas, **ship multiple plugins.** One identity per plugin keeps the trust boundary clear: admins see one chat user per granted plugin, and there's no allowlist machinery to forget or bypass. Plugins cannot post under arbitrary names or impersonate real users.
+
+### Replying to the sender
+
+A chat message carries the sender's `clientId`, so to whisper a confirmation,
+cooldown, or usage notice privately back to whoever ran a command, pass the
+message straight to `owncast.chat.replyTo`:
+
+```js
+filterChatMessage(msg) {
+  if (onCooldown(msg.user?.id)) {
+    // replyTo returns false if the sender's connection is gone; fall back to public.
+    if (!owncast.chat.replyTo(msg, "slow down — try again in a few seconds")) {
+      owncast.chat.send("slow down — try again in a few seconds");
+    }
+    return filter.drop("cooldown");
+  }
+  return filter.pass();
+}
+```
+
+`replyTo(msg, text)` is sugar over `sendTo(msg.clientId, text)`; pass a bare
+`clientId` if that's all you have.
 
 ## Permissions
 
@@ -396,7 +419,7 @@ You do **not** open or hold the connection yourself. Your `onHttpRequest` handle
 export function onChatMessage(msg) {
   // Notify every browser watching the "overlay" stream.
   owncast.sse.send("overlay", "chat", {
-    from: msg.user,
+    from: msg.user?.displayName,
     body: msg.body,
   });
 }
@@ -827,7 +850,7 @@ const { definePlugin, owncast } = require("@owncast/plugin-sdk");
 
 module.exports = definePlugin({
   onChatMessage(msg) {
-    owncast.chat.send(`${msg.user} said: ${msg.body}`);
+    owncast.chat.send(`${msg.user?.displayName ?? "someone"} said: ${msg.body}`);
   },
 });
 ```
@@ -865,11 +888,13 @@ const MIN_INTERVAL_MS = 2000;
 module.exports = definePlugin({
   filterChatMessage(msg) {
     const now = new Date(msg.timestamp).getTime();
-    const last = parseInt(owncast.kv.get(`last:${msg.user}`) || "0", 10);
+    // Key off the stable user id, not the display name (which can change).
+    const who = msg.user?.id ?? "anon";
+    const last = parseInt(owncast.kv.get(`last:${who}`) || "0", 10);
     if (last && now - last < MIN_INTERVAL_MS) {
-      return filter.drop(`${msg.user} must wait ${MIN_INTERVAL_MS}ms`);
+      return filter.drop(`${who} must wait ${MIN_INTERVAL_MS}ms`);
     }
-    owncast.kv.set(`last:${msg.user}`, String(now));
+    owncast.kv.set(`last:${who}`, String(now));
     return filter.pass();
   },
 });
@@ -992,7 +1017,7 @@ module.exports = definePlugin({
     if (!msg.body.startsWith("/announce ")) return;
     owncast.events.emit("announcement.broadcast", {
       text: msg.body.substring(10),
-      by: msg.user,
+      by: msg.user?.displayName,
     });
   },
 });

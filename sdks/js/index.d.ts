@@ -372,8 +372,14 @@ export const owncast: {
      *  responsible for escaping any untrusted content. Same `chat.send`
      *  permission as the other send variants. */
     system(body: string): void;
-    /** Private message to one chat client. */
+    /** Private message to one chat client. Requires `chat.send`. */
     sendTo(clientId: number | bigint, text: string): void;
+    /** Whisper a reply back to whoever sent a chat message. Pass the
+     *  `ChatMessage` from `onChatMessage`/`filterChatMessage` (or a bare
+     *  clientId). Returns `false` if the sender's connection is unknown (no
+     *  clientId), so callers can fall back to a public `send`. Requires
+     *  `chat.send`. */
+    replyTo(msg: ChatMessage | number | bigint, text: string): boolean;
     /** Recent chat history (most recent last). Requires `chat.history`.
      *  Default limit is 50; pass a smaller number to get fewer. */
     history(limit?: number): ChatMessage[];

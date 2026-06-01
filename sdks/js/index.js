@@ -322,6 +322,20 @@ const owncast = {
         Memory.fromString(text).offset,
       );
     },
+    // replyTo whispers text back to whoever sent a chat message. Pass the
+    // ChatMessage from onChatMessage/filterChatMessage (or a bare clientId).
+    // Returns true if the sender's connection was known and the reply sent,
+    // false otherwise (e.g. the message carried no clientId) — letting callers
+    // fall back to a public post.
+    replyTo(msgOrClientId, text) {
+      const clientId =
+        msgOrClientId && typeof msgOrClientId === "object"
+          ? msgOrClientId.clientId
+          : msgOrClientId;
+      if (clientId === undefined || clientId === null) return false;
+      this.sendTo(clientId, text);
+      return true;
+    },
     clients() {
       const fns = Host.getFunctions();
       if (!fns.owncast_chat_clients)
