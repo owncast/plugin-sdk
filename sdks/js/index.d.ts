@@ -452,6 +452,11 @@ export const owncast: {
   kv: {
     get(key: string): string | null;
     set(key: string, value: string | number): void;
+    /** Read a JSON value, parsed. Returns `fallback` (default `undefined`)
+     *  when the key is unset or holds invalid JSON. Requires `storage.kv`. */
+    getJSON<T = unknown>(key: string, fallback?: T): T;
+    /** Store a value as JSON. Requires `storage.kv`. */
+    setJSON(key: string, value: unknown): void;
   };
   /** Read this plugin's admin-configurable settings, declared under
    *  `config` in the manifest. Ambient — no permission required. */
