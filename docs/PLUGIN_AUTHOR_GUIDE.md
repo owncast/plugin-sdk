@@ -184,6 +184,38 @@ module.exports = definePlugin({
 
 Only define the handlers you actually need. Missing handlers = no subscription.
 
+### Chat message shape
+
+`onChatMessage(msg)` and `filterChatMessage(msg)` receive a `ChatMessage`:
+
+```ts
+interface ChatMessage {
+  id: string;
+  user?: ChatUser; // full sender identity (see below); absent if no account
+  clientId?: number; // originating connection; pass to chat.sendTo / replyTo
+  body: string; // the raw text the user typed (not HTML-rendered)
+  timestamp: string; // ISO-8601, nanosecond precision
+}
+
+interface ChatUser {
+  id: string;
+  displayName: string;
+  isBot?: boolean;
+  isAuthenticated?: boolean;
+  scopes?: string[]; // e.g. ["MODERATOR"]
+}
+```
+
+`user` carries the **full sender identity**, so do per-user state off the stable
+`user.id` and gate moderator-only commands on `user.scopes.includes("MODERATOR")`
+— don't match on the display name, which isn't unique or stable. To reply
+privately to whoever sent a message, pass `msg` (or `msg.clientId`) to
+[`owncast.chat.replyTo`](#replying-to-the-sender).
+
+> Display-name only? Hosts older than the identity payload delivered
+> `user` as a plain display-name string. If you support those, read
+> `typeof msg.user === "string" ? msg.user : msg.user?.displayName`.
+
 ### Fediverse inbound posts
 
 `onFediverseMention` and `onFediverseReply` carry a `FediverseInboundPost`, a post that someone on the fediverse made that's relevant to the streamer:
