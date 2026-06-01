@@ -9,7 +9,7 @@
     ],
     "expect": {
       "kv": { "startedAt": "2024-01-01T00:00:00Z" },
-      "chatActions": ["is live: First show"]
+      "chatActions": ["announces the stream is live: First show"]
     }
   },
   {
