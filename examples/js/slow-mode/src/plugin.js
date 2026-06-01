@@ -10,18 +10,20 @@ const lastByUser = new Map();
 
 module.exports = definePlugin({
   filterChatMessage(msg) {
-    // The host hands us an RFC3339Nano timestamp on each message: the
-    // plugin's only source of real wall-clock time, since extism-js's
-    // built-in Date.now() returns a frozen WASI-default value.
+    // Compare against the host's per-message timestamp. (Date.now() works in
+    // the sandbox too, but msg.timestamp is deterministic and what tests
+    // assert against.) Key the limiter on the stable user id; show the
+    // display name in the drop reason.
     const now = new Date(msg.timestamp).getTime();
-    const user = msg.user || "anon";
-    const last = lastByUser.get(user) || 0;
+    const id = msg.user ? msg.user.id : "anon";
+    const name = msg.user ? msg.user.displayName : id;
+    const last = lastByUser.get(id) || 0;
     if (last > 0 && now - last < MIN_INTERVAL_MS) {
       return filter.drop(
-        `slow-mode: ${user} must wait ${MIN_INTERVAL_MS}ms between messages`,
+        `slow-mode: ${name} must wait ${MIN_INTERVAL_MS}ms between messages`,
       );
     }
-    lastByUser.set(user, now);
+    lastByUser.set(id, now);
     return filter.pass();
   },
 });

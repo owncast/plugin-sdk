@@ -8,7 +8,7 @@ module.exports = definePlugin({
     if (!msg.body.startsWith(prefix)) return;
     owncast.events.emit(ANNOUNCEMENT_BROADCAST, {
       text: msg.body.substring(prefix.length),
-      by: msg.user,
+      by: msg.user ? msg.user.displayName : null,
       at: msg.timestamp
     });
   }

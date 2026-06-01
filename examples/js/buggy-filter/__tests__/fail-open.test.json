@@ -4,8 +4,17 @@
     "events": [
       {
         "filter": "chat.message.received",
-        "payload": { "user": "alice", "body": "hi", "timestamp": "2024-01-01T00:00:00Z" },
-        "expect": { "action": "pass" }
+        "payload": {
+          "user": {
+            "id": "u-alice",
+            "displayName": "alice"
+          },
+          "body": "hi",
+          "timestamp": "2024-01-01T00:00:00Z"
+        },
+        "expect": {
+          "action": "pass"
+        }
       }
     ]
   }

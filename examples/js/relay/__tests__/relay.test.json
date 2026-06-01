@@ -4,7 +4,7 @@
     "events": [
       {
         "event": "chat.message.received",
-        "payload": { "user": "alice", "body": "/announce stream is live", "timestamp": "2024-01-01T00:00:00Z" }
+        "payload": { "user": { "id": "u-alice", "displayName": "alice" }, "body": "/announce stream is live", "timestamp": "2024-01-01T00:00:00Z" }
       }
     ],
     "expect": {
@@ -21,7 +21,7 @@
     "events": [
       {
         "event": "chat.message.received",
-        "payload": { "user": "alice", "body": "just a regular message", "timestamp": "2024-01-01T00:00:00Z" }
+        "payload": { "user": { "id": "u-alice", "displayName": "alice" }, "body": "just a regular message", "timestamp": "2024-01-01T00:00:00Z" }
       }
     ],
     "expect": { "emits": [] }

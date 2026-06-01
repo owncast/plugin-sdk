@@ -4,7 +4,7 @@
     "events": [
       {
         "event": "chat.message.received",
-        "payload": { "id": "m1", "user": "alice", "body": "!remind 30 stretch", "timestamp": "2026-01-01T00:00:00Z" }
+        "payload": { "id": "m1", "user": { "id": "u-alice", "displayName": "alice" }, "body": "!remind 30 stretch", "timestamp": "2026-01-01T00:00:00Z" }
       }
     ],
     "expect": { "chatSends": ["Reminder set: 30s"] }
@@ -14,7 +14,7 @@
     "events": [
       {
         "event": "chat.message.received",
-        "payload": { "id": "m1", "user": "alice", "body": "!remind", "timestamp": "2026-01-01T00:00:00Z" }
+        "payload": { "id": "m1", "user": { "id": "u-alice", "displayName": "alice" }, "body": "!remind", "timestamp": "2026-01-01T00:00:00Z" }
       }
     ],
     "expect": { "chatSends": ["Usage: !remind <seconds> <message>"] }
@@ -24,7 +24,7 @@
     "events": [
       {
         "event": "chat.message.received",
-        "payload": { "id": "m1", "user": "bob", "body": "!countdown 3", "timestamp": "2026-01-01T00:00:00Z" }
+        "payload": { "id": "m1", "user": { "id": "u-bob", "displayName": "bob" }, "body": "!countdown 3", "timestamp": "2026-01-01T00:00:00Z" }
       },
       { "event": "tick", "payload": { "now": 1000 } },
       { "event": "tick", "payload": { "now": 2000 } },
@@ -37,11 +37,11 @@
     "events": [
       {
         "event": "chat.message.received",
-        "payload": { "id": "m1", "user": "carol", "body": "!every 60 hydrate", "timestamp": "2026-01-01T00:00:00Z" }
+        "payload": { "id": "m1", "user": { "id": "u-carol", "displayName": "carol" }, "body": "!every 60 hydrate", "timestamp": "2026-01-01T00:00:00Z" }
       },
       {
         "event": "chat.message.received",
-        "payload": { "id": "m2", "user": "carol", "body": "!stop", "timestamp": "2026-01-01T00:00:01Z" }
+        "payload": { "id": "m2", "user": { "id": "u-carol", "displayName": "carol" }, "body": "!stop", "timestamp": "2026-01-01T00:00:01Z" }
       }
     ],
     "expect": { "chatSends": ["Repeating every 60s (send !stop to end)", "Stopped"] }
