@@ -797,6 +797,16 @@ runScenarios([
 
 If you prefer raw JSON, drop `__tests__/*.test.json` files in instead and invoke the runner with `owncast-plugin test`. The data model is identical; the host binary that runs them is the same. Pick whichever is easier to read for the scenarios you're writing.
 
+`runScenarios` no longer exits the process — it sets `process.exitCode` on failure and returns a boolean — so you can split scenarios across several `__tests__/*.test.js` files (by module or feature) and run them all in one node process with `runScenarioFiles()`:
+
+```js
+// __tests__/index.test.js
+const { runScenarioFiles } = require("@owncast/plugin-sdk/testing");
+runScenarioFiles(); // discovers and runs the sibling *.test.js files, aggregating pass/fail
+```
+
+Point your `test` script at that one entry (`node __tests__/index.test.js`) instead of looping over files in the shell.
+
 ### Step types
 
 - `event: "<type>"`, fire-and-forget notification dispatch
