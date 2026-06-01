@@ -352,6 +352,47 @@ filterChatMessage(msg) {
 `replyTo(msg, text)` is sugar over `sendTo(msg.clientId, text)`; pass a bare
 `clientId` if that's all you have.
 
+### Command framework
+
+Rather than hand-rolling prefix parsing, aliases, cooldowns, and moderator
+gating in every chat bot, build a router with `defineCommands` and feed it your
+chat messages:
+
+```js
+const { definePlugin, defineCommands, filter } = require("@owncast/plugin-sdk");
+
+const commands = defineCommands({
+  prefix: "!", // default
+  commands: {
+    uptime: { run: (ctx) => ctx.reply("we've been live a while!") },
+    so: {
+      aliases: ["shoutout"],
+      cooldownMs: 10_000, // per user, clocked off msg.timestamp
+      run: (ctx) => ctx.reply(`go follow ${ctx.args[0] || "someone cool"}`),
+    },
+    clear: {
+      modOnly: true, // requires the sender's scopes to include "MODERATOR"
+      run: (ctx) => ctx.replyPrivately("done"),
+      onDenied: (ctx) => ctx.replyPrivately("mods only"),
+    },
+  },
+  onUnknown: (ctx) => ctx.replyPrivately(`unknown command: ${ctx.command}`),
+});
+
+module.exports = definePlugin({
+  onChatMessage: commands,
+  // To hide command messages from chat, route through the filter instead:
+  // filterChatMessage: (msg) => (commands(msg) ? filter.drop("command") : filter.pass()),
+});
+```
+
+`commands(msg)` returns `true` when the message was a command (even if gated by
+`modOnly`/cooldown), `false` otherwise. Each `run(ctx)` gets
+`{ msg, user, command, args, argString, reply, replyPrivately }` — `reply` posts
+publicly, `replyPrivately` whispers to the sender. Gating uses the sender
+identity on the message (`user.scopes`, `user.id`), so it's reliable, not a
+display-name guess.
+
 ## Permissions
 
 | Permission           | Grants                                                                                                                                            |

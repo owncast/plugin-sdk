@@ -153,6 +153,111 @@ function definePlugin(def) {
   return def;
 }
 
+// defineCommands builds a chat-command router so plugins stop reimplementing
+// prefix parsing, aliases, per-user cooldowns, and moderator gating. It returns
+// a function you feed a ChatMessage (from onChatMessage or filterChatMessage);
+// it parses the command and invokes the matching handler's run(ctx). The return
+// value is true when the message was a command (even if gated), false when it
+// wasn't — so a filter can drop command messages from chat:
+//
+//   const commands = defineCommands({
+//     prefix: "!",
+//     commands: {
+//       uptime: { run: (ctx) => ctx.reply("up!") },
+//       ban: { modOnly: true, cooldownMs: 5000, run: (ctx) => ctx.reply(`bye ${ctx.args[0]}`) },
+//     },
+//   });
+//   module.exports = definePlugin({
+//     onChatMessage: commands,
+//     // or, to hide command messages from chat:
+//     // filterChatMessage: (msg) => (commands(msg) ? filter.drop("command") : filter.pass()),
+//   });
+//
+// run(ctx) receives { msg, user, command, args, argString, reply, replyPrivately }.
+// reply posts publicly; replyPrivately whispers to the sender (falling back to a
+// public post if their connection is unknown). Optional hooks: per-command or
+// top-level onCooldown(ctx) / onDenied(ctx), and a top-level onUnknown(ctx).
+function defineCommands(config) {
+  config = config || {};
+  const prefix = config.prefix || "!";
+  const caseSensitive = !!config.caseSensitive;
+  const norm = (s) => (caseSensitive ? s : s.toLowerCase());
+
+  // Resolve every name and alias to its canonical command definition.
+  const table = new Map();
+  const defs = config.commands || {};
+  for (const name of Object.keys(defs)) {
+    const def = defs[name];
+    table.set(norm(name), { name, def });
+    for (const alias of def.aliases || []) table.set(norm(alias), { name, def });
+  }
+
+  // Per-(command,user) cooldown clock, in memory for the plugin's lifetime.
+  const lastRun = new Map();
+
+  return function handle(msg) {
+    const body = (msg && msg.body) || "";
+    if (!body.startsWith(prefix)) return false;
+    const rest = body.slice(prefix.length);
+    const parts = rest.split(/\s+/).filter(Boolean);
+    if (parts.length === 0) return false;
+    const called = parts[0];
+    const args = parts.slice(1);
+    const argString = rest.slice(called.length).trim();
+
+    const ctx = {
+      msg,
+      user: msg && msg.user,
+      command: norm(called),
+      args,
+      argString,
+      reply: (text) => owncast.chat.send(text),
+      replyPrivately: (text) => {
+        if (!owncast.chat.replyTo(msg, text)) owncast.chat.send(text);
+      },
+    };
+
+    const entry = table.get(norm(called));
+    if (!entry) {
+      if (isFn(config.onUnknown)) config.onUnknown(ctx);
+      return false;
+    }
+    const { name, def } = entry;
+    ctx.command = name;
+
+    // Moderator gating: the sender's scopes must include MODERATOR.
+    if (def.modOnly) {
+      const scopes = (msg.user && msg.user.scopes) || [];
+      if (!scopes.includes("MODERATOR")) {
+        if (isFn(def.onDenied)) def.onDenied(ctx);
+        else if (isFn(config.onDenied)) config.onDenied(ctx);
+        return true; // matched a command, but the caller wasn't allowed
+      }
+    }
+
+    // Per-user cooldown, clocked off msg.timestamp so it's deterministic in
+    // tests and independent of any sandbox clock quirks.
+    const cooldownMs = def.cooldownMs || 0;
+    if (cooldownMs > 0) {
+      const userId =
+        (msg.user && msg.user.id) ||
+        (msg.clientId != null ? `c${msg.clientId}` : "anon");
+      const key = `${name} ${userId}`;
+      const now = msg.timestamp ? new Date(msg.timestamp).getTime() : 0;
+      const prev = lastRun.get(key);
+      if (now && prev && now - prev < cooldownMs) {
+        if (isFn(def.onCooldown)) def.onCooldown(ctx);
+        else if (isFn(config.onCooldown)) config.onCooldown(ctx);
+        return true;
+      }
+      if (now) lastRun.set(key, now);
+    }
+
+    if (isFn(def.run)) def.run(ctx);
+    return true;
+  };
+}
+
 // Used by the build-generated entry to compute subscriptions for register().
 // Filters can optionally declare a priority via definePlugin({filterPriority}),
 // applied to every filter subscription this plugin owns. Lower = earlier.
@@ -767,6 +872,7 @@ const owncast = {
 
 module.exports = {
   definePlugin,
+  defineCommands,
   owncast,
   filter,
   FilterAction,
