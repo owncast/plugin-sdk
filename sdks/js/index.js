@@ -636,6 +636,22 @@ const owncast = {
         Memory.fromString(String(value)).offset,
       );
     },
+    // getJSON/setJSON are convenience wrappers over the string-only store, so
+    // plugins don't reimplement JSON.parse/stringify for every stored object.
+    // getJSON returns `fallback` (default undefined) when the key is unset or
+    // holds invalid JSON.
+    getJSON(key, fallback) {
+      const raw = this.get(key);
+      if (raw == null) return fallback;
+      try {
+        return JSON.parse(raw);
+      } catch (_e) {
+        return fallback;
+      }
+    },
+    setJSON(key, value) {
+      this.set(key, JSON.stringify(value));
+    },
   },
   config: {
     // get returns the effective value of a manifest-declared config key (the

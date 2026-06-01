@@ -299,7 +299,7 @@ Each method requires the matching permission in your manifest:
 | `owncast.users.list()` / `.get(id)`                                             | `users.read`         |
 | `owncast.users.setEnabled(id, enabled, reason?)`                                | `users.moderate`     |
 | `owncast.users.banIP(ip)`                                                       | `users.moderate`     |
-| `owncast.kv.get(key)` / `.set(key, value)`                                      | `storage.kv`         |
+| `owncast.kv.get(key)` / `.set(key, value)` (+ `.getJSON` / `.setJSON`)          | `storage.kv`         |
 | `owncast.storage.upload(name, bytes)`, returns `{url}`                          | `storage.upload`     |
 | `owncast.fs.read/readText/write/list/delete/exists(...)`, sandboxed disk        | `storage.fs`         |
 | `owncast.http.fetch(url, opts?)`                                                | `network.fetch`      |
