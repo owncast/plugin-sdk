@@ -110,19 +110,19 @@ Tests are JSON scenarios in `__tests__/*.test.json`:
     "events": [
       {
         "event": "chat.message.received",
-        "payload": { "user": "alice", "body": "hi" }
+        "payload": { "user": { "id": "u-alice", "displayName": "alice" }, "body": "hi" }
       }
     ],
     "expect": { "chatSends": ["alice said: hi"] }
   },
   {
     "name": "rate-limits same user within 2s",
-    "given": { "kv": { "last:alice": "1704067200000" } },
+    "given": { "kv": { "last:u-alice": "1704067200000" } },
     "events": [
       {
         "filter": "chat.message.received",
         "payload": {
-          "user": "alice",
+          "user": { "id": "u-alice", "displayName": "alice" },
           "body": "spam",
           "timestamp": "2024-01-01T00:00:01Z"
         },

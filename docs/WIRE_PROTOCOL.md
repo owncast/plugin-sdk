@@ -69,6 +69,7 @@ Sandboxed per-plugin filesystem under `data/plugin-data/<slug>/`. The host confi
 - `owncast_stream_broadcaster(): PTR`, JSON `StreamBroadcaster` (read-only inbound-feed telemetry)
 - `owncast_server_info(): PTR`, JSON `ServerInfo`
 - `owncast_server_socials(): PTR`, JSON `SocialHandle[]`
+- `owncast_server_emotes(): PTR`, JSON `Emote[]` (custom chat emotes, `{name, url}`)
 - `owncast_server_federation(): PTR`, JSON `FederationInfo`
 - `owncast_server_tags(): PTR`, JSON `string[]`
 
@@ -124,6 +125,16 @@ Sandboxed per-plugin filesystem under `data/plugin-data/<slug>/`. The host confi
 
 - Not a custom host function. Gates the `filter_chat_message` export: a plugin that registers a `filterChatMessage` handler must declare this permission at load time, otherwise the host rejects the manifest.
 - This is deliberately separate from `chat.send`, `chat.history`, and `chat.moderate`: filtering happens inline on every chat message before broadcast (modify the body, drop the message, or pass it through), so the manifest reviewer needs to see it called out explicitly.
+
+### ambient (no permission)
+
+These imports are granted to every plugin without a declared permission. A plugin can't `setTimeout` or read its own config without the host, and the acts themselves are benign (a scheduled callback still needs its own permissions to do anything; reading your own manifest-declared config exposes nothing new).
+
+- `owncast_timer_set(id: I64, delayMs: I64, repeat: I32): I32`, schedule a host-driven timer; the host fires the `timer.fire` event (payload `{id}`) when it elapses. Returns 1 on success, 0 if the plugin is at its pending-timer cap. `delayMs` is clamped to `[100, 86_400_000]`. The SDK maps `id`→callback for `owncast.timer.setTimeout/setInterval`.
+- `owncast_timer_clear(id: I64): void`, cancel a pending timer by id.
+- `owncast_config_get(keyPtr: PTR): PTR`, returns the JSON value of a `manifest.config` key (admin override, else declared default), or 0-offset for an unknown/unset key.
+
+The host also dispatches a `tick` event (payload `{now}`, host wall-clock ms) about once a second to any plugin defining `onTick`, independent of timers.
 
 ## Host-reserved endpoints
 
