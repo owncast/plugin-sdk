@@ -14,7 +14,10 @@
       {
         "event": "chat.message.received",
         "payload": {
-          "user": "alice",
+          "user": {
+            "id": "u-alice",
+            "displayName": "alice"
+          },
           "body": "!ip",
           "timestamp": "2024-01-01T00:00:00Z"
         }
@@ -47,7 +50,10 @@
       {
         "event": "chat.message.received",
         "payload": {
-          "user": "alice",
+          "user": {
+            "id": "u-alice",
+            "displayName": "alice"
+          },
           "body": "!ip",
           "timestamp": "2024-01-01T00:00:00Z"
         }
@@ -65,7 +71,10 @@
       {
         "event": "chat.message.received",
         "payload": {
-          "user": "alice",
+          "user": {
+            "id": "u-alice",
+            "displayName": "alice"
+          },
           "body": "hello world",
           "timestamp": "2024-01-01T00:00:00Z"
         }

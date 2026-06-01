@@ -6,7 +6,10 @@
         "filter": "chat.message.received",
         "payload": {
           "id": "1",
-          "user": "alice",
+          "user": {
+            "id": "u-alice",
+            "displayName": "alice"
+          },
           "body": "what the hell",
           "timestamp": "2024-01-01T00:00:00Z"
         },
@@ -26,7 +29,10 @@
         "filter": "chat.message.received",
         "payload": {
           "id": "1",
-          "user": "alice",
+          "user": {
+            "id": "u-alice",
+            "displayName": "alice"
+          },
           "body": "hello world",
           "timestamp": "2024-01-01T00:00:00Z"
         },
@@ -43,7 +49,10 @@
         "filter": "chat.message.received",
         "payload": {
           "id": "1",
-          "user": "alice",
+          "user": {
+            "id": "u-alice",
+            "displayName": "alice"
+          },
           "body": "hello there",
           "timestamp": "2024-01-01T00:00:00Z"
         },
@@ -60,7 +69,10 @@
         "filter": "chat.message.received",
         "payload": {
           "id": "1",
-          "user": "alice",
+          "user": {
+            "id": "u-alice",
+            "displayName": "alice"
+          },
           "body": "damn hell crap",
           "timestamp": "2024-01-01T00:00:00Z"
         },

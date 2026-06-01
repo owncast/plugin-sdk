@@ -4,26 +4,26 @@
     "events": [
       {
         "event": "chat.message.received",
-        "payload": { "id": "1", "user": "alice", "body": "hi", "timestamp": "2024-01-01T00:00:00Z" }
+        "payload": { "id": "1", "user": { "id": "u-alice", "displayName": "alice" }, "body": "hi", "timestamp": "2024-01-01T00:00:00Z" }
       }
     ],
     "expect": {
-      "kv": { "count:alice": "1" }
+      "kv": { "count:u-alice": "1" }
     }
   },
   {
     "name": "increments existing count",
     "given": {
-      "kv": { "count:alice": "5" }
+      "kv": { "count:u-alice": "5" }
     },
     "events": [
       {
         "event": "chat.message.received",
-        "payload": { "id": "1", "user": "alice", "body": "hi", "timestamp": "2024-01-01T00:00:00Z" }
+        "payload": { "id": "1", "user": { "id": "u-alice", "displayName": "alice" }, "body": "hi", "timestamp": "2024-01-01T00:00:00Z" }
       }
     ],
     "expect": {
-      "kv": { "count:alice": "6" }
+      "kv": { "count:u-alice": "6" }
     }
   },
   {
@@ -31,19 +31,19 @@
     "events": [
       {
         "event": "chat.message.received",
-        "payload": { "user": "alice", "body": "first", "timestamp": "2024-01-01T00:00:00Z" }
+        "payload": { "user": { "id": "u-alice", "displayName": "alice" }, "body": "first", "timestamp": "2024-01-01T00:00:00Z" }
       },
       {
         "event": "chat.message.received",
-        "payload": { "user": "alice", "body": "second", "timestamp": "2024-01-01T00:00:01Z" }
+        "payload": { "user": { "id": "u-alice", "displayName": "alice" }, "body": "second", "timestamp": "2024-01-01T00:00:01Z" }
       },
       {
         "event": "chat.message.received",
-        "payload": { "user": "bob", "body": "first", "timestamp": "2024-01-01T00:00:02Z" }
+        "payload": { "user": { "id": "u-bob", "displayName": "bob" }, "body": "first", "timestamp": "2024-01-01T00:00:02Z" }
       }
     ],
     "expect": {
-      "kv": { "count:alice": "2", "count:bob": "1" }
+      "kv": { "count:u-alice": "2", "count:u-bob": "1" }
     }
   }
 ]

@@ -4,11 +4,21 @@
     "events": [
       {
         "event": "chat.message.received",
-        "payload": { "id": "m-bad", "user": "spammer", "body": "free money click here", "timestamp": "2024-01-01T00:00:00Z" }
+        "payload": {
+          "id": "m-bad",
+          "user": {
+            "id": "u-spammer",
+            "displayName": "spammer"
+          },
+          "body": "free money click here",
+          "timestamp": "2024-01-01T00:00:00Z"
+        }
       }
     ],
     "expect": {
-      "deletedMessages": ["m-bad"]
+      "deletedMessages": [
+        "m-bad"
+      ]
     }
   },
   {
@@ -16,7 +26,15 @@
     "events": [
       {
         "event": "chat.message.received",
-        "payload": { "id": "m-ok", "user": "alice", "body": "hello world", "timestamp": "2024-01-01T00:00:00Z" }
+        "payload": {
+          "id": "m-ok",
+          "user": {
+            "id": "u-alice",
+            "displayName": "alice"
+          },
+          "body": "hello world",
+          "timestamp": "2024-01-01T00:00:00Z"
+        }
       }
     ],
     "expect": {
@@ -28,12 +46,19 @@
     "events": [
       {
         "event": "stream.started",
-        "payload": { "startedAt": "2024-01-01T00:00:00Z", "title": "Friday show" }
+        "payload": {
+          "startedAt": "2024-01-01T00:00:00Z",
+          "title": "Friday show"
+        }
       }
     ],
     "expect": {
-      "discordPosts": ["Stream live: Friday show"],
-      "fediverseOutbox": ["🔴 Going live: Friday show"]
+      "discordPosts": [
+        "Stream live: Friday show"
+      ],
+      "fediverseOutbox": [
+        "🔴 Going live: Friday show"
+      ]
     }
   },
   {
@@ -90,7 +115,10 @@
       {
         "event": "fediverse.mention",
         "payload": {
-          "actor": { "name": "Bob", "handle": "@bob@fediverse.example" },
+          "actor": {
+            "name": "Bob",
+            "handle": "@bob@fediverse.example"
+          },
           "content": "<p>long</p>",
           "contentText": "this mention has content that is over the 200 character limit so it should get truncated with an ellipsis at the end. lorem ipsum dolor sit amet, consectetur adipiscing elit. duis aute irure dolor in reprehenderit.",
           "url": "https://fediverse.example/@bob/456",
@@ -110,7 +138,10 @@
       {
         "event": "fediverse.reply",
         "payload": {
-          "actor": { "name": "Carol", "handle": "@carol@example.social" },
+          "actor": {
+            "name": "Carol",
+            "handle": "@carol@example.social"
+          },
           "content": "<p>hi there</p>",
           "contentText": "hi there",
           "url": "https://example.social/@carol/789",

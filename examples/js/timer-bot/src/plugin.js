@@ -31,8 +31,9 @@ module.exports = definePlugin({
         say("Usage: !remind <seconds> <message>");
         return;
       }
+      const who = msg.user ? msg.user.displayName : "you";
       reminderId = owncast.timer.setTimeout(
-        () => say(`@${msg.user} reminder: ${message}`),
+        () => say(`@${who} reminder: ${message}`),
         seconds * 1000,
       );
       say(`Reminder set: ${seconds}s`);
