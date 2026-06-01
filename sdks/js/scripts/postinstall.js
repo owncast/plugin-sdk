@@ -19,10 +19,23 @@ const { execFileSync } = require("child_process");
 
 const EXTISM_JS_VERSION = "v1.6.0";
 const BINARYEN_VERSION = "version_119";
-// Tracks the SDK version that the host binaries were cut for. Usually
-// matches the SDK's own version in package.json.
-const HOST_BINARIES_VERSION = require("../package.json").version;
 const HOST_BINARIES_REPO = "owncast/plugin-sdk";
+
+// The host binaries (owncast-plugin-test/serve) are cut once per MINOR release
+// (a vX.Y.0 git tag); patch releases are JS-only fixes that ride on the same
+// runtime. Deriving the download tag straight from the npm version therefore
+// 404s on every patch (e.g. 0.4.1 has no v0.4.1 binaries), which silently
+// broke `npm test`. Zero the patch component so a patch release fetches its
+// minor's binaries. Override with OWNCAST_PLUGIN_HOST_BINARIES_VERSION (with or
+// without a leading "v") if you ever need a specific tag.
+function hostBinariesVersion() {
+  const override = process.env.OWNCAST_PLUGIN_HOST_BINARIES_VERSION;
+  if (override) return override.replace(/^v/, "");
+  const pkg = require("../package.json").version; // e.g. "0.4.1"
+  const [major, minor] = pkg.split(".");
+  return `${major}.${minor}.0`;
+}
+const HOST_BINARIES_VERSION = hostBinariesVersion();
 
 const platform = process.platform;
 const arch = process.arch;
