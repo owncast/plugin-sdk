@@ -365,6 +365,62 @@ export interface PluginDef {
 
 export function definePlugin(def: PluginDef): PluginDef;
 
+/** What a command handler receives. */
+export interface CommandContext {
+  /** The originating chat message. */
+  msg: ChatMessage;
+  /** The sender (same as `msg.user`). */
+  user?: ChatUser;
+  /** The canonical command name that matched (not the alias used). */
+  command: string;
+  /** Whitespace-split arguments after the command word. */
+  args: string[];
+  /** The raw argument string (everything after the command word, trimmed). */
+  argString: string;
+  /** Post a public reply as the plugin's chat bot. */
+  reply(text: string): void;
+  /** Whisper a reply to the sender; falls back to a public post if their
+   *  connection is unknown. */
+  replyPrivately(text: string): void;
+}
+
+/** One command in a {@link defineCommands} table. */
+export interface CommandDefinition {
+  /** Alternate names that invoke this command. */
+  aliases?: string[];
+  /** Only allow senders whose scopes include "MODERATOR". */
+  modOnly?: boolean;
+  /** Minimum milliseconds between invocations per user (clocked off
+   *  `msg.timestamp`). */
+  cooldownMs?: number;
+  /** Invoked when the command runs. */
+  run(ctx: CommandContext): void;
+  /** Invoked instead of `run` when a non-moderator calls a `modOnly` command. */
+  onDenied?(ctx: CommandContext): void;
+  /** Invoked instead of `run` when the per-user cooldown hasn't elapsed. */
+  onCooldown?(ctx: CommandContext): void;
+}
+
+export interface CommandsConfig {
+  /** Command prefix. Default `"!"`. */
+  prefix?: string;
+  /** Match command names case-sensitively. Default false. */
+  caseSensitive?: boolean;
+  commands: Record<string, CommandDefinition>;
+  /** Fallback when a prefixed message matches no command. */
+  onUnknown?(ctx: CommandContext): void;
+  /** Default denied/cooldown handlers, used when a command omits its own. */
+  onDenied?(ctx: CommandContext): void;
+  onCooldown?(ctx: CommandContext): void;
+}
+
+/** Build a chat-command router (prefix parsing, aliases, per-user cooldowns,
+ *  moderator gating). Feed the returned function a `ChatMessage`; it returns
+ *  true when the message was a command (even if gated), false otherwise. */
+export function defineCommands(
+  config: CommandsConfig,
+): (msg: ChatMessage) => boolean;
+
 /** Typed wrappers around the Owncast host. Each method throws if the
  *  corresponding permission was not declared in plugin.manifest.json. */
 export const owncast: {
