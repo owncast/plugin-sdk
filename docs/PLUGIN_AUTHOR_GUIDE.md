@@ -329,6 +329,8 @@ Calling an API without its permission throws a clear error.
 
 Every plugin has **exactly one chat identity**, the auto-bot Owncast provisions when your plugin is installed. The display name is your plugin's `name` (e.g. `echo-bot`), with `IsBot: true`. `owncast.chat.send(text)` and `owncast.chat.sendAction(text)` both post as this identity, through Owncast's normal chat pipeline (filters, rate limits, persistence, moderation, same as any user).
 
+> **Text is HTML-escaped on display.** `owncast.chat.send`/`sendAction` take plain text; the chat client renders it as HTML, so characters like `"`, `<`, and `&` come back entity-encoded (`"Live"` displays via `&#34;Live&#34;`). That's expected — just don't pass markup expecting it to render. `owncast.chat.system(body)` is the exception: its body **is** rendered as HTML, so you must escape any untrusted content you put in it yourself.
+
 If you need multiple chat personas, **ship multiple plugins.** One identity per plugin keeps the trust boundary clear: admins see one chat user per granted plugin, and there's no allowlist machinery to forget or bypass. Plugins cannot post under arbitrary names or impersonate real users.
 
 ### Replying to the sender
