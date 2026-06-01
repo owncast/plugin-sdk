@@ -334,6 +334,21 @@ func checkExpectations(res *Result, e *ScenarioExpect, mock *MockHost, pluginNam
 			res.Errors = append(res.Errors, fmt.Sprintf("fediverseOutbox mismatch:\n  want %v\n  got  %v", e.FediverseOutbox, got))
 		}
 	}
+	if e.SSESends != nil {
+		got := mock.SSESends()
+		if len(e.SSESends) != len(got) {
+			res.Errors = append(res.Errors, fmt.Sprintf("sseSends count: want %d got %d", len(e.SSESends), len(got)))
+		} else {
+			for i, want := range e.SSESends {
+				// Empty Event/Data fields skip that part of the match.
+				if want.Channel != got[i].Channel ||
+					(want.Event != "" && want.Event != got[i].Event) ||
+					(want.Data != "" && want.Data != got[i].Data) {
+					res.Errors = append(res.Errors, fmt.Sprintf("sseSends[%d]: want %+v got %+v", i, want, got[i]))
+				}
+			}
+		}
+	}
 	if e.VideoConfigWrites != nil {
 		got := mock.VideoConfigWrites()
 		if !(len(e.VideoConfigWrites) == 0 && len(got) == 0) && !reflect.DeepEqual(e.VideoConfigWrites, got) {

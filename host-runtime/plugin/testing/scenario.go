@@ -144,6 +144,7 @@ type ScenarioExpect struct {
 	Emits             []EmitExpect                   `json:"emits,omitempty"`
 	KV                map[string]string              `json:"kv,omitempty"`
 	HTTPRequests      []ScenarioHTTPRequestExpect    `json:"httpRequests,omitempty"`
+	SSESends          []ScenarioSSEExpect            `json:"sseSends,omitempty"`
 }
 
 type ScenarioBrowserPushExpect struct {
@@ -173,6 +174,14 @@ type ScenarioFediverseExpect struct {
 type ScenarioChatToExpect struct {
 	ClientID uint64 `json:"clientId"`
 	Text     string `json:"text"`
+}
+
+// ScenarioSSEExpect asserts on one owncast.sse.send call (in order). An empty
+// Event or Data field skips that part of the match.
+type ScenarioSSEExpect struct {
+	Channel string `json:"channel"`
+	Event   string `json:"event,omitempty"`
+	Data    string `json:"data,omitempty"`
 }
 
 type ScenarioHTTPRequestExpect struct {

@@ -812,7 +812,9 @@ Per-step `expect` (on filter and http steps):
 
 Final-state `expect` (on the whole scenario):
 
-- `chatSends`, `chatActions`, `chatSystems`, exact-match lists of chat posts (the bot-sent, "/me" action, and system message variants)
+- `chatSends`, `chatActions`, `chatSystems`, exact-match lists of chat posts (the bot-sent, "/me" action, and system message variants). Captures sends from any step, including chat posted from an `onHttpRequest` handler.
+- `chatTo`, list of `{clientId, text}` private replies (`owncast.chat.sendTo` / `replyTo`)
+- `sseSends`, ordered list of `{channel, event?, data?}` pushed via `owncast.sse.send` (omit `event`/`data` to match only on channel)
 - `videoConfigWrites`, list of partial configs applied via `owncast.videoConfig.write()`
 - `emits`, list of `{eventType, payload}` for custom events
 - `kv`, partial map of plugin-config state after the scenario
