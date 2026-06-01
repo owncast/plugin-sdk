@@ -4,7 +4,7 @@
     "events": [
       {
         "event": "chat.message.received",
-        "payload": { "id": "1", "user": "alice", "body": "hi", "timestamp": "2024-01-01T00:00:00Z" }
+        "payload": { "id": "1", "user": { "id": "u1", "displayName": "alice" }, "clientId": 7, "body": "hi", "timestamp": "2024-01-01T00:00:00Z" }
       }
     ],
     "expect": {
@@ -16,7 +16,7 @@
     "events": [
       {
         "event": "chat.message.received",
-        "payload": { "id": "2", "user": "bob", "body": "hello!", "timestamp": "2024-01-01T00:00:01Z" }
+        "payload": { "id": "2", "user": { "id": "u2", "displayName": "bob" }, "clientId": 8, "body": "hello!", "timestamp": "2024-01-01T00:00:01Z" }
       }
     ],
     "expect": {

@@ -1,7 +1,18 @@
-/** Built-in chat message payload. */
+/**
+ * Built-in chat message payload (`chat.message.received` and the chat filter).
+ *
+ * `user` carries the full sender identity — use `user.id` for stable per-user
+ * state and `user.scopes` (e.g. `"MODERATOR"`) for reliable, non-spoofable
+ * moderation gating rather than matching on the display name. `clientId`
+ * identifies the originating connection; pass it to `owncast.chat.sendTo` (or
+ * `owncast.chat.replyTo(msg, …)`) to whisper a reply back to the sender.
+ *
+ * `user` is undefined for the rare message with no associated account.
+ */
 export interface ChatMessage {
   id: string;
-  user: string;
+  user?: ChatUser;
+  clientId?: number;
   body: string;
   timestamp: string;
 }
