@@ -1,0 +1,65 @@
+<div style="font: 14px/1.6 -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; padding: 16px 20px; max-width: 640px; color: #111827;">
+
+  <section style="margin-bottom: 24px;">
+    <h3 style="margin: 0 0 12px; font-size: 13px; font-weight: 600; text-transform: uppercase; letter-spacing: .06em; color: #6b7280;">Server</h3>
+    <dl style="display: grid; grid-template-columns: 130px 1fr; gap: 4px 16px; margin: 0;">
+      <dt style="color: #6b7280;">Name</dt>      <dd style="margin: 0;">{{server.name}}</dd>
+      <dt style="color: #6b7280;">Version</dt>   <dd style="margin: 0;">{{server.version}}</dd>
+      {{#server.url}}
+      <dt style="color: #6b7280;">URL</dt>       <dd style="margin: 0;"><a href="{{server.url}}" style="color: #3b82f6;">{{server.url}}</a></dd>
+      {{/server.url}}
+      {{#server.summary}}
+      <dt style="color: #6b7280;">Summary</dt>   <dd style="margin: 0;">{{server.summary}}</dd>
+      {{/server.summary}}
+    </dl>
+  </section>
+
+  <section style="margin-bottom: 24px;">
+    <h3 style="margin: 0 0 12px; font-size: 13px; font-weight: 600; text-transform: uppercase; letter-spacing: .06em; color: #6b7280;">Stream</h3>
+    {{#stream.online}}
+    <dl style="display: grid; grid-template-columns: 130px 1fr; gap: 4px 16px; margin: 0;">
+      <dt style="color: #6b7280;">Status</dt>    <dd style="margin: 0; color: #16a34a; font-weight: 600;">● Live</dd>
+      {{#stream.title}}
+      <dt style="color: #6b7280;">Title</dt>     <dd style="margin: 0;">{{stream.title}}</dd>
+      {{/stream.title}}
+      <dt style="color: #6b7280;">Viewers</dt>   <dd style="margin: 0;">{{stream.viewers}}</dd>
+      {{#stream.startedAt}}
+      <dt style="color: #6b7280;">Started</dt>   <dd style="margin: 0;">{{stream.startedAt}}</dd>
+      {{/stream.startedAt}}
+      <dt style="color: #6b7280;">Latency</dt>   <dd style="margin: 0;">level {{stream.latencyLevel}}</dd>
+    </dl>
+    {{/stream.online}}
+    {{^stream.online}}
+    <p style="margin: 0; color: #6b7280;">Offline — no stream in progress.</p>
+    {{/stream.online}}
+  </section>
+
+  {{#hasTags}}
+  <section style="margin-bottom: 24px;">
+    <h3 style="margin: 0 0 10px; font-size: 13px; font-weight: 600; text-transform: uppercase; letter-spacing: .06em; color: #6b7280;">Tags</h3>
+    <div style="display: flex; flex-wrap: wrap; gap: 6px;">
+      {{#tags}}<span style="background: #e5e7eb; border-radius: 4px; padding: 2px 10px; font-size: 13px;">{{.}}</span>{{/tags}}
+    </div>
+  </section>
+  {{/hasTags}}
+
+  {{#hasSocials}}
+  <section style="margin-bottom: 24px;">
+    <h3 style="margin: 0 0 10px; font-size: 13px; font-weight: 600; text-transform: uppercase; letter-spacing: .06em; color: #6b7280;">Socials</h3>
+    <ul style="margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 4px;">
+      {{#socials}}<li><span style="color: #6b7280; width: 100px; display: inline-block;">{{platform}}</span><a href="{{url}}" style="color: #3b82f6;">{{url}}</a></li>{{/socials}}
+    </ul>
+  </section>
+  {{/hasSocials}}
+
+  {{#federation.enabled}}
+  <section style="margin-bottom: 24px;">
+    <h3 style="margin: 0 0 12px; font-size: 13px; font-weight: 600; text-transform: uppercase; letter-spacing: .06em; color: #6b7280;">Federation</h3>
+    <dl style="display: grid; grid-template-columns: 130px 1fr; gap: 4px 16px; margin: 0;">
+      <dt style="color: #6b7280;">Handle</dt>    <dd style="margin: 0;">@{{federation.username}}</dd>
+      <dt style="color: #6b7280;">Private</dt>   <dd style="margin: 0;">{{#federation.isPrivate}}Yes{{/federation.isPrivate}}{{^federation.isPrivate}}No{{/federation.isPrivate}}</dd>
+    </dl>
+  </section>
+  {{/federation.enabled}}
+
+</div>

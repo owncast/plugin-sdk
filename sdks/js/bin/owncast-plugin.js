@@ -202,7 +202,17 @@ function on_http_request() {
   Host.outputString(JSON.stringify(response));
   return 0;
 }
-module.exports = { register, on_event, on_filter, on_http_request };
+function on_tab_content() {
+  const req = JSON.parse(Host.inputString());
+  Host.outputString(sdk.dispatchTabContent(req));
+  return 0;
+}
+function on_page_content() {
+  const req = JSON.parse(Host.inputString());
+  Host.outputString(sdk.dispatchPageContent(req));
+  return 0;
+}
+module.exports = { register, on_event, on_filter, on_http_request, on_tab_content, on_page_content };
 `;
   fs.writeFileSync(synthEntry, entrySrc);
 
@@ -362,6 +372,8 @@ function generateInterface(manifest) {
     "on_event(): I32",
     "on_filter(): I32",
     "on_http_request(): I32",
+    "on_tab_content(): I32",
+    "on_page_content(): I32",
   ];
 
   const perms = new Set(manifest.permissions || []);
@@ -373,6 +385,8 @@ function generateInterface(manifest) {
   // Config is ambient too: a plugin reading its own manifest-declared config
   // (admin override falling back to the declared default) needs no permission.
   imports.push("owncast_config_get(keyPtr: PTR): PTR");
+  // Asset reading is ambient: a plugin reads only files it shipped itself.
+  imports.push("owncast_asset_read(pathPtr: PTR): PTR");
   if (perms.has("chat.send")) {
     imports.push("owncast_send_chat(textPtr: PTR): void");
     imports.push("owncast_send_chat_action(textPtr: PTR): void");

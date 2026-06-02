@@ -284,6 +284,15 @@ export interface OutgoingHttpResponse {
   body?: string;
 }
 
+/** Request context passed to `onTabContent` and `onPageContent` handlers. */
+export interface ContentRequest {
+  /** The tab or page-content slot's slug, as declared in the manifest. */
+  slug: string;
+  /** The viewing user's chat identity, when available. Undefined for
+   *  anonymous viewers or when the host cannot resolve an identity. */
+  user?: ChatUser;
+}
+
 /** Payload for the sse.connect / sse.disconnect events. Fired when a browser
  *  opens or closes one of the plugin's `/plugins/<name>/_sse/<channel>`
  *  streams, so the plugin can track who is connected. `connectionId` is unique
@@ -352,6 +361,18 @@ export interface PluginDef {
    *  isn't served as a static asset. Default-public, gate admin features
    *  on `req.authenticated` yourself. Requires `http.serve` permission. */
   onHttpRequest?(req: IncomingHttpRequest): OutgoingHttpResponse;
+
+  /** Render HTML for a dynamic tab. Called by the host when the tab was
+   *  declared in the manifest without a static `content` file. Return the
+   *  full HTML string to inline as the tab body. `req.user` is the viewer's
+   *  chat identity when available, undefined for anonymous viewers. */
+  onTabContent?(req: ContentRequest): string;
+
+  /** Render HTML for the plugin's dynamic extraPageContent slot. Called by
+   *  the host when extraPageContent was declared without a static `content`
+   *  file. Return the full HTML string to inline into the viewer page.
+   *  `req.user` is the viewer's chat identity when available. */
+  onPageContent?(req: ContentRequest): string;
 
   /** Handlers for plugin-emitted custom events. The key is the event type
    *  string (e.g. "announcement.broadcast"). Notifications only, to filter
@@ -522,6 +543,16 @@ export const owncast: {
      *  `fallback` (default `undefined`) for an unknown key or one with no
      *  value. */
     get<T = unknown>(key: string, fallback?: T): T;
+  };
+  /** Read files the plugin bundled in its own `assets/` directory — templates,
+   *  data files, and other bundled resources loaded at request time. Path is
+   *  relative to `assets/` and must not contain `..`. Ambient — no permission
+   *  required. */
+  assets: {
+    /** Raw bytes of the file, or `null` if not found. */
+    read(path: string): Uint8Array | null;
+    /** File contents as a UTF-8 string, or `null` if not found. */
+    readText(path: string): string | null;
   };
   events: {
     emit(eventType: string, payload: unknown): void;

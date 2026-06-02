@@ -1,14 +1,32 @@
 # page-content-demo
 
-Smallest possible example of the `manifest.extraPageContent` capability. The plugin ships a single HTML file and the host inlines its bytes at the top of the viewer page's extra-content block.
+Demonstrates dynamic `extraPageContent` and viewer tabs using `onPageContent` and `onTabContent`. Both slots render Mustache templates server-side with live data — no static HTML fetch shims needed.
 
 ```json
 {
-  "permissions": ["ui.modify"],
-  "extraPageContent": "content.html"
+  "permissions": ["ui.modify", "server.read"],
+  "extraPageContent": { "slug": "banner" },
+  "tabs": [
+    { "title": "Stream Info", "slug": "stream-info" }
+  ]
 }
 ```
 
-Requires `ui.modify` (the plugin paints inside Owncast's chrome). `http.serve` is not required because the HTML is inlined into the `/api/config` response, not served as a URL.
+When `content` is omitted from a tab or `extraPageContent` entry, the host calls the corresponding handler at `/api/config` time and inlines the returned HTML string directly into the response.
 
-When enabled, viewers see an amber banner reading `page-content-demo: HTML reached the viewer page's extra-content block` at the top of the extra-content section.
+## Handlers
+
+**`onPageContent({ slug, user? })`** — called for the `"banner"` slot. Renders `assets/greeting.mustache` personalised with the viewer's display name (`user.displayName`), falling back to `"visitor"` for anonymous viewers.
+
+**`onTabContent({ slug, user? })`** — called for the `"stream-info"` tab. Renders `assets/info.mustache` with live data from `owncast.stream.current()`, `owncast.server.info()`, `.tags()`, `.socials()`, and `.federation()`.
+
+## Templates
+
+Both handlers read their Mustache template from `assets/` at first call using `owncast.assets.readText(name)` — no build-time inlining, no extra fetch.
+
+## Permissions
+
+- **ui.modify** — required for `extraPageContent` and `tabs`.
+- **server.read** — required for `owncast.stream.current()` and the other server APIs called by `onTabContent`.
+
+`http.serve` is not required — the host calls the handlers directly and inlines the result; no HTTP endpoint is involved.

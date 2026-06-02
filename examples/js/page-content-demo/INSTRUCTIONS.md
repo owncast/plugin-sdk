@@ -1,34 +1,56 @@
 # Page Content Demo
 
-Smallest possible example of the `manifest.extraPageContent` capability. The plugin ships a single HTML file and the host inlines its bytes at the top of the viewer page's extra-content block.
+Demonstrates dynamic viewer page content rendered server-side with Mustache. The plugin contributes a personalised banner above the tab row and a live "Stream Info" tab — both rendered at request time with no static HTML files or client-side fetch calls.
 
 ## What you'll see when enabled
 
-An amber-bordered banner appears at the top of the viewer page's extra-content block reading:
+**Banner (extra page content):** An amber-bordered panel at the top of the viewer page's extra-content block greeting the viewer by their chat display name. Anonymous viewers see "visitor".
 
-> page-content-demo: HTML reached the viewer page's extra-content block.
-
-The contribution lands above whatever the admin has written into the extra page content field, so any page content the admin has configured continues to render unchanged underneath.
+**Stream Info tab:** A new tab in the viewer tab row showing live stream state (online/offline, title, viewer count, started time), server metadata (name, version, URL), tags, social handles, and federation status — all rendered from `owncast.stream.current()` and related APIs.
 
 ## How it works
 
-The manifest declares a single HTML asset:
+The manifest declares the two slots without `content` paths, which tells the host to call the plugin's handlers instead of reading static files:
 
 ```json
 {
-  "permissions": ["ui.modify"],
-  "extraPageContent": "content.html"
+  "permissions": ["ui.modify", "server.read"],
+  "extraPageContent": { "slug": "banner" },
+  "tabs": [
+    { "title": "Stream Info", "slug": "stream-info" }
+  ]
 }
 ```
 
-The host rewrites the bare path to `/plugins/page-content-demo/content.html` (the canonical form), reads the file's bytes from the plugin, and prepends them to the admin's rendered `extraPageContent` on `/api/config`. Each contribution is wrapped with an `<!-- plugin: <slug> ... -->` comment so a reader can attribute the markup back to the plugin that shipped it.
+When Owncast builds its `/api/config` response it calls:
+
+- `onPageContent({ slug: "banner", user? })` to get the banner HTML
+- `onTabContent({ slug: "stream-info", user? })` to get the tab HTML
+
+Both handlers load their Mustache template from `assets/` via `owncast.assets.readText(name)` and render it with the relevant data.
+
+## Templates
+
+- `assets/greeting.mustache` — the banner; uses `{{displayName}}` with Mustache's auto-escaping.
+- `assets/info.mustache` — the stream info tab; uses `{{#stream.online}}` / `{{^stream.online}}` conditionals and `{{#tags}}{{.}}{{/tags}}` iteration.
 
 ## Permissions
 
-- **ui.modify** — the plugin paints inside Owncast's chrome.
+- **ui.modify** — required for `extraPageContent` and `tabs`.
+- **server.read** — required by `onTabContent` to call `owncast.stream.current()`, `owncast.server.info()`, etc.
 
-`http.serve` is not required because the HTML is inlined into the `/api/config` response, not served as a URL.
+`http.serve` is not needed. The host calls the handlers directly and inlines the returned HTML; there are no plugin HTTP endpoints.
 
-## When to use this as a template
+## Testing
 
-Start here if you want to ship inline HTML for the viewer page: a sponsor banner, an announcement strip, a static call-to-action. Plugin HTML doesn't go through the markdown processor, so HTML tags and attributes pass through unmodified.
+Scenarios in `__tests__/` use the `pageContent` and `tabContent` step types to exercise the handlers directly:
+
+```json
+{
+  "pageContent": {
+    "slug": "banner",
+    "user": { "id": "u-alice", "displayName": "Alice" },
+    "expect": { "bodyContains": "Alice" }
+  }
+}
+```

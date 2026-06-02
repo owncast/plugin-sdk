@@ -699,11 +699,11 @@ A common pattern is an admin page that lets the streamer add a custom button (la
 
 Three manifest fields let a plugin contribute content directly to the viewer page: CSS, JavaScript, and a block of HTML. The host inlines plugin contributions into the same response slots Owncast already uses for the admin's custom CSS, custom JS, and extra page content, so a viewer loads one stylesheet, one script, and one extra-content block regardless of how many plugins contributed.
 
-| Manifest field     | Inlined into                          | Required permission | Extension |
-| ------------------ | ------------------------------------- | ------------------- | --------- |
-| `styles`           | `/api/config` → `customStyles`        | `ui.modify`         | `.css`    |
-| `scripts`          | `/customjavascript`                   | `ui.modify`         | `.js`     |
-| `extraPageContent` | `/api/config` → `extraPageContent`    | `ui.modify`         | `.html`   |
+| Manifest field     | Inlined into                          | Required permission | Notes              |
+| ------------------ | ------------------------------------- | ------------------- | ------------------ |
+| `styles`           | `/api/config` → `customStyles`        | `ui.modify`         | must end `.css`    |
+| `scripts`          | `/customjavascript`                   | `ui.modify`         | must end `.js`     |
+| `extraPageContent` | `/api/config` → `extraPageContent`    | `ui.modify`         | static or dynamic  |
 
 ### Stylesheets
 
@@ -742,44 +742,72 @@ Two things to keep in mind about execution:
 
 ### Extra page content
 
+`extraPageContent` is an object with a required `slug` and an optional `content` file:
+
 ```json
 {
   "permissions": ["ui.modify"],
-  "extraPageContent": "content.html"
+  "extraPageContent": { "slug": "banner", "content": "content.html" }
 }
 ```
 
-One HTML file inlined at the top of the viewer's extra-content block, above whatever the admin has configured. Wrapped with `<!-- plugin: <slug> — <file> -->` for attribution. Path rules match `styles` and `scripts` but the entry has to end in `.html`. `http.serve` is not required because the HTML is folded into the `/api/config` response, not served as a URL.
+**Static** (`content` present): the host reads the file from `assets/` and inlines it at the top of the viewer's extra-content block, above whatever the admin has configured. Path rules match `styles` and `scripts` but the entry has to end in `.html`. `http.serve` is not required.
 
-The admin's extra page content goes through the markdown processor; plugin HTML does not (the host renders the admin's markdown first, then prepends your raw bytes). Tags and attributes pass through as written, so escape any untrusted strings you embed.
+**Dynamic** (`content` absent): the host calls `onPageContent({ slug, user? })` at `/api/config` time and inlines the returned HTML string. `user` is the requesting viewer's chat identity when available.
 
-A combined plugin shipping all three fields is the common pattern when you need behavior and presentation together (the `viewer-gate` example in the SDK pairs a CSS file with a JavaScript file; `page-content-demo` ships a single HTML block).
+```js
+module.exports = definePlugin({
+  onPageContent({ slug, user }) {
+    if (slug === "banner") {
+      const name = user?.displayName ?? "visitor";
+      return `<aside>Welcome, ${name}!</aside>`;
+    }
+    return "";
+  },
+});
+```
+
+The admin's extra page content goes through the markdown processor; plugin HTML does not. Tags and attributes pass through as written — escape any untrusted strings you embed.
 
 ## Viewer-page tabs
 
-Plugins can add tabs to the viewer page's tab row (alongside the built-in **About** and **Followers** tabs) with `manifest.tabs[]`. Each entry has a `title` and a `content` path to an HTML file under `assets/`:
+Plugins can add tabs to the viewer page's tab row (alongside the built-in **About** and **Followers** tabs) with `manifest.tabs[]`. Each entry requires a `title` and a `slug`; `content` is optional:
 
 ```json
 {
   "permissions": ["ui.modify"],
   "tabs": [
-    { "title": "Music", "content": "music.html" },
-    { "title": "Schedule", "content": "schedule.html" }
+    { "title": "Music",       "slug": "music",       "content": "music.html" },
+    { "title": "Stream Info", "slug": "stream-info" }
   ]
 }
 ```
 
-Requires `ui.modify`. `http.serve` is **not** required: each tab's HTML is read from `assets/` and inlined into the `pluginTabs[]` array on `/api/config`. The viewer page renders one AntD tab per entry with the title as the label and the inlined HTML as the body.
+- `slug` — required. Stable identifier, unique within the plugin's tabs. Passed to `onTabContent` so the handler knows which tab to render. Lowercase letters, digits, hyphens.
+- `title` — required. The label shown on the tab. Keep it short (~16 characters max for mobile).
+- `content` — optional. Relative path to a static HTML file in `assets/`. When omitted, the host calls `onTabContent`.
 
-Per-entry rules (`content`):
+**Static** (`content` present): the host reads the file from `assets/` and inlines it as the tab body. Path rules match `extraPageContent.content`.
 
-- Bare paths auto-prefix to the plugin's namespace (`"music.html"` → `/plugins/<slug>/music.html`).
-- Fully qualified `/plugins/<slug>/...` paths pass through.
-- Paths in another plugin's namespace, `http(s)://` URLs, or non-`.html` extensions are rejected at load.
+**Dynamic** (`content` absent): the host calls `onTabContent({ slug, user? })` and inlines the returned HTML string.
 
-Tab keys are derived from the plugin's slug so a tab only unmounts when the plugin is disabled/removed, not on every render. Plugin tabs appear after the built-ins in the declaration order. Keep titles short — anything past ~16 characters won't render cleanly on mobile.
+```js
+module.exports = definePlugin({
+  onTabContent({ slug, user }) {
+    if (slug === "stream-info") {
+      const stream = owncast.stream.current();
+      return stream.online
+        ? `<p>Live: ${stream.title} — ${stream.viewers} viewers</p>`
+        : `<p>Offline</p>`;
+    }
+    return "";
+  },
+});
+```
 
-The `tabs-demo` example in the SDK ships two minimal tabs (Music, Schedule) and is the recommended starting point.
+Requires `ui.modify`. `http.serve` is not required — the host inlines the result, nothing is served at a URL. Add whatever data permissions (`server.read`, `chat.history`, etc.) your handler actually calls.
+
+The `tabs-demo` example ships two static tabs; `page-content-demo` demonstrates dynamic rendering with Mustache templates and `server.read` data.
 
 ## Plugin-to-plugin events
 
@@ -838,7 +866,38 @@ Point your `test` script at that one entry (`node __tests__/index.test.js`) inst
 
 - `event: "<type>"`, fire-and-forget notification dispatch
 - `filter: "<type>"`, filter chain; inline `expect: {action, payload?, reason?}` checks the FilterResult
-- `http: { method, path, headers?, body?, expect: {status, headers?, body?} }`, sends an HTTP request through your plugin server
+- `http: { method, path, headers?, body?, user?, authenticated?, expect: {status, headers?, body?, bodyContains?} }`, sends an HTTP request through your plugin server
+- `tabContent: { slug, user?, expect: {body?, bodyContains?} }`, calls `onTabContent` directly and asserts on the returned HTML
+- `pageContent: { slug, user?, expect: {body?, bodyContains?} }`, calls `onPageContent` directly and asserts on the returned HTML
+
+```json
+[
+  {
+    "name": "stream-info tab renders live title",
+    "given": { "stream": { "online": true, "title": "Friday Night", "viewers": 12 } },
+    "events": [
+      {
+        "tabContent": {
+          "slug": "stream-info",
+          "expect": { "bodyContains": "Friday Night" }
+        }
+      }
+    ]
+  },
+  {
+    "name": "banner greets authenticated viewer by name",
+    "events": [
+      {
+        "pageContent": {
+          "slug": "banner",
+          "user": { "id": "u1", "displayName": "Alice" },
+          "expect": { "bodyContains": "Alice" }
+        }
+      }
+    ]
+  }
+]
+```
 
 ### Assertions
 

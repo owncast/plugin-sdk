@@ -1,0 +1,36 @@
+[
+  {
+    "name": "banner falls back to 'visitor' for anonymous viewers",
+    "events": [
+      {
+        "pageContent": {
+          "slug": "banner",
+          "expect": { "bodyContains": "visitor" }
+        }
+      }
+    ]
+  },
+  {
+    "name": "banner renders the viewer's display name when authenticated",
+    "events": [
+      {
+        "pageContent": {
+          "slug": "banner",
+          "user": { "id": "u-alice", "displayName": "Alice" },
+          "expect": { "bodyContains": "Alice" }
+        }
+      }
+    ]
+  },
+  {
+    "name": "unknown page slug returns empty string",
+    "events": [
+      {
+        "pageContent": {
+          "slug": "unknown",
+          "expect": { "body": "" }
+        }
+      }
+    ]
+  }
+]

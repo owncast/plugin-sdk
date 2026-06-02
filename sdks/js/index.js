@@ -770,6 +770,26 @@ const owncast = {
       return JSON.parse(Memory.find(offset).readString());
     },
   },
+  // Read files the plugin shipped in its own assets/ directory. Useful for
+  // templates, data files, and other bundled resources that need to be read
+  // at request time. Path is relative to assets/ and must not contain "..".
+  // Ambient — no permission required.
+  assets: {
+    // Returns a Uint8Array of the file's raw bytes, or null if not found.
+    read(path) {
+      const fns = Host.getFunctions();
+      const offset = fns.owncast_asset_read(Memory.fromString(path).offset);
+      if (offset == 0) return null;
+      return new Uint8Array(Memory.find(offset).readBytes());
+    },
+    // Returns the file contents as a UTF-8 string, or null if not found.
+    readText(path) {
+      const fns = Host.getFunctions();
+      const offset = fns.owncast_asset_read(Memory.fromString(path).offset);
+      if (offset == 0) return null;
+      return Memory.find(offset).readString();
+    },
+  },
   events: {
     emit(eventType, payload) {
       const fns = Host.getFunctions();
@@ -870,6 +890,16 @@ const owncast = {
   },
 };
 
+function dispatchTabContent(req) {
+  if (!registered || !isFn(registered.onTabContent)) return "";
+  return registered.onTabContent(req) || "";
+}
+
+function dispatchPageContent(req) {
+  if (!registered || !isFn(registered.onPageContent)) return "";
+  return registered.onPageContent(req) || "";
+}
+
 module.exports = {
   definePlugin,
   defineCommands,
@@ -882,4 +912,6 @@ module.exports = {
   dispatchEvent,
   dispatchFilter,
   dispatchHttp,
+  dispatchTabContent,
+  dispatchPageContent,
 };

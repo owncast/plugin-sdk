@@ -7,7 +7,6 @@ import (
 	"io"
 	"net/http"
 	"net/http/httptest"
-	"os"
 	"path/filepath"
 	"reflect"
 	"sort"
@@ -106,14 +105,6 @@ func runOne(ctx context.Context, wasmPath, manifestPath, file string, sc Scenari
 		return res
 	}
 
-	// LoadPlugin doesn't auto-populate AssetsFS (only the Manager's full
-	// LoadAll does, since it knows the on-disk layout). For HTTP scenarios
-	// to find static assets, mount the project-local assets/ directory if
-	// present, this matches what owncast-plugin build symlinks into place.
-	assetsDir := filepath.Join(filepath.Dir(wasmPath), "assets")
-	if info, err := os.Stat(assetsDir); err == nil && info.IsDir() {
-		loaded.AssetsFS = os.DirFS(assetsDir)
-	}
 	server := plugin.NewServer([]*plugin.Loaded{loaded})
 	server.IsAuthenticated = mock.IsAuthenticated
 	server.GetRequestUser = mock.GetRequestUser
@@ -133,6 +124,12 @@ func runOne(ctx context.Context, wasmPath, manifestPath, file string, sc Scenari
 func runStep(ctx context.Context, d *plugin.Dispatcher, server *plugin.Server, loaded *plugin.Loaded, step ScenarioStep) error {
 	if step.HTTP != nil {
 		return runHTTPStep(server, loaded.Manifest.Slug, step.HTTP)
+	}
+	if step.TabContent != nil {
+		return runContentStep(ctx, loaded, "tab", step.TabContent)
+	}
+	if step.PageContent != nil {
+		return runContentStep(ctx, loaded, "page", step.PageContent)
 	}
 	if step.Filter != "" {
 		final, allowed, reason := d.Filter(ctx, step.Filter, step.Payload)
@@ -167,6 +164,32 @@ func runStep(ctx context.Context, d *plugin.Dispatcher, server *plugin.Server, l
 		return nil
 	}
 	d.Notify(ctx, step.Event, step.Payload)
+	return nil
+}
+
+func runContentStep(ctx context.Context, loaded *plugin.Loaded, kind string, s *ContentStep) error {
+	var (
+		html string
+		err  error
+	)
+	switch kind {
+	case "tab":
+		html, err = loaded.CallTabContent(ctx, s.Slug, s.User)
+	case "page":
+		html, err = loaded.CallPageContent(ctx, s.Slug, s.User)
+	}
+	if err != nil {
+		return fmt.Errorf("%sContent slug=%q: %w", kind, s.Slug, err)
+	}
+	if s.Expect == nil {
+		return nil
+	}
+	if s.Expect.Body != "" && s.Expect.Body != html {
+		return fmt.Errorf("%sContent body:\n  want %q\n  got  %q", kind, s.Expect.Body, html)
+	}
+	if s.Expect.BodyContains != "" && !strings.Contains(html, s.Expect.BodyContains) {
+		return fmt.Errorf("%sContent body does not contain %q\n  body: %q", kind, s.Expect.BodyContains, html)
+	}
 	return nil
 }
 
@@ -212,6 +235,9 @@ func runHTTPStep(server *plugin.Server, pluginName string, h *HTTPStep) error {
 	}
 	if h.Expect.Body != "" && h.Expect.Body != rec.Body.String() {
 		return fmt.Errorf("http body:\n  want %q\n  got  %q", h.Expect.Body, rec.Body.String())
+	}
+	if h.Expect.BodyContains != "" && !strings.Contains(rec.Body.String(), h.Expect.BodyContains) {
+		return fmt.Errorf("http body does not contain %q\n  body: %q", h.Expect.BodyContains, rec.Body.String())
 	}
 	return nil
 }

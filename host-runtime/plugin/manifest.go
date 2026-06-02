@@ -76,27 +76,36 @@ type Manifest struct {
 	// viewer page, so the code runs in the chrome's window context.
 	// Requires the ui.modify and http.serve permissions.
 	Scripts []string `json:"scripts,omitempty"`
-	// ExtraPageContent is an HTML file the plugin contributes to the
-	// viewer page's extra-content block. Same path rules as styles
-	// and scripts, applied to a single .html entry. The host reads
-	// the file's bytes and prepends them to the admin's
-	// extraPageContent in the /api/config response. Requires
-	// ui.modify; http.serve is not required since the HTML is
-	// inlined, not served as a URL.
-	ExtraPageContent string `json:"extraPageContent,omitempty"`
+	// ExtraPageContent declares the plugin's contribution to the viewer
+	// page's extra-content block. Slug identifies the slot; Content is
+	// an optional static HTML file path. When Content is absent the host
+	// calls on_page_content(slug, user) to get rendered HTML. Requires
+	// ui.modify.
+	ExtraPageContent *ExtraPageContent `json:"extraPageContent,omitempty"`
 	// Tabs is the list of viewer-page tabs the plugin contributes
-	// alongside the built-in tabs (Followers, About). Each entry's
-	// content path follows the same rules as ExtraPageContent
-	// (.html under assets/, plugin namespace).
+	// alongside the built-in tabs (Followers, About). Each tab's Slug
+	// identifies it; Content is an optional static HTML file. When
+	// Content is absent the host calls on_tab_content(slug, user).
 	Tabs []Tab `json:"tabs,omitempty"`
 }
 
-// Tab declares one viewer-page tab. Title is the tab label; Content
-// is the relative path to the HTML file under assets/ whose bytes the
-// host inlines into the tab body.
+// Tab declares one viewer-page tab. Title is the tab label shown in the UI.
+// Slug is the stable identifier passed to the plugin's onTabContent handler.
+// Content is the optional path to a static HTML file under assets/; when
+// omitted the host calls on_tab_content with the slug to get rendered HTML.
 type Tab struct {
 	Title   string `json:"title"`
-	Content string `json:"content"`
+	Slug    string `json:"slug"`
+	Content string `json:"content,omitempty"`
+}
+
+// ExtraPageContent declares the plugin's contribution to the viewer page's
+// extra-content block. Slug is the stable identifier passed to the plugin's
+// onPageContent handler. Content is the optional path to a static HTML file
+// under assets/; when omitted the host calls on_page_content with the slug.
+type ExtraPageContent struct {
+	Slug    string `json:"slug"`
+	Content string `json:"content,omitempty"`
 }
 
 // BotConfig is the chat-bot configuration for plugins that post to
@@ -371,41 +380,23 @@ func (m *Manifest) Validate() error {
 			m.Scripts[i] = path
 		}
 	}
-	// manifest.extraPageContent: one HTML file inlined into the
-	// admin's extraPageContent on /api/config. Same path-shape rules
-	// as styles/scripts but http.serve is not required (the file is
-	// not served as a URL).
-	if m.ExtraPageContent != "" {
+	// manifest.extraPageContent
+	if m.ExtraPageContent != nil {
 		if !hasUIModify {
 			return errors.New(
 				"manifest.extraPageContent is set but the manifest does " +
-					"not declare the \"ui.modify\" permission; plugins that " +
-					"inject HTML into the viewer page must opt in to " +
-					"ui.modify so it's visible to anyone reviewing the " +
-					"manifest that the plugin paints inside Owncast's chrome")
+					"not declare the \"ui.modify\" permission")
 		}
-		raw := m.ExtraPageContent
-		if strings.TrimSpace(raw) == "" {
-			return errors.New("manifest.extraPageContent is empty")
+		if err := validateSlug("manifest.extraPageContent.slug", m.ExtraPageContent.Slug); err != nil {
+			return err
 		}
-		if strings.HasPrefix(raw, "http://") || strings.HasPrefix(raw, "https://") {
-			return fmt.Errorf("manifest.extraPageContent cannot be an absolute URL (%q); bundle the file under assets/ and reference it by path", raw)
+		if m.ExtraPageContent.Content != "" {
+			path, err := resolveContentPath("manifest.extraPageContent.content", m.ExtraPageContent.Content, pluginPrefix)
+			if err != nil {
+				return err
+			}
+			m.ExtraPageContent.Content = path
 		}
-		path := raw
-		switch {
-		case strings.HasPrefix(path, "/plugins/"):
-		case strings.HasPrefix(path, "/"):
-			path = pluginPrefix + strings.TrimPrefix(path, "/")
-		default:
-			path = pluginPrefix + path
-		}
-		if !strings.HasPrefix(path, pluginPrefix) {
-			return fmt.Errorf("manifest.extraPageContent points at another plugin's namespace: %s", path)
-		}
-		if !strings.HasSuffix(strings.ToLower(path), ".html") {
-			return fmt.Errorf("manifest.extraPageContent must end in .html (got %q)", raw)
-		}
-		m.ExtraPageContent = path
 	}
 	// manifest.tabs: viewer-page tabs the plugin contributes. Each
 	// entry's content path follows the same rules as
@@ -420,6 +411,7 @@ func (m *Manifest) Validate() error {
 					"plugin paints inside Owncast's chrome")
 		}
 		seenTitles := make(map[string]bool, len(m.Tabs))
+		seenSlugs := make(map[string]bool, len(m.Tabs))
 		for i := range m.Tabs {
 			if strings.TrimSpace(m.Tabs[i].Title) == "" {
 				return fmt.Errorf("manifest.tabs[%d].title is required", i)
@@ -428,28 +420,20 @@ func (m *Manifest) Validate() error {
 				return fmt.Errorf("manifest.tabs[%d].title %q is a duplicate; tab titles must be unique within a plugin", i, m.Tabs[i].Title)
 			}
 			seenTitles[m.Tabs[i].Title] = true
-			raw := m.Tabs[i].Content
-			if strings.TrimSpace(raw) == "" {
-				return fmt.Errorf("manifest.tabs[%d].content is empty", i)
+			if err := validateSlug(fmt.Sprintf("manifest.tabs[%d].slug", i), m.Tabs[i].Slug); err != nil {
+				return err
 			}
-			if strings.HasPrefix(raw, "http://") || strings.HasPrefix(raw, "https://") {
-				return fmt.Errorf("manifest.tabs[%d].content cannot be an absolute URL (%q); bundle the file under assets/ and reference it by path", i, raw)
+			if seenSlugs[m.Tabs[i].Slug] {
+				return fmt.Errorf("manifest.tabs[%d].slug %q is a duplicate; tab slugs must be unique within a plugin", i, m.Tabs[i].Slug)
 			}
-			path := raw
-			switch {
-			case strings.HasPrefix(path, "/plugins/"):
-			case strings.HasPrefix(path, "/"):
-				path = pluginPrefix + strings.TrimPrefix(path, "/")
-			default:
-				path = pluginPrefix + path
+			seenSlugs[m.Tabs[i].Slug] = true
+			if m.Tabs[i].Content != "" {
+				path, err := resolveContentPath(fmt.Sprintf("manifest.tabs[%d].content", i), m.Tabs[i].Content, pluginPrefix)
+				if err != nil {
+					return err
+				}
+				m.Tabs[i].Content = path
 			}
-			if !strings.HasPrefix(path, pluginPrefix) {
-				return fmt.Errorf("manifest.tabs[%d].content points at another plugin's namespace: %s", i, path)
-			}
-			if !strings.HasSuffix(strings.ToLower(path), ".html") {
-				return fmt.Errorf("manifest.tabs[%d].content must end in .html (got %q)", i, raw)
-			}
-			m.Tabs[i].Content = path
 		}
 	}
 	return nil
@@ -565,4 +549,40 @@ func stringSet(items []string) map[string]bool {
 		out[i] = true
 	}
 	return out
+}
+
+// validateSlug checks that s is a non-empty, lowercase-hyphenated identifier
+// (same pattern as plugin slugs). field is used in error messages.
+func validateSlug(field, s string) error {
+	if strings.TrimSpace(s) == "" {
+		return fmt.Errorf("%s is required", field)
+	}
+	if !slugPattern.MatchString(s) {
+		return fmt.Errorf("%s %q must match %s (lowercase letters/digits/hyphens, starting with a letter, max 64 chars)", field, s, slugPattern)
+	}
+	return nil
+}
+
+// resolveContentPath validates and rewrites a content file path into the
+// plugin's namespace. The path must end in .html and must not cross into
+// another plugin's namespace or use an absolute URL.
+func resolveContentPath(field, raw, pluginPrefix string) (string, error) {
+	if strings.HasPrefix(raw, "http://") || strings.HasPrefix(raw, "https://") {
+		return "", fmt.Errorf("%s cannot be an absolute URL (%q); bundle the file under assets/ and reference it by path", field, raw)
+	}
+	path := raw
+	switch {
+	case strings.HasPrefix(path, "/plugins/"):
+	case strings.HasPrefix(path, "/"):
+		path = pluginPrefix + strings.TrimPrefix(path, "/")
+	default:
+		path = pluginPrefix + path
+	}
+	if !strings.HasPrefix(path, pluginPrefix) {
+		return "", fmt.Errorf("%s points at another plugin's namespace: %s", field, path)
+	}
+	if !strings.HasSuffix(strings.ToLower(path), ".html") {
+		return "", fmt.Errorf("%s must end in .html (got %q)", field, raw)
+	}
+	return path, nil
 }

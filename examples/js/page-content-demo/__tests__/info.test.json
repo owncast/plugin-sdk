@@ -1,0 +1,103 @@
+[
+  {
+    "name": "stream-info tab renders server name",
+    "given": {
+      "server": { "name": "My Owncast", "version": "0.2.0", "url": "https://stream.example.com" }
+    },
+    "events": [
+      {
+        "tabContent": {
+          "slug": "stream-info",
+          "expect": { "bodyContains": "My Owncast" }
+        }
+      }
+    ]
+  },
+  {
+    "name": "stream-info tab shows live stream details when online",
+    "given": {
+      "stream": {
+        "online": true,
+        "title": "Saturday Evening Stream",
+        "viewers": 17,
+        "startedAt": "2024-06-01T20:00:00Z",
+        "latencyLevel": 2
+      }
+    },
+    "events": [
+      {
+        "tabContent": {
+          "slug": "stream-info",
+          "expect": { "bodyContains": "Saturday Evening Stream" }
+        }
+      }
+    ]
+  },
+  {
+    "name": "stream-info tab shows offline message when stream is not live",
+    "given": {
+      "stream": { "online": false, "viewers": 0 }
+    },
+    "events": [
+      {
+        "tabContent": {
+          "slug": "stream-info",
+          "expect": { "bodyContains": "Offline" }
+        }
+      }
+    ]
+  },
+  {
+    "name": "stream-info tab renders tags",
+    "given": {
+      "tags": ["gaming", "music", "irl"]
+    },
+    "events": [
+      {
+        "tabContent": {
+          "slug": "stream-info",
+          "expect": { "bodyContains": "gaming" }
+        }
+      }
+    ]
+  },
+  {
+    "name": "stream-info tab renders social handles",
+    "given": {
+      "socials": [{ "platform": "mastodon", "url": "https://mastodon.social/@demo" }]
+    },
+    "events": [
+      {
+        "tabContent": {
+          "slug": "stream-info",
+          "expect": { "bodyContains": "mastodon" }
+        }
+      }
+    ]
+  },
+  {
+    "name": "stream-info tab renders federation handle when enabled",
+    "given": {
+      "federation": { "enabled": true, "username": "streamer", "isPrivate": false }
+    },
+    "events": [
+      {
+        "tabContent": {
+          "slug": "stream-info",
+          "expect": { "bodyContains": "@streamer" }
+        }
+      }
+    ]
+  },
+  {
+    "name": "unknown tab slug returns empty string",
+    "events": [
+      {
+        "tabContent": {
+          "slug": "unknown",
+          "expect": { "body": "" }
+        }
+      }
+    ]
+  }
+]

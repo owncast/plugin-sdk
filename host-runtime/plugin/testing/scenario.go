@@ -59,16 +59,20 @@ type ScenarioHTTPFixture struct {
 }
 
 type ScenarioStep struct {
-	// Exactly one of Event, Filter, or HTTP must be set.
-	// - Event:  notification dispatch
-	// - Filter: filter chain, Expect asserts on the FilterResult
-	// - HTTP:   sends an HTTP request through plugin.Server, HTTPExpect
-	//           asserts on the response
-	Event   string        `json:"event,omitempty"`
-	Filter  string        `json:"filter,omitempty"`
-	Payload any           `json:"payload,omitempty"`
-	HTTP    *HTTPStep     `json:"http,omitempty"`
-	Expect  *FilterExpect `json:"expect,omitempty"`
+	// Exactly one of Event, Filter, HTTP, TabContent, or PageContent must be set.
+	// - Event:       notification dispatch
+	// - Filter:      filter chain, Expect asserts on the FilterResult
+	// - HTTP:        sends an HTTP request through plugin.Server, HTTPExpect
+	//                asserts on the response
+	// - TabContent:  invokes the plugin's on_tab_content export
+	// - PageContent: invokes the plugin's on_page_content export
+	Event       string        `json:"event,omitempty"`
+	Filter      string        `json:"filter,omitempty"`
+	Payload     any           `json:"payload,omitempty"`
+	HTTP        *HTTPStep     `json:"http,omitempty"`
+	TabContent  *ContentStep  `json:"tabContent,omitempty"`
+	PageContent *ContentStep  `json:"pageContent,omitempty"`
+	Expect      *FilterExpect `json:"expect,omitempty"`
 }
 
 // HTTPStep is an inbound request sent at the plugin via plugin.Server.
@@ -90,9 +94,23 @@ type HTTPStep struct {
 
 // HTTPExpect asserts on the response from an HTTPStep.
 type HTTPExpect struct {
-	Status  int               `json:"status,omitempty"`
-	Headers map[string]string `json:"headers,omitempty"`
-	Body    string            `json:"body,omitempty"`
+	Status       int               `json:"status,omitempty"`
+	Headers      map[string]string `json:"headers,omitempty"`
+	Body         string            `json:"body,omitempty"`
+	BodyContains string            `json:"bodyContains,omitempty"`
+}
+
+// ContentStep invokes the plugin's on_tab_content or on_page_content export.
+type ContentStep struct {
+	Slug   string           `json:"slug"`
+	User   *plugin.HostUser `json:"user,omitempty"`
+	Expect *ContentExpect   `json:"expect,omitempty"`
+}
+
+// ContentExpect asserts on the HTML returned by a ContentStep.
+type ContentExpect struct {
+	Body         string `json:"body,omitempty"`
+	BodyContains string `json:"bodyContains,omitempty"`
 }
 
 func (s *ScenarioStep) Validate() error {
@@ -106,8 +124,14 @@ func (s *ScenarioStep) Validate() error {
 	if s.HTTP != nil {
 		count++
 	}
+	if s.TabContent != nil {
+		count++
+	}
+	if s.PageContent != nil {
+		count++
+	}
 	if count != 1 {
-		return fmt.Errorf("step must set exactly one of `event`, `filter`, or `http`")
+		return fmt.Errorf("step must set exactly one of `event`, `filter`, `http`, `tabContent`, or `pageContent`")
 	}
 	if s.Filter == "" && s.Expect != nil {
 		return fmt.Errorf("step.expect is only valid on filter steps (use http.expect for http steps)")

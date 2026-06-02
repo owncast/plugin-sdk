@@ -6,6 +6,7 @@
     "build": "owncast-plugin build"
   },
   "dependencies": {
-    "@owncast/plugin-sdk": "file:../../../sdks/js"
+    "@owncast/plugin-sdk": "file:../../../sdks/js",
+    "mustache": "^4.2.0"
   }
 }

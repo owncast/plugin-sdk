@@ -8,7 +8,7 @@ A plugin is a WebAssembly module exposing four well-known exports and (condition
 
 ## Exports (plugin → host)
 
-Every plugin must export these four functions:
+Every plugin must export these functions:
 
 | Function          | Input                      | Output                      | Purpose                                                                                               |
 | ----------------- | -------------------------- | --------------------------- | ----------------------------------------------------------------------------------------------------- |
@@ -16,8 +16,10 @@ Every plugin must export these four functions:
 | `on_event`        | JSON `Envelope`            | none                        | Notification dispatch. Fire-and-forget.                                                               |
 | `on_filter`       | JSON `Envelope`            | JSON `FilterResult`         | Filter chain entry point.                                                                             |
 | `on_http_request` | JSON `IncomingHttpRequest` | JSON `OutgoingHttpResponse` | HTTP request handler for `/plugins/<name>/*`.                                                         |
+| `on_tab_content`  | JSON `ContentRequest`      | raw HTML string             | Render HTML for a dynamic tab (one without a static `content` file in the manifest).                 |
+| `on_page_content` | JSON `ContentRequest`      | raw HTML string             | Render HTML for a dynamic `extraPageContent` slot (one without a static `content` file).             |
 
-Each entry point has a per-call timeout enforced by the host. See the host's `dispatcher.go` and `server.go` for current values.
+`ContentRequest` shape: `{ "slug": "<tab-or-slot-slug>", "user"?: ChatUser }`. The host calls the appropriate export when building the `/api/config` response; the returned string is inlined directly as the body. An empty string is valid (renders nothing). Each entry point has a per-call timeout enforced by the host. See the host's `dispatcher.go` and `server.go` for current values.
 
 ## Imports (host → plugin)
 
@@ -133,6 +135,7 @@ These imports are granted to every plugin without a declared permission. A plugi
 - `owncast_timer_set(id: I64, delayMs: I64, repeat: I32): I32`, schedule a host-driven timer; the host fires the `timer.fire` event (payload `{id}`) when it elapses. Returns 1 on success, 0 if the plugin is at its pending-timer cap. `delayMs` is clamped to `[100, 86_400_000]`. The SDK maps `id`→callback for `owncast.timer.setTimeout/setInterval`.
 - `owncast_timer_clear(id: I64): void`, cancel a pending timer by id.
 - `owncast_config_get(keyPtr: PTR): PTR`, returns the JSON value of a `manifest.config` key (admin override, else declared default), or 0-offset for an unknown/unset key.
+- `owncast_asset_read(pathPtr: PTR): PTR`, returns the raw bytes of a file from the plugin's own `assets/` directory, or 0-offset when the file is missing or the path escapes the directory. The path is relative to `assets/` and must not start with `/` or contain `..` segments; the host rejects any path that would escape the plugin's own asset tree. Plugins use this to load bundled resources (templates, data files) at request time without needing `storage.fs`.
 
 The host also dispatches a `tick` event (payload `{now}`, host wall-clock ms) about once a second to any plugin defining `onTick`, independent of timers.
 
@@ -229,35 +232,53 @@ Same per-entry rules as `manifest.styles[]`, applied to `.js` files (only `ui.mo
 
 ### `manifest.extraPageContent`
 
-A single relative path to an HTML file the plugin contributes to the viewer's extra-content block. The host reads the file's bytes and prepends them to the admin's rendered `extraPageContent` on `/api/config`, so plugin HTML lands above the admin's prose.
+An object the plugin contributes to the viewer's extra-content block. The host prepends the resolved HTML to the admin's rendered `extraPageContent` on `/api/config`, so plugin HTML lands above the admin's prose.
 
-Per-entry validation:
+```json
+{
+  "slug": "string (required, identifies the slot — passed to on_page_content)",
+  "content": "string (optional, relative path to assets/<file>.html)"
+}
+```
+
+Validation:
 
 - `ui.modify` permission required.
 - `http.serve` is **not** required: the HTML is inlined into the API response, not served at a URL.
-- Same path-shape rules as `manifest.styles[]`, applied to a single `.html` entry.
+- `slug` must be a valid slug (lowercase letters/digits/hyphens, starting with a letter, max 64 chars).
+- When `content` is present, the same path-shape rules as `manifest.styles[]` apply (must end in `.html`).
+
+**Static** (`content` present): the host reads the file from `assets/` and inlines its bytes.
+
+**Dynamic** (`content` absent): the host calls `on_page_content` with `{ slug, user? }` and inlines the returned HTML string. `user` carries the requesting viewer's chat identity when available.
 
 Each contribution is wrapped with an `<!-- plugin: <slug> — <file> -->\n` comment for in-page attribution. The admin's content goes through the markdown processor before plugin HTML is prepended; plugin HTML is left raw so tags and attributes pass through as written.
 
 ### `manifest.tabs[]`
 
-An array of viewer-page tabs the plugin contributes alongside the built-in tabs (Followers, About). Each entry's `content` is a relative path to an HTML file the host reads from the plugin's assets/ directory at request time.
+An array of viewer-page tabs the plugin contributes alongside the built-in tabs (Followers, About).
 
 ```json
 {
-  "title": "string (required)",
-  "content": "string (required, relative path to assets/<file>.html)"
+  "title": "string (required, tab label)",
+  "slug": "string (required, stable identifier — passed to on_tab_content)",
+  "content": "string (optional, relative path to assets/<file>.html)"
 }
 ```
 
-Per-entry validation:
+Validation:
 
 - `ui.modify` permission required.
 - `http.serve` is **not** required: each tab's HTML is inlined into the response, not served at a URL.
-- Title must be non-empty.
-- `content` path follows the same rules as `manifest.extraPageContent` (auto-prefix to the plugin's namespace, cross-plugin paths and `http(s)://` URLs rejected, must end in `.html`).
+- `title` must be non-empty. Unique within the plugin's tabs.
+- `slug` must be a valid slug. Unique within the plugin's tabs. Passed to `on_tab_content` so the plugin knows which tab to render.
+- When `content` is present, the same path rules as `manifest.extraPageContent.content` apply (must end in `.html`).
 
-The host emits the tab list on `GET /api/config` under `pluginTabs[]` as `[{slug, title, html}]` entries. The viewer page maps each entry to a tab whose body renders the inlined HTML. Slug doubles as the React key so a tab only unmounts when the source plugin is disabled/removed.
+**Static** (`content` present): the host reads the file from `assets/` and inlines its bytes.
+
+**Dynamic** (`content` absent): the host calls `on_tab_content` with `{ slug, user? }` and inlines the returned HTML string.
+
+The host emits the tab list on `GET /api/config` under `pluginTabs[]` as `[{slug, title, html}]` entries. The viewer page maps each entry to a tab whose body renders the inlined HTML. `slug` doubles as the React key so a tab only unmounts when the source plugin is disabled/removed.
 
 ## Payload types
 
@@ -269,7 +290,7 @@ Each language SDK is responsible for:
 
 - Declaring the imports listed above (gated by manifest permissions) so the plugin author's call into `owncast.chat.send(...)` resolves to the right wasm import.
 - Encoding/decoding payloads as JSON or text per the table above.
-- Implementing the four exports' dispatch loop: parse the envelope, route to the right handler, serialize the response.
+- Implementing the exports' dispatch loop: parse the envelope, route to the right handler, serialize the response. This covers all six exports: `register`, `on_event`, `on_filter`, `on_http_request`, `on_tab_content`, and `on_page_content`.
 
 The Owncast server repo's plugin runtime is responsible for:
 

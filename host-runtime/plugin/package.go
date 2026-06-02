@@ -57,23 +57,24 @@ func LoadPackage(ctx context.Context, env *HostEnv, path string) (*Loaded, error
 	}
 
 	displayName := strings.TrimSuffix(filepath.Base(path), packageSuffix)
-	loaded, err := loadFromBytes(ctx, env, manifestBytes, wasmBytes, displayName)
+
+	// Extract assetsFS from zip before calling loadFromBytes so the host
+	// function closes over the live FS from the start.
+	var assetsFS fs.FS
+	if hasZipDir(&zr.Reader, pkgAssetsPrefix) {
+		sub, err := fs.Sub(&zr.Reader, strings.TrimSuffix(pkgAssetsPrefix, "/"))
+		if err == nil {
+			assetsFS = sub
+		}
+	}
+
+	loaded, err := loadFromBytes(ctx, env, manifestBytes, wasmBytes, displayName, assetsFS)
 	if err != nil {
 		return nil, err
 	}
 	loaded.WasmPath = path
 	loaded.pkgCloser = zr
-
-	// Mount assets/ as the plugin's static-asset root, if present. fs.Sub
-	// returns an FS that's empty (rather than failing) when the prefix
-	// doesn't exist, so we check first to keep the nil-means-no-assets
-	// invariant the Server relies on.
-	if hasZipDir(&zr.Reader, pkgAssetsPrefix) {
-		sub, err := fs.Sub(&zr.Reader, strings.TrimSuffix(pkgAssetsPrefix, "/"))
-		if err == nil {
-			loaded.AssetsFS = sub
-		}
-	}
+	// AssetsFS is already set by loadFromBytes; no need to set it again here.
 
 	closeOnFail = nil // ownership transferred to Loaded.pkgCloser
 	return loaded, nil

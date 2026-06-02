@@ -163,6 +163,46 @@ func (l *Loaded) Close(ctx context.Context) {
 	}
 }
 
+// CallTabContent invokes the plugin's on_tab_content export with the given slug
+// and optional user, returning the rendered HTML. Returns empty string when the
+// plugin does not export on_tab_content or the call produces no output.
+func (p *Loaded) CallTabContent(ctx context.Context, slug string, user *HostUser) (string, error) {
+	return p.callContentExport(ctx, "on_tab_content", slug, user)
+}
+
+// CallPageContent invokes the plugin's on_page_content export with the given
+// slug and optional user, returning the rendered HTML. Returns empty string when
+// the plugin does not export on_page_content or the call produces no output.
+func (p *Loaded) CallPageContent(ctx context.Context, slug string, user *HostUser) (string, error) {
+	return p.callContentExport(ctx, "on_page_content", slug, user)
+}
+
+func (p *Loaded) callContentExport(ctx context.Context, export, slug string, user *HostUser) (string, error) {
+	p.mu.Lock()
+	pl := p.plugin
+	p.mu.Unlock()
+	if pl == nil || !pl.FunctionExists(export) {
+		return "", nil
+	}
+	req := map[string]any{"slug": slug}
+	if user != nil {
+		req["user"] = user
+	}
+	input, err := json.Marshal(req)
+	if err != nil {
+		return "", fmt.Errorf("%s: marshal input: %w", export, err)
+	}
+	callCtx, cancel := context.WithTimeout(ctx, HTTPHandlerTimeout)
+	defer cancel()
+	p.mu.Lock()
+	_, out, err := pl.CallWithContext(callCtx, export, input)
+	p.mu.Unlock()
+	if err != nil {
+		return "", fmt.Errorf("%s: %w", export, err)
+	}
+	return string(out), nil
+}
+
 // Manager tracks plugins across two states:
 //
 //   - Discovered: a file in the plugins directory whose manifest parsed
@@ -454,22 +494,33 @@ func (m *Manager) loadInternal(ctx context.Context, name string) (*Loaded, error
 	return loaded, nil
 }
 
-// loadByPath dispatches to LoadPlugin or LoadPackage based on file suffix.
-// Sets AssetsFS for loose-files plugins.
+// loadByPath dispatches to LoadPackage or the loose-files path based on file
+// suffix. For loose-files plugins the production asset convention is
+// <slug>-assets/ next to the wasm (set by the host's install tooling).
 func loadByPath(ctx context.Context, env *HostEnv, path string) (*Loaded, error) {
 	switch {
 	case strings.HasSuffix(path, packageSuffix):
 		return LoadPackage(ctx, env, path)
 	case strings.HasSuffix(path, ".wasm"):
 		manifestPath := strings.TrimSuffix(path, ".wasm") + ".manifest.json"
-		loaded, err := LoadPlugin(ctx, env, path, manifestPath)
+		manifestBytes, err := os.ReadFile(manifestPath)
+		if err != nil {
+			return nil, fmt.Errorf("read manifest %s: %w", manifestPath, err)
+		}
+		wasmBytes, err := os.ReadFile(path)
+		if err != nil {
+			return nil, fmt.Errorf("read wasm %s: %w", path, err)
+		}
+		displayName := strings.TrimSuffix(filepath.Base(path), ".wasm")
+		var assetsFS fs.FS
+		if assetsDir := strings.TrimSuffix(path, ".wasm") + "-assets"; isDirAt(assetsDir) {
+			assetsFS = os.DirFS(assetsDir)
+		}
+		loaded, err := loadFromBytes(ctx, env, manifestBytes, wasmBytes, displayName, assetsFS)
 		if err != nil {
 			return nil, err
 		}
-		assetsDir := strings.TrimSuffix(path, ".wasm") + "-assets"
-		if info, err := os.Stat(assetsDir); err == nil && info.IsDir() {
-			loaded.AssetsFS = os.DirFS(assetsDir)
-		}
+		loaded.WasmPath = path
 		return loaded, nil
 	}
 	return nil, fmt.Errorf("unsupported plugin file: %s", path)
@@ -803,8 +854,9 @@ func (m *Manager) InstructionsBytes(name string) ([]byte, error) {
 // (the loose-files layout). Used by the test runner so it shares the exact
 // same load + register + validate path that production uses via Start.
 //
-// AssetsFS on the returned Loaded is left nil, callers that want static
-// asset serving should populate it themselves.
+// AssetsFS is auto-discovered from the project layout: if an assets/
+// directory exists next to the wasm file, it is mounted as the plugin's
+// static-asset root.
 func LoadPlugin(ctx context.Context, env *HostEnv, wasmPath, manifestPath string) (*Loaded, error) {
 	manifestBytes, err := os.ReadFile(manifestPath)
 	if err != nil {
@@ -815,7 +867,13 @@ func LoadPlugin(ctx context.Context, env *HostEnv, wasmPath, manifestPath string
 		return nil, fmt.Errorf("read wasm %s: %w", wasmPath, err)
 	}
 	displayName := strings.TrimSuffix(filepath.Base(wasmPath), ".wasm")
-	loaded, err := loadFromBytes(ctx, env, manifestBytes, wasmBytes, displayName)
+	// Discover assets from the project layout (assets/ sibling of the wasm).
+	// This covers both the test runner and dev serve workflows.
+	var assetsFS fs.FS
+	if assetsDir := filepath.Join(filepath.Dir(wasmPath), "assets"); isDirAt(assetsDir) {
+		assetsFS = os.DirFS(assetsDir)
+	}
+	loaded, err := loadFromBytes(ctx, env, manifestBytes, wasmBytes, displayName, assetsFS)
 	if err != nil {
 		return nil, err
 	}
@@ -824,13 +882,13 @@ func LoadPlugin(ctx context.Context, env *HostEnv, wasmPath, manifestPath string
 }
 
 // loadFromBytes is the shared core of LoadPlugin and LoadPackage.
-func loadFromBytes(ctx context.Context, env *HostEnv, manifestBytes, wasmBytes []byte, displayName string) (*Loaded, error) {
+func loadFromBytes(ctx context.Context, env *HostEnv, manifestBytes, wasmBytes []byte, displayName string, assetsFS fs.FS) (*Loaded, error) {
 	manifest, err := ParseManifest(manifestBytes)
 	if err != nil {
 		return nil, err
 	}
 
-	hostFns := BuildHostFunctions(env, manifest)
+	hostFns := BuildHostFunctions(env, manifest, assetsFS)
 
 	extismManifest := extism.Manifest{
 		Wasm:    []extism.Wasm{extism.WasmData{Data: wasmBytes, Name: displayName}},
@@ -908,7 +966,13 @@ func loadFromBytes(ctx context.Context, env *HostEnv, manifestBytes, wasmBytes [
 		adminPaths = append(adminPaths, page.Path)
 	}
 
-	return &Loaded{Manifest: manifest, plugin: p, adminGlobs: adminGlobs, adminPaths: adminPaths}, nil
+	return &Loaded{Manifest: manifest, plugin: p, adminGlobs: adminGlobs, adminPaths: adminPaths, AssetsFS: assetsFS}, nil
+}
+
+// isDirAt reports whether path exists and is a directory.
+func isDirAt(path string) bool {
+	info, err := os.Stat(path)
+	return err == nil && info.IsDir()
 }
 
 // requireChatFilterPermission rejects a runtime registration that

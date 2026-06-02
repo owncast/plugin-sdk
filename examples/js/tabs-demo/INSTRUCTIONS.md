@@ -13,19 +13,19 @@ The tab content is plain HTML the plugin ships, so editing `assets/music.html` o
 
 ## How it works
 
-The manifest declares two tabs, each pointing at a file under `assets/`:
+The manifest declares two tabs. Each has a `slug` (the stable identifier Owncast uses internally and passes to handlers), a `title` (the tab label), and a `content` path pointing at a static HTML file:
 
 ```json
 {
   "permissions": ["ui.modify"],
   "tabs": [
-    { "title": "Music", "content": "music.html" },
-    { "title": "Schedule", "content": "schedule.html" }
+    { "title": "Music",    "slug": "music",    "content": "music.html" },
+    { "title": "Schedule", "slug": "schedule", "content": "schedule.html" }
   ]
 }
 ```
 
-The host reads each file at `/api/config` time, inlines the bytes into a `pluginTabs[]` array on the response, and the viewer page maps each entry to an AntD tab next to the built-ins. Tab keys are derived from the plugin's slug so a tab only unmounts when the plugin is disabled or removed.
+The host reads each file at `/api/config` time, inlines the bytes into a `pluginTabs[]` array on the response, and the viewer page maps each entry to a tab next to the built-ins. Tab keys are derived from the tab `slug` so a tab only unmounts when the plugin is disabled or removed.
 
 ## Permissions
 
@@ -33,6 +33,10 @@ The host reads each file at `/api/config` time, inlines the bytes into a `plugin
 
 `http.serve` is not required because the tab body is inlined into the API response, not served at a URL.
 
+## Static vs dynamic tabs
+
+This example uses `content` (static HTML files). For tabs that need live data or viewer personalisation, omit `content` and implement `onTabContent({ slug, user })` in your plugin instead — the `page-content-demo` shows this pattern end to end.
+
 ## When to use this as a template
 
-Reach for `manifest.tabs` when you want a dedicated panel viewers can click into — a music list, a sponsor section, an event schedule, a links page. For content that should sit at the top of the page above the tab row, use [`manifest.extraPageContent`](../page-content-demo/) instead.
+Reach for `manifest.tabs` when you want a dedicated panel viewers can click into — a music list, a sponsor section, an event schedule, a links page. For content that should sit at the top of the page above the tab row, use `manifest.extraPageContent` instead.
