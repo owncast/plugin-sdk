@@ -1,0 +1,118 @@
+[
+  {
+    "name": "admin static page rejects unauthenticated requests",
+    "events": [
+      { "http": { "method": "GET", "path": "/admin/", "expect": { "status": 401 } } }
+    ]
+  },
+  {
+    "name": "admin static page loads when authenticated",
+    "events": [
+      {
+        "http": {
+          "method": "GET",
+          "path": "/admin/",
+          "authenticated": true,
+          "expect": { "status": 200 }
+        }
+      }
+    ]
+  },
+  {
+    "name": "admin API returns defaults when authenticated",
+    "events": [
+      {
+        "http": {
+          "method": "GET",
+          "path": "/admin/api/settings",
+          "authenticated": true,
+          "expect": {
+            "status": 200,
+            "body": "{\"creator\":\"\",\"buttonTitle\":\"Support the stream\",\"description\":\"Send a donation on Ko-fi\",\"color\":\"#29abe0\",\"url\":\"\"}"
+          }
+        }
+      }
+    ]
+  },
+  {
+    "name": "admin API rejects unauthenticated writes",
+    "events": [
+      {
+        "http": {
+          "method": "POST",
+          "path": "/admin/api/settings",
+          "headers": { "Content-Type": "application/json" },
+          "body": "{\"creator\":\"gabek\"}",
+          "expect": { "status": 401 }
+        }
+      }
+    ],
+    "expect": { "kv": {} }
+  },
+  {
+    "name": "invalid ko-fi input is rejected",
+    "events": [
+      {
+        "http": {
+          "method": "POST",
+          "path": "/admin/api/settings",
+          "headers": { "Content-Type": "application/json" },
+          "body": "{\"creator\":\"https://example.com/not-kofi\"}",
+          "authenticated": true,
+          "expect": { "status": 400, "body": "Enter a valid Ko-fi username or URL." }
+        }
+      }
+    ]
+  },
+  {
+    "name": "saving a donation button normalizes settings",
+    "events": [
+      {
+        "http": {
+          "method": "POST",
+          "path": "/admin/api/settings",
+          "headers": { "Content-Type": "application/json" },
+          "body": "{\"creator\":\"https://ko-fi.com/gabek\",\"buttonTitle\":\"Buy me a coffee\",\"description\":\"Help keep the stream online\",\"color\":\"#ff5f5f\"}",
+          "authenticated": true,
+          "expect": {
+            "status": 200,
+            "body": "{\"creator\":\"https://ko-fi.com/gabek\",\"buttonTitle\":\"Buy me a coffee\",\"description\":\"Help keep the stream online\",\"color\":\"#ff5f5f\",\"url\":\"https://ko-fi.com/gabek\"}"
+          }
+        }
+      }
+    ],
+    "expect": {
+      "kv": {
+        "donation-settings": "{\"creator\":\"https://ko-fi.com/gabek\",\"buttonTitle\":\"Buy me a coffee\",\"description\":\"Help keep the stream online\",\"color\":\"#ff5f5f\",\"url\":\"https://ko-fi.com/gabek\"}"
+      }
+    }
+  },
+  {
+    "name": "clearing the creator removes the button settings",
+    "given": {
+      "kv": {
+        "donation-settings": "{\"creator\":\"gabek\",\"buttonTitle\":\"Support the stream\",\"description\":\"Send a donation on Ko-fi\",\"color\":\"#29abe0\",\"url\":\"https://ko-fi.com/gabek\"}"
+      }
+    },
+    "events": [
+      {
+        "http": {
+          "method": "POST",
+          "path": "/admin/api/settings",
+          "headers": { "Content-Type": "application/json" },
+          "body": "{\"creator\":\"\"}",
+          "authenticated": true,
+          "expect": {
+            "status": 200,
+            "body": "{\"creator\":\"\",\"buttonTitle\":\"Support the stream\",\"description\":\"Send a donation on Ko-fi\",\"color\":\"#29abe0\",\"url\":\"\"}"
+          }
+        }
+      }
+    ],
+    "expect": {
+      "kv": {
+        "donation-settings": ""
+      }
+    }
+  }
+]

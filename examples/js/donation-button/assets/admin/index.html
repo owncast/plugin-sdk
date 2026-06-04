@@ -1,0 +1,95 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8">
+    <title>donation-button</title>
+  </head>
+  <body>
+    <h1>Donation button</h1>
+    <p class="muted">
+      This example chooses Ko-fi because it is the simplest donation-platform integration:
+      a streamer only needs a public Ko-fi URL or username, and viewers can donate via a
+      normal external action button with no extra API keys, embeds, or webhook setup.
+    </p>
+
+    <form id="settings-form">
+      <label>
+        Ko-fi username or URL
+        <input name="creator" placeholder="gabek or https://ko-fi.com/gabek">
+      </label>
+
+      <label>
+        Button title
+        <input name="buttonTitle" placeholder="Support the stream">
+      </label>
+
+      <label>
+        Description
+        <input name="description" placeholder="Send a donation on Ko-fi">
+      </label>
+
+      <label>
+        Button color
+        <input name="color" placeholder="#29abe0">
+      </label>
+
+      <div style="margin-top: 8px;">
+        <button type="submit">Save</button>
+        <span id="status" class="muted" style="margin-left: 12px;"></span>
+      </div>
+    </form>
+
+    <p class="muted" id="preview" style="margin-top: 16px;"></p>
+    <p class="muted">Clear the Ko-fi field and save to remove the viewer button.</p>
+
+    <script>
+      const form = document.getElementById("settings-form");
+      const statusEl = document.getElementById("status");
+      const previewEl = document.getElementById("preview");
+
+      function renderPreview(data) {
+        previewEl.textContent = data.url ? `Viewer button target: ${data.url}` : "No donation button configured yet.";
+      }
+
+      async function load() {
+        const res = await fetch("./api/settings");
+        const data = await res.json();
+        form.elements.creator.value = data.creator || "";
+        form.elements.buttonTitle.value = data.buttonTitle || "";
+        form.elements.description.value = data.description || "";
+        form.elements.color.value = data.color || "";
+        renderPreview(data);
+      }
+
+      form.addEventListener("submit", async (event) => {
+        event.preventDefault();
+        statusEl.textContent = "Saving...";
+        const payload = {
+          creator: form.elements.creator.value,
+          buttonTitle: form.elements.buttonTitle.value,
+          description: form.elements.description.value,
+          color: form.elements.color.value,
+        };
+
+        const res = await fetch("./api/settings", {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify(payload),
+        });
+
+        if (!res.ok) {
+          statusEl.textContent = `Save failed: ${await res.text()}`;
+          return;
+        }
+
+        const data = await res.json();
+        statusEl.textContent = data.url
+          ? "Saved. Reload the viewer to see the donation button."
+          : "Saved. Donation button removed.";
+        renderPreview(data);
+      });
+
+      load();
+    </script>
+  </body>
+</html>

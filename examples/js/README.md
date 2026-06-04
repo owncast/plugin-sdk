@@ -22,6 +22,7 @@ One self-contained npm project per directory. Each has its own `README.md` with 
 | [admin-demo](./admin-demo/)                       | `manifest.admin.pages`, host-gated admin routes.                                                        |
 | [file-manager](./file-manager/)                   | `storage.fs`, admin page to browse/upload/download/delete files in the plugin's private sandbox.        |
 | [action-buttons](./action-buttons/)               | `manifest.actions` + runtime `owncast.actions.add` (ui.modify), with an admin page that adds buttons.   |
+| [donation-button](./donation-button/)             | Admin-configured Ko-fi donation button in the viewer action area.                                         |
 | [fediverse-chat-bridge](./fediverse-chat-bridge/) | Inbound fediverse mentions → HTML chat system messages with avatars.                                    |
 | [safeguard-stress](./safeguard-stress/)           | Test fixture, misbehaves on demand to verify host sandbox caps.                                         |
 | [styles-demo](./styles-demo/)                     | `manifest.styles[]`, CSS inlined into the viewer page's customStyles.                                   |

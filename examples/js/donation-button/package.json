@@ -1,0 +1,13 @@
+{
+  "name": "donation-button",
+  "version": "0.4.0",
+  "private": true,
+  "scripts": {
+    "build": "owncast-plugin build",
+    "test": "owncast-plugin build && owncast-plugin test",
+    "package": "owncast-plugin build && owncast-plugin package"
+  },
+  "dependencies": {
+    "@owncast/plugin-sdk": "file:../../../sdks/js"
+  }
+}

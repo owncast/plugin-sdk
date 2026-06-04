@@ -1,0 +1,21 @@
+{
+  "api": "1",
+  "name": "Donation Button Example",
+  "slug": "donation-button",
+  "version": "0.4.0",
+  "description": "Admin-configured Ko-fi donation button shown in the viewer action area.",
+  "permissions": [
+    "ui.modify",
+    "http.serve",
+    "storage.kv"
+  ],
+  "admin": {
+    "pages": [
+      {
+        "title": "Donation button",
+        "path": "/admin",
+        "icon": "heart"
+      }
+    ]
+  }
+}
