@@ -1,0 +1,251 @@
+# JavaScript SDK CI. Builds every JS example plugin, runs each through
+# owncast-plugin-test, smoke-tests owncast-plugin-serve, and verifies
+# `create-owncast-plugin` scaffolds a working plugin. The test/serve binaries
+# are built from host-runtime (against the current owncast runtime) rather than
+# fetched from a release, so this catches runtime regressions and example
+# breakage together. The Python SDK has its own matrix in a separate workflow.
+#
+# Layout: one `toolchain` job builds the shared bin/.cache once (the SDK's
+# downloaded extism-js/binaryen tooling plus the source-built host binaries) and
+# uploads it as an artifact. Every downstream job restores that cache instead of
+# rebuilding it, so the expensive `go build` against owncast develop happens a
+# single time. The per-example work then fans out across a matrix so each
+# example builds and tests in isolation — one red example no longer hides
+# others, and a failure points straight at the plugin that broke.
+name: JavaScript Examples
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: examples-js-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  # Build the shared toolchain cache once: the SDK postinstall downloads
+  # extism-js + binaryen, then we overwrite the released host binaries it
+  # fetched with ones built from the current owncast runtime. The whole
+  # bin/.cache is uploaded so the matrix/serve/scaffold jobs skip the Go build.
+  # This job also enumerates the example directories into a matrix for the
+  # `example` job below.
+  toolchain:
+    runs-on: ubuntu-latest
+    outputs:
+      examples: ${{ steps.discover.outputs.examples }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: host-runtime/go.mod
+          cache-dependency-path: host-runtime/go.sum
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      # Install the SDK's toolchain (esbuild + the extism-js/binaryen download
+      # in its postinstall). This populates sdks/js/bin/.cache, which every
+      # example shares through its `file:` link to the SDK.
+      - name: Install SDK toolchain
+        working-directory: sdks/js
+        run: npm install --no-audit --no-fund
+
+      # Build owncast-plugin-test/serve from source and drop them into the
+      # shared cache, replacing the released binaries postinstall fetched, so
+      # examples run against the current runtime. The runtime lives in owncast
+      # (services/plugins); GOPRIVATE + @develop matches release.yml.
+      - name: Build host binaries from source
+        working-directory: host-runtime
+        env:
+          GOPRIVATE: github.com/owncast/owncast
+        run: |
+          go get github.com/owncast/owncast@develop
+          go build -o ../sdks/js/bin/.cache/owncast-plugin-test ./cmd/owncast-plugin-test
+          go build -o ../sdks/js/bin/.cache/owncast-plugin-serve ./cmd/owncast-plugin-serve
+
+      # The toolchain cache (downloaded tools + source-built host binaries) is
+      # the only thing downstream jobs need; node_modules is cheap to reinstall
+      # and platform-specific, so it stays out of the artifact.
+      - name: Upload toolchain cache
+        uses: actions/upload-artifact@v4
+        with:
+          name: toolchain-cache
+          path: sdks/js/bin/.cache
+          include-hidden-files: true
+          retention-days: 1
+
+      # Emit the example directory names as a JSON array for the matrix.
+      - name: Discover examples
+        id: discover
+        run: |
+          examples=$(ls -d examples/js/*/ | xargs -n1 basename \
+            | jq -R -s -c 'split("\n") | map(select(length > 0))')
+          echo "examples=$examples" >> "$GITHUB_OUTPUT"
+          echo "matrix: $examples"
+
+  # One job per example: build it, and run its scenario tests when it ships a
+  # __tests__/. Isolating each example means a failure names the exact plugin
+  # and the others still run.
+  example:
+    needs: toolchain
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        example: ${{ fromJSON(needs.toolchain.outputs.examples) }}
+    name: js example (${{ matrix.example }})
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      # Restore the shared toolchain cache built by the `toolchain` job.
+      - name: Restore toolchain cache
+        uses: actions/download-artifact@v4
+        with:
+          name: toolchain-cache
+          path: sdks/js/bin/.cache
+
+      # Artifact upload/download drops the executable bit; restore it on the
+      # tools and host binaries (lib/ holds libbinaryen.so, left as-is).
+      - name: Make cached binaries executable
+        run: find sdks/js/bin/.cache -maxdepth 1 -type f -exec chmod +x {} +
+
+      # The SDK's runtime deps (esbuild) must be present for the build CLI, but
+      # --ignore-scripts keeps the postinstall from clobbering the cache we just
+      # restored with freshly downloaded release binaries.
+      - name: Install SDK deps
+        working-directory: sdks/js
+        run: npm install --no-audit --no-fund --ignore-scripts
+
+      # Build the example; run its scenario tests when it ships a __tests__/.
+      # --ignore-scripts on the example install avoids re-running the SDK
+      # postinstall (which would clobber the source-built binaries above).
+      - name: Build + test
+        working-directory: examples/js/${{ matrix.example }}
+        run: |
+          set -e
+          npm install --no-audit --no-fund --ignore-scripts
+          npx --no-install owncast-plugin build
+          if [ -d __tests__ ]; then
+            npx --no-install owncast-plugin test
+          else
+            echo "(no __tests__ — build-only)"
+          fi
+
+  # Smoke-test the dev server: load echo-bot, drive a chat message through
+  # /_dev/chat, and confirm the bot's reply lands in the log.
+  serve:
+    needs: toolchain
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Restore toolchain cache
+        uses: actions/download-artifact@v4
+        with:
+          name: toolchain-cache
+          path: sdks/js/bin/.cache
+
+      - name: Make cached binaries executable
+        run: find sdks/js/bin/.cache -maxdepth 1 -type f -exec chmod +x {} +
+
+      - name: Install SDK deps
+        working-directory: sdks/js
+        run: npm install --no-audit --no-fund --ignore-scripts
+
+      - name: Smoke-test owncast-plugin-serve
+        working-directory: examples/js/echo-bot
+        run: |
+          set -e
+          npm install --no-audit --no-fund --ignore-scripts
+          PORT=8099 npx --no-install owncast-plugin serve . > /tmp/serve.log 2>&1 &
+          pid=$!
+          for i in $(seq 1 40); do
+            curl -fsS http://localhost:8099/_dev/chat >/dev/null 2>&1 && break
+            sleep 0.5
+          done
+          curl -fsS -X POST http://localhost:8099/_dev/chat \
+            -H 'Content-Type: application/json' \
+            -d '{"user":"alice","body":"hi"}' >/dev/null
+          log=$(curl -fsS http://localhost:8099/_dev/chat)
+          kill "$pid" 2>/dev/null || true
+          echo "$log"
+          echo "$log" | grep -q 'alice said: hi' || {
+            echo "::error::serve smoke test: bot reply not found in chat log"
+            cat /tmp/serve.log
+            exit 1
+          }
+
+  # Verify the scaffolder end to end by actually invoking it the way a user
+  # would: `npx create-owncast-plugin <name>`. To exercise the local scaffolder
+  # (not whatever is published on npm) we `npm pack` it into a tarball and
+  # `npm install` that tarball into a scratch dir, then run the *real*
+  # `npx create-owncast-plugin` command against it — so the npx → bin-resolution
+  # → scaffold path a user hits is genuinely tested, just pinned to this
+  # checkout. The scaffolded plugin is then re-pointed at the local SDK and run
+  # through `npm test`.
+  scaffold:
+    needs: toolchain
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Restore toolchain cache
+        uses: actions/download-artifact@v4
+        with:
+          name: toolchain-cache
+          path: sdks/js/bin/.cache
+
+      - name: Make cached binaries executable
+        run: find sdks/js/bin/.cache -maxdepth 1 -type f -exec chmod +x {} +
+
+      - name: Install SDK deps
+        working-directory: sdks/js
+        run: npm install --no-audit --no-fund --ignore-scripts
+
+      # Pack the local scaffolder so npx runs *this* version, not the published
+      # one, then install that tarball into a scratch dir. Installing it (rather
+      # than passing the tarball path straight to npx, which npx tries to
+      # *execute* instead of install) is what lets the real `create-owncast-plugin`
+      # command name resolve in the next step.
+      - name: Pack + install the local scaffolder
+        working-directory: sdks/js/create-owncast-plugin
+        run: |
+          set -e
+          tgz=$(npm pack --pack-destination "$RUNNER_TEMP" --silent)
+          mkdir -p "$RUNNER_TEMP/scaffold"
+          (cd "$RUNNER_TEMP/scaffold" && npm install --no-audit --no-fund "$RUNNER_TEMP/$tgz")
+          echo "installed $tgz"
+
+      # Actually fire `npx create-owncast-plugin` — the exact command a user
+      # runs — resolving the locally-installed package rather than calling
+      # bin/index.js by path. --no-install keeps it from reaching the registry.
+      - name: Scaffold a new plugin via npx
+        working-directory: ${{ runner.temp }}/scaffold
+        run: npx --no-install create-owncast-plugin test-plugin
+
+      # Re-point the scaffolded plugin at the local SDK (the template pins the
+      # published @owncast/plugin-sdk) and run it through build + test using the
+      # restored toolchain cache, so this gates the current repo end to end.
+      - name: Build + test the scaffolded plugin
+        working-directory: ${{ runner.temp }}/scaffold/test-plugin
+        run: |
+          set -e
+          npm pkg set dependencies.@owncast/plugin-sdk=file:"$GITHUB_WORKSPACE/sdks/js"
+          npm install --no-audit --no-fund --ignore-scripts
+          npm test
