@@ -169,12 +169,23 @@ jobs:
         run: |
           set -e
           npm install --no-audit --no-fund --ignore-scripts
+          # serve runs the prebuilt wasm — in its own job there's no earlier
+          # build step, so build echo-bot first (the template's serve script
+          # likewise does `build && serve`).
+          npx --no-install owncast-plugin build
           PORT=8099 npx --no-install owncast-plugin serve . > /tmp/serve.log 2>&1 &
           pid=$!
+          ready=
           for i in $(seq 1 40); do
-            curl -fsS http://localhost:8099/_dev/chat >/dev/null 2>&1 && break
+            curl -fsS http://localhost:8099/_dev/chat >/dev/null 2>&1 && { ready=1; break; }
             sleep 0.5
           done
+          if [ -z "$ready" ]; then
+            echo "::error::serve smoke test: server never became ready on :8099"
+            cat /tmp/serve.log
+            kill "$pid" 2>/dev/null || true
+            exit 1
+          fi
           curl -fsS -X POST http://localhost:8099/_dev/chat \
             -H 'Content-Type: application/json' \
             -d '{"user":"alice","body":"hi"}' >/dev/null
