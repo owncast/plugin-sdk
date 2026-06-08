@@ -213,9 +213,10 @@ interface ChatUser {
 privately to whoever sent a message, pass `msg` (or `msg.clientId`) to
 [`owncast.chat.replyTo`](#replying-to-the-sender).
 
-> Display-name only? Hosts older than the identity payload delivered
-> `user` as a plain display-name string. If you support those, read
-> `typeof msg.user === "string" ? msg.user : msg.user?.displayName`.
+> `user` is always a `ChatUser` object — the same shape on the
+> `onChatMessage` event, on the messages returned by
+> [`owncast.chat.history()`](#chat-history), and in the dev server. It is
+> `undefined` only for the rare message with no associated account.
 
 ### Fediverse inbound posts
 

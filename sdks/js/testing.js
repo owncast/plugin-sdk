@@ -10,9 +10,9 @@
 //
 //   const { runScenarios } = require("@owncast/plugin-sdk/testing");
 //
-//   const chat = (user, body) => ({
+//   const chat = (name, body) => ({
 //     event: "chat.message.received",
-//     payload: { id: "1", user, body, timestamp: "2024-01-01T00:00:00Z" },
+//     payload: { id: "1", user: { id: name, displayName: name }, body, timestamp: "2024-01-01T00:00:00Z" },
 //   });
 //
 //   runScenarios([

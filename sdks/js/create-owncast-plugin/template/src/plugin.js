@@ -10,7 +10,9 @@ module.exports = definePlugin({
   // end-to-end example to extend from.
   onChatMessage(msg) {
     if (/^hi\b/i.test(msg.body)) {
-      owncast.chat.send(`hello, ${msg.user}!`);
+      // msg.user is a ChatUser object ({ id, displayName, ... }), or
+      // undefined for the rare message with no associated account.
+      owncast.chat.send(`hello, ${msg.user?.displayName ?? "there"}!`);
     }
   },
 

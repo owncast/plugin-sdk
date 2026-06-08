@@ -21,13 +21,13 @@ func TestLoadScenarios_Valid(t *testing.T) {
 		{
 			"name": "first",
 			"events": [
-				{"event": "chat.message.received", "payload": {"user": "alice", "body": "hi"}}
+				{"event": "chat.message.received", "payload": {"user": {"id": "u-alice", "displayName": "alice"}, "body": "hi"}}
 			]
 		},
 		{
 			"name": "second",
 			"events": [
-				{"filter": "chat.message.received", "payload": {"user": "alice", "body": "hi"},
+				{"filter": "chat.message.received", "payload": {"user": {"id": "u-alice", "displayName": "alice"}, "body": "hi"},
 				 "expect": {"action": "pass"}}
 			]
 		}

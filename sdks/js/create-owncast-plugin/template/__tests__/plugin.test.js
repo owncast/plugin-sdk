@@ -8,9 +8,16 @@ const { runScenarios } = require("@owncast/plugin-sdk/testing");
 
 // Small helper so each scenario doesn't repeat the event shape. You can build
 // scenarios any way you like in JS, loops, fixtures, computed payloads.
-const incomingChat = (user, body) => ({
+// `user` is a ChatUser object; this helper builds one from a display name so
+// the call sites below stay terse.
+const incomingChat = (name, body) => ({
   event: "chat.message.received",
-  payload: { id: "1", user, body, timestamp: "2024-01-01T00:00:00Z" },
+  payload: {
+    id: "1",
+    user: { id: name, displayName: name },
+    body,
+    timestamp: "2024-01-01T00:00:00Z",
+  },
 });
 
 runScenarios([
