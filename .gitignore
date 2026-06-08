@@ -57,3 +57,4 @@ Thumbs.db
 # Local cross-repo dev workspace (CI uses the go.mod proxy pin)
 host-runtime/go.work
 host-runtime/go.work.sum
+examples/python/**/*.ocpkg

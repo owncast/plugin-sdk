@@ -6,8 +6,10 @@ extism-py compiles a single .py file and can't import a separate SDK package
 the author's code, and the host-function imports the manifest's permissions
 grant into one module, then runs extism-py on it.
 
-Usage: python owncast_plugin_build.py [project-dir]   (default: cwd)
-Emits <slug>.wasm in the project dir.
+Usage:
+  python owncast_plugin_build.py [project-dir]              build <slug>.wasm
+  python owncast_plugin_build.py [project-dir] --package    build + zip <slug>.ocpkg
+(project-dir defaults to cwd)
 """
 import json
 import os
@@ -15,6 +17,7 @@ import re
 import shutil
 import subprocess
 import sys
+import zipfile
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 SDK_RUNTIME = os.path.join(HERE, "owncast_plugin", "__init__.py")
@@ -219,7 +222,48 @@ def build(project):
         sys.stderr.write(proc.stdout + proc.stderr)
         sys.exit("extism-py failed")
     print("built %s.wasm" % slug)
+    return slug
+
+
+def package(project):
+    """Build, then zip the manifest + wasm + public/ + assets/ (+ icon.png,
+    INSTRUCTIONS.md) into <slug>.ocpkg — the single distributable file. Matches
+    the JS SDK's `owncast-plugin package` layout exactly (the wasm is stored as
+    plugin.wasm at the zip root), so the host loads Python and JS packages
+    identically."""
+    slug = build(project)
+    wasm = os.path.join(project, slug + ".wasm")
+    out = os.path.join(project, slug + ".ocpkg")
+    count = 0
+    with zipfile.ZipFile(out, "w", zipfile.ZIP_DEFLATED, compresslevel=6) as z:
+        z.write(os.path.join(project, "plugin.manifest.json"), "plugin.manifest.json")
+        z.write(wasm, "plugin.wasm")
+        count += 2
+        for name in ("icon.png", "INSTRUCTIONS.md"):
+            p = os.path.join(project, name)
+            if os.path.isfile(p):
+                z.write(p, name)
+                count += 1
+        for sub in ("public", "assets"):
+            base = os.path.join(project, sub)
+            if not os.path.isdir(base):
+                continue
+            for root, _dirs, files in os.walk(base):
+                for fn in sorted(files):
+                    full = os.path.join(root, fn)
+                    rel = os.path.relpath(full, base).replace(os.sep, "/")
+                    z.write(full, "%s/%s" % (sub, rel))
+                    count += 1
+    # The .ocpkg is the only artifact to ship; drop the loose wasm.
+    os.remove(wasm)
+    size_kb = round(os.path.getsize(out) / 1024)
+    print("packaged %s.ocpkg (%d KB, %d files)" % (slug, size_kb, count))
 
 
 if __name__ == "__main__":
-    build(sys.argv[1] if len(sys.argv) > 1 else ".")
+    args = [a for a in sys.argv[1:] if not a.startswith("-")]
+    proj = args[0] if args else "."
+    if "--package" in sys.argv:
+        package(proj)
+    else:
+        build(proj)
