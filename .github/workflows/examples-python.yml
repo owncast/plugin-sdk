@@ -1,0 +1,194 @@
+# Python SDK CI. Builds every Python example plugin with the inlining build
+# tool (sdks/python/owncast_plugin_build.py + extism-py), runs each through
+# owncast-plugin-test, and smoke-tests owncast-plugin-serve. The test/serve
+# binaries are built from host-runtime against the current owncast runtime, so
+# this catches runtime regressions and example breakage together. The JS SDK
+# has its own matrix in examples-js.yml.
+#
+# Layout mirrors examples-js.yml: one `toolchain` job assembles everything the
+# Python build needs — the source-built host binaries, the extism-py compiler,
+# and binaryen (wasm-merge/wasm-opt, which extism-py shells out to) — into a
+# single directory, uploads it as an artifact, and enumerates the examples into
+# a matrix. Downstream jobs restore that toolchain instead of rebuilding it.
+name: Python Examples
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: examples-python-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  EXTISM_PY_VERSION: v0.1.5
+  BINARYEN_VERSION: version_119
+
+jobs:
+  toolchain:
+    runs-on: ubuntu-latest
+    outputs:
+      examples: ${{ steps.discover.outputs.examples }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: host-runtime/go.mod
+          cache-dependency-path: host-runtime/go.sum
+
+      # Build owncast-plugin-test/serve from the current owncast runtime
+      # (services/plugins). GOPRIVATE + @develop matches release.yml.
+      - name: Build host binaries from source
+        working-directory: host-runtime
+        env:
+          GOPRIVATE: github.com/owncast/owncast
+        run: |
+          go get github.com/owncast/owncast@develop
+          mkdir -p "$GITHUB_WORKSPACE/pytoolchain/bin" "$GITHUB_WORKSPACE/pytoolchain/share"
+          go build -o "$GITHUB_WORKSPACE/pytoolchain/bin/owncast-plugin-test" ./cmd/owncast-plugin-test
+          go build -o "$GITHUB_WORKSPACE/pytoolchain/bin/owncast-plugin-serve" ./cmd/owncast-plugin-serve
+
+      # extism-py (the Python->wasm compiler). The release tarball carries the
+      # binary plus a share/ tree (the embedded CPython engine + wasi-sysroot)
+      # that extism-py loads from $HOME/.local/share/extism-py at compile time;
+      # we stash that tree in the artifact and restore it to that path later.
+      - name: Fetch extism-py
+        run: |
+          set -e
+          url="https://github.com/extism/python-pdk/releases/download/${EXTISM_PY_VERSION}/extism-py-x86_64-linux-${EXTISM_PY_VERSION}.tar.gz"
+          curl -fsSL "$url" -o /tmp/extism-py.tar.gz
+          tar xzf /tmp/extism-py.tar.gz -C /tmp
+          cp /tmp/extism-py/bin/extism-py "$GITHUB_WORKSPACE/pytoolchain/bin/"
+          cp -r /tmp/extism-py/share/extism-py "$GITHUB_WORKSPACE/pytoolchain/share/extism-py"
+
+      # binaryen: extism-py shells out to wasm-merge/wasm-opt (which need
+      # libbinaryen from lib/).
+      - name: Fetch binaryen
+        run: |
+          set -e
+          url="https://github.com/WebAssembly/binaryen/releases/download/${BINARYEN_VERSION}/binaryen-${BINARYEN_VERSION}-x86_64-linux.tar.gz"
+          curl -fsSL "$url" -o /tmp/binaryen.tar.gz
+          tar xzf /tmp/binaryen.tar.gz -C /tmp
+          cp "/tmp/binaryen-${BINARYEN_VERSION}/bin/wasm-merge" "/tmp/binaryen-${BINARYEN_VERSION}/bin/wasm-opt" "$GITHUB_WORKSPACE/pytoolchain/bin/"
+          cp -r "/tmp/binaryen-${BINARYEN_VERSION}/lib" "$GITHUB_WORKSPACE/pytoolchain/lib"
+
+      - name: Upload python toolchain
+        uses: actions/upload-artifact@v4
+        with:
+          name: py-toolchain
+          path: pytoolchain
+          include-hidden-files: true
+          retention-days: 1
+
+      - name: Discover examples
+        id: discover
+        run: |
+          examples=$(ls -d examples/python/*/ | xargs -n1 basename \
+            | jq -R -s -c 'split("\n") | map(select(length > 0))')
+          echo "examples=$examples" >> "$GITHUB_OUTPUT"
+          echo "matrix: $examples"
+
+  # One job per example: build it with extism-py, and run its scenario tests
+  # when it ships a __tests__/.
+  example:
+    needs: toolchain
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        example: ${{ fromJSON(needs.toolchain.outputs.examples) }}
+    name: py example (${{ matrix.example }})
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.x"
+
+      - name: Restore python toolchain
+        uses: actions/download-artifact@v4
+        with:
+          name: py-toolchain
+          path: pytoolchain
+
+      # Artifact download drops the executable bit; restore it, and put the
+      # extism-py engine where it expects to find it.
+      - name: Set up toolchain
+        run: |
+          chmod +x pytoolchain/bin/*
+          mkdir -p "$HOME/.local/share"
+          cp -r pytoolchain/share/extism-py "$HOME/.local/share/extism-py"
+
+      - name: Build + test
+        working-directory: examples/python/${{ matrix.example }}
+        env:
+          PATH_PREFIX: ${{ github.workspace }}/pytoolchain/bin
+        run: |
+          set -e
+          export PATH="$PATH_PREFIX:$PATH"
+          export LD_LIBRARY_PATH="$GITHUB_WORKSPACE/pytoolchain/lib:$LD_LIBRARY_PATH"
+          python3 "$GITHUB_WORKSPACE/sdks/python/owncast_plugin_build.py" .
+          if [ -d __tests__ ]; then
+            owncast-plugin-test .
+          else
+            echo "(no __tests__ — build-only)"
+          fi
+
+  # Smoke-test the dev server with the Python echo-bot: build it, drive a chat
+  # message through /_dev/chat, and confirm the bot's reply lands in the log.
+  serve:
+    needs: toolchain
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.x"
+
+      - name: Restore python toolchain
+        uses: actions/download-artifact@v4
+        with:
+          name: py-toolchain
+          path: pytoolchain
+
+      - name: Set up toolchain
+        run: |
+          chmod +x pytoolchain/bin/*
+          mkdir -p "$HOME/.local/share"
+          cp -r pytoolchain/share/extism-py "$HOME/.local/share/extism-py"
+
+      - name: Smoke-test owncast-plugin-serve
+        working-directory: examples/python/echo-bot
+        run: |
+          set -e
+          export PATH="$GITHUB_WORKSPACE/pytoolchain/bin:$PATH"
+          export LD_LIBRARY_PATH="$GITHUB_WORKSPACE/pytoolchain/lib:$LD_LIBRARY_PATH"
+          python3 "$GITHUB_WORKSPACE/sdks/python/owncast_plugin_build.py" .
+          PORT=8099 owncast-plugin-serve . > /tmp/serve.log 2>&1 &
+          pid=$!
+          ready=
+          for i in $(seq 1 40); do
+            curl -fsS http://localhost:8099/_dev/chat >/dev/null 2>&1 && { ready=1; break; }
+            sleep 0.5
+          done
+          if [ -z "$ready" ]; then
+            echo "::error::serve smoke test: server never became ready on :8099"
+            cat /tmp/serve.log
+            kill "$pid" 2>/dev/null || true
+            exit 1
+          fi
+          curl -fsS -X POST http://localhost:8099/_dev/chat \
+            -H 'Content-Type: application/json' \
+            -d '{"user":"alice","body":"hi"}' >/dev/null
+          log=$(curl -fsS http://localhost:8099/_dev/chat)
+          kill "$pid" 2>/dev/null || true
+          echo "$log"
+          echo "$log" | grep -q 'alice said: hi' || {
+            echo "::error::serve smoke test: bot reply not found in chat log"
+            cat /tmp/serve.log
+            exit 1
+          }
