@@ -72,9 +72,9 @@ function latestReleaseTag() {
 
 async function resolveHostBinariesVersion() {
   const override = process.env.OWNCAST_PLUGIN_HOST_BINARIES_VERSION;
-  if (override) return override.replace(/^v/, "");
+  if (override) return override.replace(/^v/i, "");
   try {
-    return (await latestReleaseTag()).replace(/^v/, "");
+    return (await latestReleaseTag()).replace(/^v/i, "");
   } catch (e) {
     // Offline or API error: best-effort fall back to this package's own
     // version. The download below 404-skips gracefully if no such release.

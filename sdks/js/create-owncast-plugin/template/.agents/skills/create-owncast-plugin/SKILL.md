@@ -204,9 +204,13 @@ const { definePlugin, owncast, filter } = require("@owncast/plugin-sdk");
 
 module.exports = definePlugin({
   onChatMessage(msg) {
-    // msg: { id, user?: {id, displayName, scopes?, isBot?}, clientId?, body, timestamp }
+    // msg: { id, user, clientId?, body, timestamp }. msg.user is a ChatUser
+    // object in production ({id, displayName, scopes?}); older hosts and
+    // scaffolded test scenarios may send it as a plain display-name string,
+    // so read the name defensively.
+    const name = typeof msg.user === "string" ? msg.user : msg.user?.displayName;
     if (/^hi\b/i.test(msg.body)) {
-      owncast.chat.send(`hello, ${msg.user?.displayName ?? "there"}!`);
+      owncast.chat.send(`hello, ${name ?? "there"}!`);
     }
   },
 });
@@ -222,9 +226,14 @@ which handlers exist. Full list of handlers: `onChatMessage`,
 
 Important shape/behavior notes:
 
-- **Identify users by `msg.user.id`, never the display name** (names aren't
-  stable or unique). Gate moderator commands on
-  `msg.user?.scopes?.includes("MODERATOR")`.
+- **`msg.user` is a string *or* an object.** In production it's a `ChatUser`
+  (`{ id, displayName, scopes? }`); older hosts and the scaffolded test
+  scenarios send a plain display-name string. Read the name defensively:
+  `typeof msg.user === "string" ? msg.user : msg.user?.displayName`. For stable
+  per-user state and moderator gating use the object form (`msg.user?.id`,
+  `msg.user?.scopes?.includes("MODERATOR")`) — never match on display name — and
+  treat a string or absent user as having no id/scopes. (`defineCommands` handles
+  this for you.)
 - **Chat text is HTML-escaped on display.** `chat.send`/`sendAction` take plain
   text. The exception is `chat.system(body)`, whose body renders as HTML — escape
   untrusted content yourself.
@@ -298,10 +307,12 @@ Step types: `event`, `filter` (with `expect: {action, payload?, reason?}`),
 
 Two shapes that trip people up:
 
-- **Chat-event `user` is an object**, not a string: a `chat.message.received`
-  payload is `{ id, user: { id, displayName }, body, timestamp }` and
-  `chat.user.joined` is the `{ id, displayName }` user directly. Match it to how
-  your handler reads `msg.user.displayName` / `user.displayName`.
+- **A chat event's `user` can be a string or an object.** The scaffolded tests
+  use the string shorthand (`payload: { user: "alice", ... }`); production sends
+  a `{ id, displayName, scopes? }` object. Keep your test payloads and handler in
+  sync: if the handler reads `msg.user.id` / `.scopes` (or `.displayName`), pass
+  an object (`user: { id: "u1", displayName: "alice" }`); if it reads a bare
+  string, pass a string. The defensive read above works with both.
 - **`config` values come from the manifest defaults** in tests — there is no
   `given.config`. `owncast.config.get("key")` returns the `default` you declared
   under `config` in `plugin.manifest.json`, so assert against that default (or

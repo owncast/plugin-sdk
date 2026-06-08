@@ -83,7 +83,7 @@ declared list, so don't over-declare.
 
 ## Gotchas that bite
 
-- **Identify users by `msg.user.id`, never display name** (names aren't stable). Gate mod commands on `msg.user?.scopes?.includes("MODERATOR")`.
+- **`msg.user` is a string or an object.** Production sends a `ChatUser` (`{id, displayName, scopes?}`); older hosts and the scaffolded test scenarios send a plain display-name string. Read the name as `typeof msg.user === "string" ? msg.user : msg.user?.displayName`. For per-user state and mod gating use the object form (`msg.user?.id`, `msg.user?.scopes?.includes("MODERATOR")`), never the display name, and treat a string/absent user as having no id/scopes.
 - **Chat text is HTML-escaped on display.** `chat.send`/`sendAction` take plain text. Only `chat.system(body)` renders HTML — escape untrusted content yourself.
 - **Filters are time-capped (50 ms) and fail open.** Keep `filterChatMessage` fast; an erroring filter is treated as `filter.pass()`. Five consecutive failures auto-disable the plugin for the session.
 - **No global `setTimeout`** — use `owncast.timer.*` (timers don't survive a host restart). `Date`/`Date.now()` work normally.
