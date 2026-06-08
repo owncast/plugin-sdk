@@ -14,7 +14,9 @@ You write ordinary Python with decorators; a build step inlines this runtime plu
 > | typical plugin `.wasm` | ~2.4 MB | ~11 MB |
 > | minimal ("hello world") | ~2.4 MB | ~11 MB |
 >
-> This affects download/install size and cold-start, not steady-state behavior (the host caps plugin memory at 64 MiB and reuses the instance across calls). If a few extra megabytes per plugin matter for your deployment, prefer the [JavaScript SDK](../js); otherwise write in whichever language you're happiest in.
+> The shipped `.ocpkg` is smaller than the raw wasm — DEFLATE compresses the CPython runtime well, so a Python package downloads at roughly **~4 MB** (vs ~1 MB for a JS package). The full ~11 MB is what's decompressed and loaded at runtime.
+>
+> This affects download/install size and cold-start (a Python plugin also takes meaningfully longer to instantiate than a JS one), not steady-state behavior (the host caps plugin memory at 64 MiB and reuses the instance across calls). If a few extra megabytes per plugin matter for your deployment, prefer the [JavaScript SDK](../js); otherwise write in whichever language you're happiest in.
 
 ## Quick start
 
@@ -42,11 +44,13 @@ python3 path/to/sdks/python/owncast_plugin_build.py my-plugin
 # run the scenario tests in __tests__/
 owncast-plugin-test my-plugin
 
-# run a local dev server (POST /_dev/chat to drive it)
+# run a local dev server (POST /_dev/chat to drive it; or serve a .ocpkg)
 owncast-plugin-serve my-plugin
 
-# the <slug>.wasm + plugin.manifest.json (+ public/, assets/, icon.png) are
-# what you ship; zip them into a <slug>.ocpkg to install in Owncast.
+# build + bundle into the single distributable <slug>.ocpkg
+# (plugin.manifest.json + plugin.wasm + public/ + assets/ + icon.png +
+#  INSTRUCTIONS.md) — the only file you ship
+python3 path/to/sdks/python/owncast_plugin_build.py my-plugin --package
 ```
 
 Install in Owncast from the admin **Plugins** page (**Upload plugin**) or by copying the package to the server's `data/plugins/` directory, then toggle **Enabled**.
@@ -156,9 +160,9 @@ Consequences worth knowing:
 
 ## Status
 
-Working today: the runtime (`owncast_plugin/`), the inlining build tool (`owncast_plugin_build.py`), the full host API, HTTP routing, and CI that builds + tests every example. All 27 of the JS example plugins have Python counterparts under [`examples/python/`](../../examples/python).
+Working today: the runtime (`owncast_plugin/`), the inlining build + `--package` tool (`owncast_plugin_build.py`), the full host API, HTTP routing, `.ocpkg` packaging, and CI that builds + tests every example. All 27 of the JS example plugins have Python counterparts under [`examples/python/`](../../examples/python).
 
-Not yet (roadmap): a PyPI/`uv`-installable package, a one-shot `owncast-plugin-py` CLI with lazy toolchain download (so you don't install `extism-py`/binaryen by hand), a `create-owncast-plugin`-style scaffolder, `.ocpkg` packaging command, and type stubs.
+Not yet (roadmap): a PyPI/`uv`-installable package, a one-shot `owncast-plugin-py` CLI with lazy toolchain download (so you don't install `extism-py`/binaryen by hand), a `create-owncast-plugin`-style scaffolder, and type stubs.
 
 ## License
 
