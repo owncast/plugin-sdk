@@ -20,11 +20,14 @@ You write ordinary Python with decorators; a build step inlines this runtime plu
 
 ## Quick start
 
-The Python SDK doesn't yet have a published package, scaffolder, or one-shot CLI (those are on the roadmap — see [Status](#status)). For now you build with the bundled tool. You need three things on your machine:
+Install the SDK to get the `owncast-plugin-py` CLI. It fetches and caches the wasm toolchain (the `extism-py` compiler, binaryen, and the host test/serve binaries) on first use, so there's nothing else to install by hand.
 
-- **[`extism-py`](https://github.com/extism/python-pdk)** — the Python→wasm compiler.
-- **binaryen** (`wasm-merge`, `wasm-opt`) — on your `PATH`; `extism-py` shells out to them.
-- **`owncast-plugin-test` / `owncast-plugin-serve`** — the host test/dev-server binaries (the same ones the JS SDK downloads; grab them from this repo's [releases](https://github.com/owncast/plugin-sdk/releases)).
+```sh
+pip install owncast-plugin-sdk          # or:  uv tool install owncast-plugin-sdk
+```
+
+> Not on PyPI yet (publishing is the last roadmap item). Until then, install from this repo:
+> `pip install ./sdks/python` — or run it without installing: `uvx --from ./sdks/python owncast-plugin-py …`
 
 A plugin is a directory:
 
@@ -35,25 +38,18 @@ my-plugin/
 └── __tests__/*.test.json    # optional scenario tests
 ```
 
-Build and test:
+Build, test, serve, and package it:
 
 ```sh
-# compile src/plugin.py -> <slug>.wasm
-python3 path/to/sdks/python/owncast_plugin_build.py my-plugin
-
-# run the scenario tests in __tests__/
-owncast-plugin-test my-plugin
-
-# run a local dev server (POST /_dev/chat to drive it; or serve a .ocpkg)
-owncast-plugin-serve my-plugin
-
-# build + bundle into the single distributable <slug>.ocpkg
-# (plugin.manifest.json + plugin.wasm + public/ + assets/ + icon.png +
-#  INSTRUCTIONS.md) — the only file you ship
-python3 path/to/sdks/python/owncast_plugin_build.py my-plugin --package
+owncast-plugin-py build my-plugin      # compile src/plugin.py -> <slug>.wasm
+owncast-plugin-py test my-plugin       # run the __tests__/ scenarios
+owncast-plugin-py serve my-plugin      # local dev server (POST /_dev/chat to drive it)
+owncast-plugin-py package my-plugin    # build + bundle -> <slug>.ocpkg (the only file you ship)
 ```
 
-Install in Owncast from the admin **Plugins** page (**Upload plugin**) or by copying the package to the server's `data/plugins/` directory, then toggle **Enabled**.
+Install the `.ocpkg` in Owncast from the admin **Plugins** page (**Upload plugin**) or by copying it to the server's `data/plugins/` directory, then toggle **Enabled**.
+
+> **CI / no-install:** the build/package step is also runnable directly with `python3 sdks/python/owncast_plugin_build.py <dir> [--package]`, which expects `extism-py` + binaryen already on `PATH` (it skips the CLI's toolchain fetch). `OWNCAST_PLUGIN_HOST_BIN_DIR` points `test`/`serve` at locally-built host binaries; `OWNCAST_PLUGIN_HOST_BINARIES_VERSION` pins the release they're fetched from.
 
 ## Writing a plugin
 
@@ -160,9 +156,9 @@ Consequences worth knowing:
 
 ## Status
 
-Working today: the runtime (`owncast_plugin/`), the inlining build + `--package` tool (`owncast_plugin_build.py`), the full host API, HTTP routing, `.ocpkg` packaging, and CI that builds + tests every example. All 27 of the JS example plugins have Python counterparts under [`examples/python/`](../../examples/python).
+Working today: the runtime (`owncast_plugin/`), the `owncast-plugin-py` CLI (`build`/`test`/`serve`/`package`) with lazy toolchain download, the full host API, HTTP routing, `.ocpkg` packaging, a pip/uv-installable package (`pyproject.toml`), and CI that builds + tests every example. All 27 of the JS example plugins have Python counterparts under [`examples/python/`](../../examples/python).
 
-Not yet (roadmap): a PyPI/`uv`-installable package, a one-shot `owncast-plugin-py` CLI with lazy toolchain download (so you don't install `extism-py`/binaryen by hand), a `create-owncast-plugin`-style scaffolder, and type stubs.
+Not yet (roadmap): publishing to PyPI, a `create-owncast-plugin`-style scaffolder, and type stubs.
 
 ## License
 
