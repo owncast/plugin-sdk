@@ -7,6 +7,7 @@ import (
 	"io"
 	"net/http"
 	"net/http/httptest"
+	"os"
 	"path/filepath"
 	"reflect"
 	"sort"
@@ -95,6 +96,13 @@ func runOne(ctx context.Context, wasmPath, manifestPath, file string, sc Scenari
 	}
 	defer loaded.Close(ctx)
 
+	// Wire the plugin's public/ dir for static asset serving. LoadPlugin
+	// only sets AssetsFS; the loose-files PublicFS is normally set by the
+	// manager's loadByPath, which the test loader bypasses.
+	if pub := filepath.Join(filepath.Dir(wasmPath), "public"); isDir(pub) {
+		loaded.PublicFS = os.DirFS(pub)
+	}
+
 	dispatcher := plugin.NewDispatcher([]*plugin.Loaded{loaded})
 
 	// SeedKV + checkExpectations key on slug so the mock storage matches
@@ -108,6 +116,18 @@ func runOne(ctx context.Context, wasmPath, manifestPath, file string, sc Scenari
 	server := plugin.NewServer([]*plugin.Loaded{loaded})
 	server.IsAuthenticated = mock.IsAuthenticated
 	server.GetRequestUser = mock.GetRequestUser
+	// Gate manifest-declared admin paths: the host normally supplies admin
+	// Basic Auth here. In tests, honor the same auth predicate — 401 when the
+	// request isn't authenticated, otherwise run the handler.
+	server.RequireAdmin = func(h http.HandlerFunc) http.HandlerFunc {
+		return func(w http.ResponseWriter, r *http.Request) {
+			if !mock.IsAuthenticated(r) {
+				http.Error(w, "unauthorized", http.StatusUnauthorized)
+				return
+			}
+			h(w, r)
+		}
+	}
 
 	for i, step := range sc.Steps {
 		if err := runStep(ctx, dispatcher, server, loaded, step); err != nil {
@@ -191,6 +211,11 @@ func runContentStep(ctx context.Context, loaded *plugin.Loaded, kind string, s *
 		return fmt.Errorf("%sContent body does not contain %q\n  body: %q", kind, s.Expect.BodyContains, html)
 	}
 	return nil
+}
+
+func isDir(p string) bool {
+	info, err := os.Stat(p)
+	return err == nil && info.IsDir()
 }
 
 func runHTTPStep(server *plugin.Server, pluginName string, h *HTTPStep) error {
