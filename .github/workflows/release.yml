@@ -4,9 +4,12 @@
 #   https://github.com/owncast/plugin-sdk/releases/download/v<version>/<binary>-<goos>-<goarch>
 # so the asset names below must stay in lockstep with hostBinaryURL() there.
 #
-# The tag must match the SDK package version: postinstall fetches
-# v${require("sdks/js/package.json").version}. Cut the tag accordingly
-# (e.g. package.json 0.1.0 -> tag v0.1.0).
+# postinstall fetches the LATEST release tag (via the releases/latest API), not
+# one derived from the npm version: the host-function contract is additive
+# within a major (functions are only ever added), so the newest binary is
+# compatible with every plugin runtime. Practical rule: cut a new v* tag
+# whenever the host binaries change, and keep tags monotonically increasing so
+# "releases/latest" resolves to the newest one.
 #
 # Layout: a per-platform build matrix uploads its binaries as workflow
 # artifacts, then a single release job collects all of them and creates the
