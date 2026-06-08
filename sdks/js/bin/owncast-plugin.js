@@ -380,7 +380,7 @@ function generateInterface(manifest) {
   const imports = [];
   // Timers are ambient (no permission): the host always provides them, since
   // a plugin can't setTimeout in the sandbox.
-  imports.push("owncast_timer_set(id: I64, delayMs: I64, repeat: I32): I32");
+  imports.push("owncast_timer_set(id: I64, delayMs: I64, repeat: I64): I64");
   imports.push("owncast_timer_clear(id: I64): void");
   // Config is ambient too: a plugin reading its own manifest-declared config
   // (admin override falling back to the declared default) needs no permission.
@@ -394,7 +394,7 @@ function generateInterface(manifest) {
     imports.push("owncast_send_chat_to(clientId: I64, textPtr: PTR): void");
   }
   if (perms.has("chat.history")) {
-    imports.push("owncast_chat_history(limit: I32): PTR");
+    imports.push("owncast_chat_history(limit: I64): PTR");
     imports.push("owncast_chat_clients(): PTR");
   }
   if (perms.has("chat.moderate")) {
@@ -412,7 +412,7 @@ function generateInterface(manifest) {
   }
   if (perms.has("users.moderate")) {
     imports.push(
-      "owncast_user_set_enabled(idPtr: PTR, enabled: I32, reasonPtr: PTR): void",
+      "owncast_user_set_enabled(idPtr: PTR, enabled: I64, reasonPtr: PTR): void",
     );
     imports.push("owncast_ban_ip(ipPtr: PTR): void");
   }
@@ -424,7 +424,7 @@ function generateInterface(manifest) {
     imports.push("owncast_fs_write(pathPtr: PTR, dataPtr: PTR): PTR");
     imports.push("owncast_fs_list(dirPtr: PTR): PTR");
     imports.push("owncast_fs_delete(pathPtr: PTR): PTR");
-    imports.push("owncast_fs_exists(pathPtr: PTR): I32");
+    imports.push("owncast_fs_exists(pathPtr: PTR): I64");
   }
   if (perms.has("fediverse.post")) {
     imports.push("owncast_fediverse_post(textPtr: PTR): PTR");
