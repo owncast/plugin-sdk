@@ -10,10 +10,13 @@ npm-debug.log*
 # by tools/build-plugin.sh; rebuilt from src on demand)
 examples/js/*/*.wasm
 examples/js/*/*.ocpkg
+examples/python/*/*.wasm
+examples/python/*/*.ocpkg
 
 # The build CLI symlinks <plugin>/assets/ → <plugin>/<plugin>-assets/ so the
 # host's loose-files layout finds them. The symlink is generated at build time.
 examples/js/*/*-assets
+examples/python/*/*-assets
 
 # SDK toolchain cache (extism-js et al. fetched per-platform by postinstall)
 sdks/js/bin/.cache/
@@ -50,3 +53,7 @@ Thumbs.db
 *.swp
 *.swo
 .idea/
+
+# Local cross-repo dev workspace (CI uses the go.mod proxy pin)
+host-runtime/go.work
+host-runtime/go.work.sum
