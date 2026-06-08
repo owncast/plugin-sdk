@@ -58,3 +58,9 @@ Thumbs.db
 host-runtime/go.work
 host-runtime/go.work.sum
 examples/python/**/*.ocpkg
+
+# Python build artifacts
+__pycache__/
+*.pyc
+*.egg-info/
+sdks/python/build/
