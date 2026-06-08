@@ -52,13 +52,20 @@ jobs:
 
       # Pure-Go (wazero) runtime, so every target cross-compiles from the
       # ubuntu runner with CGO disabled, no per-OS runner needed.
+      #
+      # The plugin runtime lives in owncast (services/plugins), imported via
+      # go.mod. GOPRIVATE makes go fetch it straight from GitHub and skip the
+      # checksum DB, which doesn't carry owncast's develop pseudo-versions.
+      # We bump to the latest develop so each release tracks the current runtime.
       - name: Build host binaries
         working-directory: host-runtime
         env:
           GOOS: ${{ matrix.goos }}
           GOARCH: ${{ matrix.goarch }}
           CGO_ENABLED: "0"
+          GOPRIVATE: github.com/owncast/owncast
         run: |
+          go get github.com/owncast/owncast@develop
           suffix="${GOOS}-${GOARCH}"
           mkdir -p "${GITHUB_WORKSPACE}/dist"
           for bin in owncast-plugin-serve owncast-plugin-test; do
