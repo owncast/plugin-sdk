@@ -50,13 +50,25 @@ def stress_notify(msg):
     return
 
 
+# The two known stress commands get exact-path routes (any method, since the
+# original dispatched on path alone). They're registered with the path-only
+# form of on_http_request rather than @plugin.get/@plugin.post so a mismatched
+# method still reaches them instead of auto-405ing.
+@plugin.on_http_request("/spin")
+def stress_http_spin(req):
+    # Tight loop, bounded by the host's per-handler timeout.
+    while True:
+        pass
+
+
+@plugin.on_http_request("/huge")
+def stress_http_huge(req):
+    return {"status": 200, "body": HUGE_HTTP_BODY}  # > MaxHTTPHandlerOutputBytes
+
+
+# Catch-all kept on purpose: this plugin stress-tests the host by being driven
+# at arbitrary/synthetic paths, and every other path must answer "ok". Routing
+# can't enumerate those, so the bare fallback stays.
 @plugin.on_http_request
 def stress_http(req):
-    # Path is "/<cmd>". Examples: /spin, /huge.
-    cmd = (req.path or "/")[1:]
-    if cmd == "spin":
-        while True:
-            pass
-    if cmd == "huge":
-        return {"status": 200, "body": HUGE_HTTP_BODY}  # > MaxHTTPHandlerOutputBytes
     return {"status": 200, "body": "ok"}

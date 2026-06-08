@@ -105,16 +105,23 @@ def download_file(req):
     return json_resp(200, {"name": name, "dataBase64": b64encode(data)})
 
 
-@plugin.on_http_request
-def on_http_request(req):
-    if req.path == "/admin/api/files":
-        if req.method == "GET":
-            return list_files()
-        if req.method == "POST":
-            return upload_file(req)
-        return {"status": 405}
-    if req.path == "/admin/api/files/delete" and req.method == "POST":
-        return delete_file(req)
-    if req.path == "/admin/api/files/download" and req.method == "GET":
-        return download_file(req)
-    return {"status": 404}
+@plugin.get("/admin/api/files")
+def files_list(req):
+    return list_files()
+
+
+@plugin.post("/admin/api/files")
+def files_upload(req):
+    return upload_file(req)
+
+
+@plugin.post("/admin/api/files/delete")
+def files_delete(req):
+    return delete_file(req)
+
+
+# Download routes on the path only; the ?name=<n> query string is excluded from
+# matching and read from req.raw["query"] inside download_file.
+@plugin.get("/admin/api/files/download")
+def files_download(req):
+    return download_file(req)

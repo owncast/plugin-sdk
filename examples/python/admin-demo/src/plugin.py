@@ -19,19 +19,20 @@ def settings():
         return {}
 
 
-@plugin.on_http_request
-def handle(req):
-    if req.method == "GET" and req.path == "/admin/api/settings":
-        return {
-            "status": 200,
-            "headers": {"content-type": "application/json"},
-            "body": json.dumps(settings(), separators=(",", ":")),
-        }
-    if req.method == "POST" and req.path == "/admin/api/settings":
-        try:
-            parsed = json.loads(req.body)
-        except ValueError:
-            return {"status": 400, "body": "invalid JSON"}
-        owncast.kv.set("settings", json.dumps(parsed, separators=(",", ":")))
-        return {"status": 204}
-    return {"status": 404}
+@plugin.get("/admin/api/settings")
+def get_settings(req):
+    return {
+        "status": 200,
+        "headers": {"content-type": "application/json"},
+        "body": json.dumps(settings(), separators=(",", ":")),
+    }
+
+
+@plugin.post("/admin/api/settings")
+def set_settings(req):
+    try:
+        parsed = json.loads(req.body)
+    except ValueError:
+        return {"status": 400, "body": "invalid JSON"}
+    owncast.kv.set("settings", json.dumps(parsed, separators=(",", ":")))
+    return {"status": 204}

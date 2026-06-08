@@ -8,35 +8,32 @@ from owncast_plugin import plugin
 # see, end to end, that their chat identity reached the plugin.
 
 
-@plugin.on_http_request
-def on_http_request(req):
-    if req.method == "GET" and req.path == "/api/me":
-        if not req.user:
-            # No chat identity on this request: the visitor hasn't registered /
-            # connected to chat, or the cookie didn't reach us. req.user is
-            # optional precisely because of this case.
-            return {
-                "status": 401,
-                "headers": {"content-type": "application/json"},
-                "body": json.dumps(
-                    {
-                        "identified": False,
-                        "message": (
-                            "No chat identity on this request. "
-                            "Join the chat, then reload."
-                        ),
-                    },
-                    separators=(",", ":"),
-                ),
-            }
-
+@plugin.get("/api/me")
+def me(req):
+    if not req.user:
+        # No chat identity on this request: the visitor hasn't registered /
+        # connected to chat, or the cookie didn't reach us. req.user is
+        # optional precisely because of this case.
         return {
-            "status": 200,
+            "status": 401,
             "headers": {"content-type": "application/json"},
             "body": json.dumps(
-                {"identified": True, "user": req.user.raw},
+                {
+                    "identified": False,
+                    "message": (
+                        "No chat identity on this request. "
+                        "Join the chat, then reload."
+                    ),
+                },
                 separators=(",", ":"),
             ),
         }
 
-    return {"status": 404, "body": "not found"}
+    return {
+        "status": 200,
+        "headers": {"content-type": "application/json"},
+        "body": json.dumps(
+            {"identified": True, "user": req.user.raw},
+            separators=(",", ":"),
+        ),
+    }

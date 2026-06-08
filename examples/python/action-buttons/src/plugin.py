@@ -55,44 +55,43 @@ def publish_custom_button():
         )
 
 
-@plugin.on_http_request
-def handle(req):
-    if req.method == "GET" and req.path == "/admin/api/custom-button":
-        # Reflect the host's runtime state back to the form on every load
-        # so what the admin sees matches what viewers see.
-        publish_custom_button()
+@plugin.get("/admin/api/custom-button")
+def get_custom_button(req):
+    # Reflect the host's runtime state back to the form on every load
+    # so what the admin sees matches what viewers see.
+    publish_custom_button()
+    return {
+        "status": 200,
+        "headers": {"content-type": "application/json"},
+        "body": json.dumps(load_custom_button() or {"title": "", "url": ""}),
+    }
+
+
+@plugin.post("/admin/api/custom-button")
+def save_custom_button(req):
+    try:
+        payload = json.loads(req.body)
+    except ValueError:
+        return {"status": 400, "body": "invalid JSON"}
+    title = payload.get("title").strip() if isinstance(payload, dict) and isinstance(payload.get("title"), str) else ""
+    url = payload.get("url").strip() if isinstance(payload, dict) and isinstance(payload.get("url"), str) else ""
+    if not title and not url:
+        owncast.kv.delete(CUSTOM_BUTTON_KEY)
+        # Older SDK versions may not expose kv.delete; just overwrite
+        # with an empty value so load_custom_button returns None.
+        owncast.kv.set(CUSTOM_BUTTON_KEY, "")
+        owncast.actions.clear()
         return {
             "status": 200,
             "headers": {"content-type": "application/json"},
-            "body": json.dumps(load_custom_button() or {"title": "", "url": ""}),
+            "body": json.dumps({"title": "", "url": ""}),
         }
-
-    if req.method == "POST" and req.path == "/admin/api/custom-button":
-        try:
-            payload = json.loads(req.body)
-        except ValueError:
-            return {"status": 400, "body": "invalid JSON"}
-        title = payload.get("title").strip() if isinstance(payload, dict) and isinstance(payload.get("title"), str) else ""
-        url = payload.get("url").strip() if isinstance(payload, dict) and isinstance(payload.get("url"), str) else ""
-        if not title and not url:
-            owncast.kv.delete(CUSTOM_BUTTON_KEY)
-            # Older SDK versions may not expose kv.delete; just overwrite
-            # with an empty value so load_custom_button returns None.
-            owncast.kv.set(CUSTOM_BUTTON_KEY, "")
-            owncast.actions.clear()
-            return {
-                "status": 200,
-                "headers": {"content-type": "application/json"},
-                "body": json.dumps({"title": "", "url": ""}),
-            }
-        if not title or not url:
-            return {"status": 400, "body": "both title and url are required"}
-        owncast.kv.set(CUSTOM_BUTTON_KEY, json.dumps({"title": title, "url": url}))
-        publish_custom_button()
-        return {
-            "status": 200,
-            "headers": {"content-type": "application/json"},
-            "body": json.dumps({"title": title, "url": url}),
-        }
-
-    return {"status": 404}
+    if not title or not url:
+        return {"status": 400, "body": "both title and url are required"}
+    owncast.kv.set(CUSTOM_BUTTON_KEY, json.dumps({"title": title, "url": url}))
+    publish_custom_button()
+    return {
+        "status": 200,
+        "headers": {"content-type": "application/json"},
+        "body": json.dumps({"title": title, "url": url}),
+    }
