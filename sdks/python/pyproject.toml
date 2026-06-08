@@ -1,0 +1,25 @@
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "owncast-plugin-sdk"
+version = "0.5.0"
+description = "SDK and CLI for authoring Owncast plugins in Python"
+readme = "README.md"
+requires-python = ">=3.8"
+license = { text = "MIT" }
+authors = [{ name = "Owncast" }]
+keywords = ["owncast", "plugin", "wasm", "extism"]
+# Pure stdlib at runtime; the wasm toolchain is fetched lazily by the CLI.
+dependencies = []
+
+[project.urls]
+Homepage = "https://owncast.online"
+Repository = "https://github.com/owncast/plugin-sdk"
+
+[project.scripts]
+owncast-plugin-py = "owncast_plugin.cli:main"
+
+[tool.setuptools]
+packages = ["owncast_plugin"]
