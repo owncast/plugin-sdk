@@ -1,0 +1,21 @@
+{
+  "api": "1",
+  "name": "Example Manual Video Settings",
+  "slug": "manual-video-settings",
+  "version": "0.1.0",
+  "description": "Admin form to manually edit transcoding output: latency level, codec, and per-variant resolution / framerate / bitrate.",
+  "permissions": [
+    "http.serve",
+    "videoconfig.read",
+    "videoconfig.write"
+  ],
+  "admin": {
+    "pages": [
+      {
+        "title": "Manual Video Settings",
+        "path": "/admin",
+        "icon": "gear"
+      }
+    ]
+  }
+}

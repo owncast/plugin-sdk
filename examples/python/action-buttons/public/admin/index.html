@@ -1,0 +1,63 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8">
+    <title>action-buttons</title>
+  </head>
+  <body>
+    <h1>Custom action button</h1>
+    <p class="muted">
+      This plugin already contributes three default buttons (Owncast, GitHub,
+      About this stream) via its manifest. Add an extra one here and it
+      appears in the viewer alongside the defaults. Clear both fields to
+      remove the custom button.
+    </p>
+
+    <form id="custom-form">
+      <label>
+        Title
+        <input name="title" placeholder="e.g. Donate">
+      </label>
+      <label>
+        URL
+        <input name="url" placeholder="https://example.com/donate">
+      </label>
+      <div style="margin-top: 8px;">
+        <button type="submit">Save</button>
+        <span id="status" class="muted" style="margin-left: 12px;"></span>
+      </div>
+    </form>
+
+    <script>
+      const statusEl = document.getElementById("status");
+      const form = document.getElementById("custom-form");
+
+      async function load() {
+        const res = await fetch("./api/custom-button");
+        const data = await res.json();
+        form.elements.title.value = data.title || "";
+        form.elements.url.value = data.url || "";
+      }
+
+      form.addEventListener("submit", async (e) => {
+        e.preventDefault();
+        const title = form.elements.title.value;
+        const url = form.elements.url.value;
+        statusEl.textContent = "Saving...";
+        const res = await fetch("./api/custom-button", {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({ title, url }),
+        });
+        if (res.ok) {
+          statusEl.textContent = "Saved. Reload the viewer to see the change.";
+        } else {
+          const text = await res.text();
+          statusEl.textContent = "Save failed: " + text;
+        }
+      });
+
+      load();
+    </script>
+  </body>
+</html>

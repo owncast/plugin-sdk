@@ -1,0 +1,11 @@
+[
+  {
+    "name": "handles announcement.broadcast without error",
+    "events": [
+      {
+        "event": "announcement.broadcast",
+        "payload": { "by": "alice", "text": "stream is live", "at": "2024-01-01T00:00:00Z" }
+      }
+    ]
+  }
+]

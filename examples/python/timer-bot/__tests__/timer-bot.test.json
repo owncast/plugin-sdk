@@ -1,0 +1,49 @@
+[
+  {
+    "name": "!remind acknowledges and schedules a one-shot timer",
+    "events": [
+      {
+        "event": "chat.message.received",
+        "payload": { "id": "m1", "user": { "id": "u-alice", "displayName": "alice" }, "body": "!remind 30 stretch", "timestamp": "2026-01-01T00:00:00Z" }
+      }
+    ],
+    "expect": { "chatSends": ["Reminder set: 30s"] }
+  },
+  {
+    "name": "!remind without arguments shows usage",
+    "events": [
+      {
+        "event": "chat.message.received",
+        "payload": { "id": "m1", "user": { "id": "u-alice", "displayName": "alice" }, "body": "!remind", "timestamp": "2026-01-01T00:00:00Z" }
+      }
+    ],
+    "expect": { "chatSends": ["Usage: !remind <seconds> <message>"] }
+  },
+  {
+    "name": "!countdown counts down once a second on the tick",
+    "events": [
+      {
+        "event": "chat.message.received",
+        "payload": { "id": "m1", "user": { "id": "u-bob", "displayName": "bob" }, "body": "!countdown 3", "timestamp": "2026-01-01T00:00:00Z" }
+      },
+      { "event": "tick", "payload": { "now": 1000 } },
+      { "event": "tick", "payload": { "now": 2000 } },
+      { "event": "tick", "payload": { "now": 3000 } }
+    ],
+    "expect": { "chatSends": ["Counting down from 3", "3", "2", "1", "Go!"] }
+  },
+  {
+    "name": "a repeater can be started and stopped",
+    "events": [
+      {
+        "event": "chat.message.received",
+        "payload": { "id": "m1", "user": { "id": "u-carol", "displayName": "carol" }, "body": "!every 60 hydrate", "timestamp": "2026-01-01T00:00:00Z" }
+      },
+      {
+        "event": "chat.message.received",
+        "payload": { "id": "m2", "user": { "id": "u-carol", "displayName": "carol" }, "body": "!stop", "timestamp": "2026-01-01T00:00:01Z" }
+      }
+    ],
+    "expect": { "chatSends": ["Repeating every 60s (send !stop to end)", "Stopped"] }
+  }
+]

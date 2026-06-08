@@ -1,0 +1,174 @@
+[
+  {
+    "name": "static admin page is reachable when authenticated",
+    "events": [
+      {
+        "http": {
+          "method": "GET",
+          "path": "/admin/",
+          "authenticated": true,
+          "expect": { "status": 200 }
+        }
+      }
+    ]
+  },
+  {
+    "name": "static admin page rejects unauthenticated requests",
+    "events": [
+      {
+        "http": {
+          "method": "GET",
+          "path": "/admin/",
+          "expect": { "status": 401 }
+        }
+      }
+    ]
+  },
+  {
+    "name": "GET /admin/api/config returns the host's video config (videoconfig.read)",
+    "given": {
+      "videoConfig": {
+        "latencyLevel": 2,
+        "codec": "libx264",
+        "variants": [
+          { "width": 1920, "height": 1080, "framerate": 30, "videoBitrate": 6000, "audioBitrate": 160, "isPassthrough": false },
+          { "width": 1280, "height": 720, "framerate": 30, "videoBitrate": 3000, "audioBitrate": 128, "isPassthrough": false }
+        ]
+      }
+    },
+    "events": [
+      {
+        "http": {
+          "method": "GET",
+          "path": "/admin/api/config",
+          "authenticated": true,
+          "expect": {
+            "status": 200,
+            "headers": { "content-type": "application/json" },
+            "body": "{\"latencyLevel\":2,\"codec\":\"libx264\",\"variants\":[{\"width\":1920,\"height\":1080,\"framerate\":30,\"videoBitrate\":6000,\"audioBitrate\":160,\"isPassthrough\":false},{\"width\":1280,\"height\":720,\"framerate\":30,\"videoBitrate\":3000,\"audioBitrate\":128,\"isPassthrough\":false}]}"
+          }
+        }
+      }
+    ]
+  },
+  {
+    "name": "GET /admin/api/config requires authentication",
+    "events": [
+      {
+        "http": {
+          "method": "GET",
+          "path": "/admin/api/config",
+          "expect": { "status": 401 }
+        }
+      }
+    ],
+    "expect": { "videoConfigWrites": [] }
+  },
+  {
+    "name": "POST /admin/api/config applies latency-only partial update",
+    "events": [
+      {
+        "http": {
+          "method": "POST",
+          "path": "/admin/api/config",
+          "headers": { "content-type": "application/json" },
+          "body": "{\"latencyLevel\":3}",
+          "authenticated": true,
+          "expect": { "status": 204 }
+        }
+      }
+    ],
+    "expect": {
+      "videoConfigWrites": [ { "latencyLevel": 3 } ]
+    }
+  },
+  {
+    "name": "POST /admin/api/config applies a full config update",
+    "events": [
+      {
+        "http": {
+          "method": "POST",
+          "path": "/admin/api/config",
+          "headers": { "content-type": "application/json" },
+          "body": "{\"latencyLevel\":2,\"codec\":\"libx264\",\"variants\":[{\"width\":1920,\"height\":1080,\"framerate\":30,\"videoBitrate\":6000,\"audioBitrate\":160,\"isPassthrough\":false},{\"width\":1280,\"height\":720,\"framerate\":30,\"videoBitrate\":3000,\"audioBitrate\":128,\"isPassthrough\":false}]}",
+          "authenticated": true,
+          "expect": { "status": 204 }
+        }
+      }
+    ],
+    "expect": {
+      "videoConfigWrites": [
+        {
+          "latencyLevel": 2,
+          "codec": "libx264",
+          "variants": [
+            { "width": 1920, "height": 1080, "framerate": 30, "videoBitrate": 6000, "audioBitrate": 160, "isPassthrough": false },
+            { "width": 1280, "height": 720, "framerate": 30, "videoBitrate": 3000, "audioBitrate": 128, "isPassthrough": false }
+          ]
+        }
+      ]
+    }
+  },
+  {
+    "name": "POST /admin/api/config drops fields the form didn't send",
+    "events": [
+      {
+        "http": {
+          "method": "POST",
+          "path": "/admin/api/config",
+          "headers": { "content-type": "application/json" },
+          "body": "{\"codec\":\"h264_vaapi\"}",
+          "authenticated": true,
+          "expect": { "status": 204 }
+        }
+      }
+    ],
+    "expect": {
+      "videoConfigWrites": [ { "codec": "h264_vaapi" } ]
+    }
+  },
+  {
+    "name": "POST /admin/api/config requires authentication",
+    "events": [
+      {
+        "http": {
+          "method": "POST",
+          "path": "/admin/api/config",
+          "headers": { "content-type": "application/json" },
+          "body": "{\"latencyLevel\":4}",
+          "expect": { "status": 401 }
+        }
+      }
+    ],
+    "expect": { "videoConfigWrites": [] }
+  },
+  {
+    "name": "POST /admin/api/config with invalid JSON returns 400",
+    "events": [
+      {
+        "http": {
+          "method": "POST",
+          "path": "/admin/api/config",
+          "headers": { "content-type": "application/json" },
+          "body": "{not json",
+          "authenticated": true,
+          "expect": { "status": 400 }
+        }
+      }
+    ],
+    "expect": { "videoConfigWrites": [] }
+  },
+  {
+    "name": "unknown admin paths return 404",
+    "events": [
+      {
+        "http": {
+          "method": "GET",
+          "path": "/admin/api/nope",
+          "authenticated": true,
+          "expect": { "status": 404 }
+        }
+      }
+    ]
+  }
+]

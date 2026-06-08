@@ -1,0 +1,163 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Who am I?</title>
+    <style>
+      :root {
+        color-scheme: light dark;
+      }
+      body {
+        font-family: system-ui, -apple-system, sans-serif;
+        margin: 0;
+        padding: 2rem 1.25rem;
+        line-height: 1.5;
+        background: #0f172a;
+        color: #e2e8f0;
+      }
+      main {
+        max-width: 640px;
+        margin: 0 auto;
+      }
+      h1 {
+        margin: 0 0 0.25rem;
+        font-size: 1.4rem;
+      }
+      p.sub {
+        margin: 0 0 1.5rem;
+        color: #94a3b8;
+      }
+      .card {
+        background: #1e293b;
+        border: 1px solid #334155;
+        border-radius: 12px;
+        padding: 1.25rem 1.5rem;
+      }
+      .anon {
+        color: #fca5a5;
+      }
+      .name {
+        font-size: 1.25rem;
+        font-weight: 700;
+        color: #c4b5fd;
+      }
+      dl {
+        display: grid;
+        grid-template-columns: max-content 1fr;
+        gap: 0.4rem 1rem;
+        margin: 1rem 0 0;
+      }
+      dt {
+        color: #94a3b8;
+      }
+      dd {
+        margin: 0;
+        word-break: break-word;
+      }
+      .badge {
+        display: inline-block;
+        font-size: 0.75rem;
+        padding: 0.1rem 0.5rem;
+        border-radius: 999px;
+        background: #334155;
+        margin-right: 0.25rem;
+      }
+      button {
+        margin-top: 1.25rem;
+        background: #7c3aed;
+        color: #fff;
+        border: 0;
+        border-radius: 8px;
+        padding: 0.5rem 1rem;
+        font-size: 0.95rem;
+        cursor: pointer;
+      }
+      pre {
+        margin-top: 1rem;
+        background: #0b1220;
+        border: 1px solid #334155;
+        border-radius: 8px;
+        padding: 0.75rem 1rem;
+        overflow-x: auto;
+        font-size: 0.8rem;
+        color: #cbd5e1;
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <h1>Who am I?</h1>
+      <p class="sub">
+        Owncast passes your chat identity to this plugin on its own. There is
+        no access token in the URL. The plugin only shows what it received.
+      </p>
+      <div id="card" class="card">Looking up your identity…</div>
+      <button id="refresh" type="button">Refresh</button>
+    </main>
+
+    <script>
+      function esc(s) {
+        return String(s).replace(
+          /[&<>"']/g,
+          (c) =>
+            ({
+              "&": "&amp;",
+              "<": "&lt;",
+              ">": "&gt;",
+              '"': "&quot;",
+              "'": "&#39;"
+            })[c]
+        );
+      }
+
+      function row(label, value) {
+        if (value === undefined || value === null || value === "") return "";
+        return `<dt>${esc(label)}</dt><dd>${esc(value)}</dd>`;
+      }
+
+      async function refresh() {
+        const card = document.getElementById("card");
+        card.textContent = "Looking up your identity…";
+        let res;
+        try {
+          res = await fetch("./api/me", { credentials: "same-origin" });
+        } catch (e) {
+          card.innerHTML = `<span class="anon">Request failed: ${esc(e)}</span>`;
+          return;
+        }
+
+        const data = await res.json().catch(() => ({}));
+
+        if (!data.identified) {
+          card.innerHTML = `<span class="anon">${esc(
+            data.message || "You are not identified to this plugin."
+          )}</span>`;
+          return;
+        }
+
+        const u = data.user;
+        const scopes = (u.scopes || [])
+          .map((s) => `<span class="badge">${esc(s)}</span>`)
+          .join(" ");
+        const previous = (u.previousNames || []).join(", ");
+
+        card.innerHTML =
+          `<div class="name">${esc(u.displayName)}</div>` +
+          `<dl>` +
+          row("User ID", u.id) +
+          row("Authenticated", u.isAuthenticated ? "yes" : "no") +
+          row("Bot", u.isBot ? "yes" : "no") +
+          row("Created", u.createdAt) +
+          row("Disabled", u.disabledAt) +
+          row("Previous names", previous) +
+          (scopes ? `<dt>Scopes</dt><dd>${scopes}</dd>` : "") +
+          `</dl>` +
+          `<pre>${esc(JSON.stringify(u, null, 2))}</pre>`;
+      }
+
+      document.getElementById("refresh").addEventListener("click", refresh);
+      refresh();
+    </script>
+  </body>
+</html>

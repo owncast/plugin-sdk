@@ -1,0 +1,49 @@
+[
+  {
+    "name": "counts first message from a user",
+    "events": [
+      {
+        "event": "chat.message.received",
+        "payload": { "id": "1", "user": { "id": "u-alice", "displayName": "alice" }, "body": "hi", "timestamp": "2024-01-01T00:00:00Z" }
+      }
+    ],
+    "expect": {
+      "kv": { "count:u-alice": "1" }
+    }
+  },
+  {
+    "name": "increments existing count",
+    "given": {
+      "kv": { "count:u-alice": "5" }
+    },
+    "events": [
+      {
+        "event": "chat.message.received",
+        "payload": { "id": "1", "user": { "id": "u-alice", "displayName": "alice" }, "body": "hi", "timestamp": "2024-01-01T00:00:00Z" }
+      }
+    ],
+    "expect": {
+      "kv": { "count:u-alice": "6" }
+    }
+  },
+  {
+    "name": "counts per-user independently",
+    "events": [
+      {
+        "event": "chat.message.received",
+        "payload": { "user": { "id": "u-alice", "displayName": "alice" }, "body": "first", "timestamp": "2024-01-01T00:00:00Z" }
+      },
+      {
+        "event": "chat.message.received",
+        "payload": { "user": { "id": "u-alice", "displayName": "alice" }, "body": "second", "timestamp": "2024-01-01T00:00:01Z" }
+      },
+      {
+        "event": "chat.message.received",
+        "payload": { "user": { "id": "u-bob", "displayName": "bob" }, "body": "first", "timestamp": "2024-01-01T00:00:02Z" }
+      }
+    ],
+    "expect": {
+      "kv": { "count:u-alice": "2", "count:u-bob": "1" }
+    }
+  }
+]

@@ -1,0 +1,8 @@
+{
+  "api": "1",
+  "name": "Py Echo Bot",
+  "slug": "py-echo-bot",
+  "version": "0.1.0",
+  "description": "Spike: a Python-authored echo bot proving the python-pdk round trip.",
+  "permissions": ["chat.send"]
+}

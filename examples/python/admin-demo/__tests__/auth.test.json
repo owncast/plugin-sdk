@@ -1,0 +1,85 @@
+[
+  {
+    "name": "public landing page is accessible without auth",
+    "events": [
+      { "http": { "method": "GET", "path": "/", "expect": { "status": 200 } } }
+    ]
+  },
+  {
+    "name": "admin static page rejects unauthenticated requests",
+    "events": [
+      { "http": { "method": "GET", "path": "/admin/", "expect": { "status": 401 } } }
+    ]
+  },
+  {
+    "name": "admin static page accepted when authenticated",
+    "events": [
+      {
+        "http": {
+          "method": "GET",
+          "path": "/admin/",
+          "authenticated": true,
+          "expect": { "status": 200 }
+        }
+      }
+    ]
+  },
+  {
+    "name": "admin API rejects unauthenticated requests",
+    "events": [
+      { "http": { "method": "GET", "path": "/admin/api/settings", "expect": { "status": 401 } } }
+    ]
+  },
+  {
+    "name": "admin API serves config when authenticated",
+    "given": { "kv": { "settings": "{\"greeting\":\"hi\"}" } },
+    "events": [
+      {
+        "http": {
+          "method": "GET",
+          "path": "/admin/api/settings",
+          "authenticated": true,
+          "expect": { "status": 200, "body": "{\"greeting\":\"hi\"}" }
+        }
+      }
+    ]
+  },
+  {
+    "name": "admin API write requires authentication",
+    "events": [
+      {
+        "http": {
+          "method": "POST",
+          "path": "/admin/api/settings",
+          "body": "{\"greeting\":\"hello\"}",
+          "expect": { "status": 401 }
+        }
+      }
+    ],
+    "expect": { "kv": {} }
+  },
+  {
+    "name": "admin API write succeeds when authenticated",
+    "events": [
+      {
+        "http": {
+          "method": "POST",
+          "path": "/admin/api/settings",
+          "headers": { "Content-Type": "application/json" },
+          "body": "{\"greeting\":\"hello\"}",
+          "authenticated": true,
+          "expect": { "status": 204 }
+        }
+      }
+    ],
+    "expect": {
+      "kv": { "settings": "{\"greeting\":\"hello\"}" }
+    }
+  },
+  {
+    "name": "non-admin paths remain default-public",
+    "events": [
+      { "http": { "method": "GET", "path": "/index.html", "expect": { "status": 200 } } }
+    ]
+  }
+]

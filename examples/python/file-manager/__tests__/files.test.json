@@ -1,0 +1,157 @@
+[
+  {
+    "name": "round trip: upload, list, download, delete",
+    "events": [
+      {
+        "http": {
+          "method": "POST",
+          "path": "/admin/api/files",
+          "headers": { "Content-Type": "application/json" },
+          "body": "{\"name\":\"notes.txt\",\"dataBase64\":\"aGVsbG8=\"}",
+          "authenticated": true,
+          "expect": { "status": 200, "body": "{\"ok\":true,\"replaced\":false}" }
+        }
+      },
+      {
+        "http": {
+          "method": "GET",
+          "path": "/admin/api/files",
+          "authenticated": true,
+          "expect": { "status": 200, "body": "{\"files\":[\"notes.txt\"]}" }
+        }
+      },
+      {
+        "http": {
+          "method": "GET",
+          "path": "/admin/api/files/download?name=notes.txt",
+          "authenticated": true,
+          "expect": {
+            "status": 200,
+            "body": "{\"name\":\"notes.txt\",\"dataBase64\":\"aGVsbG8=\"}"
+          }
+        }
+      },
+      {
+        "http": {
+          "method": "POST",
+          "path": "/admin/api/files/delete",
+          "headers": { "Content-Type": "application/json" },
+          "body": "{\"name\":\"notes.txt\"}",
+          "authenticated": true,
+          "expect": { "status": 200, "body": "{\"ok\":true}" }
+        }
+      },
+      {
+        "http": {
+          "method": "GET",
+          "path": "/admin/api/files",
+          "authenticated": true,
+          "expect": { "status": 200, "body": "{\"files\":[]}" }
+        }
+      }
+    ]
+  },
+  {
+    "name": "re-uploading the same name reports replaced",
+    "events": [
+      {
+        "http": {
+          "method": "POST",
+          "path": "/admin/api/files",
+          "headers": { "Content-Type": "application/json" },
+          "body": "{\"name\":\"dup.txt\",\"dataBase64\":\"YQ==\"}",
+          "authenticated": true,
+          "expect": { "status": 200, "body": "{\"ok\":true,\"replaced\":false}" }
+        }
+      },
+      {
+        "http": {
+          "method": "POST",
+          "path": "/admin/api/files",
+          "headers": { "Content-Type": "application/json" },
+          "body": "{\"name\":\"dup.txt\",\"dataBase64\":\"Yg==\"}",
+          "authenticated": true,
+          "expect": { "status": 200, "body": "{\"ok\":true,\"replaced\":true}" }
+        }
+      }
+    ]
+  },
+  {
+    "name": "download of a missing file is a 404",
+    "events": [
+      {
+        "http": {
+          "method": "GET",
+          "path": "/admin/api/files/download?name=nope.txt",
+          "authenticated": true,
+          "expect": { "status": 404 }
+        }
+      }
+    ]
+  },
+  {
+    "name": "admin page rejects unauthenticated requests",
+    "events": [
+      {
+        "http": {
+          "method": "GET",
+          "path": "/admin/",
+          "expect": { "status": 401 }
+        }
+      }
+    ]
+  },
+  {
+    "name": "files API rejects unauthenticated requests",
+    "events": [
+      {
+        "http": {
+          "method": "GET",
+          "path": "/admin/api/files",
+          "expect": { "status": 401 }
+        }
+      }
+    ]
+  },
+  {
+    "name": "files API delete rejects unauthenticated requests",
+    "events": [
+      {
+        "http": {
+          "method": "POST",
+          "path": "/admin/api/files/delete",
+          "body": "{\"name\":\"x\"}",
+          "expect": { "status": 401 }
+        }
+      }
+    ]
+  },
+  {
+    "name": "upload rejects an invalid file name",
+    "events": [
+      {
+        "http": {
+          "method": "POST",
+          "path": "/admin/api/files",
+          "headers": { "Content-Type": "application/json" },
+          "body": "{\"name\":\"../escape\",\"dataBase64\":\"aGk=\"}",
+          "authenticated": true,
+          "expect": { "status": 400 }
+        }
+      }
+    ]
+  },
+  {
+    "name": "download rejects an invalid file name",
+    "events": [
+      {
+        "http": {
+          "method": "GET",
+          "path": "/admin/api/files/download?name=../escape",
+          "authenticated": true,
+          "expect": { "status": 400 }
+        }
+      }
+    ]
+  }
+]

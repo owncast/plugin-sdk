@@ -1,0 +1,8 @@
+{
+  "api": "1",
+  "name": "Example Announcer",
+  "slug": "announcer",
+  "version": "0.1.0",
+  "description": "Handles announcement.broadcast events",
+  "permissions": []
+}

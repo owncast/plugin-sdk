@@ -1,0 +1,10 @@
+{
+  "api": "1",
+  "name": "Example Profanity Filter",
+  "slug": "profanity-filter",
+  "version": "0.1.0",
+  "description": "Redacts a hardcoded wordlist from chat",
+  "permissions": [
+    "chat.filter"
+  ]
+}

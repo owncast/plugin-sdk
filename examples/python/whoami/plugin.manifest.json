@@ -1,0 +1,19 @@
+{
+  "api": "1",
+  "name": "Who Am I (Chat Identity Demo)",
+  "slug": "whoami",
+  "version": "0.1.0",
+  "description": "Adds a viewer action button that opens a page showing the chat user's identity (req.user), proving the host passes the logged-in chat user to plugin HTTP handlers end to end.",
+  "permissions": [
+    "ui.modify",
+    "http.serve"
+  ],
+  "actions": [
+    {
+      "title": "Who am I?",
+      "description": "Show the chat identity Owncast passes to this plugin",
+      "url": "/",
+      "color": "#7c3aed"
+    }
+  ]
+}
