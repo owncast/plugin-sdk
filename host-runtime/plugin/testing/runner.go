@@ -12,7 +12,7 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/owncast/owncast-plugin-sdk/host-runtime/plugin"
+	plugin "github.com/owncast/owncast/services/plugins"
 )
 
 // Result is the outcome of running a single scenario.

@@ -11,8 +11,8 @@ import (
 	"sync"
 
 	"github.com/gobwas/glob"
-	"github.com/owncast/owncast-plugin-sdk/host-runtime/kv"
-	"github.com/owncast/owncast-plugin-sdk/host-runtime/plugin"
+	"github.com/owncast/owncast/services/plugins/kv"
+	plugin "github.com/owncast/owncast/services/plugins"
 )
 
 // EmittedEvent records a single owncast.events.emit() call.

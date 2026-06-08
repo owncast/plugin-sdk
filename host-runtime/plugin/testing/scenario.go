@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/owncast/owncast-plugin-sdk/host-runtime/plugin"
+	plugin "github.com/owncast/owncast/services/plugins"
 )
 
 // Scenario is one named test case loaded from a *.test.json file. A file

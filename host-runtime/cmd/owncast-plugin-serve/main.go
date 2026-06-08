@@ -33,8 +33,8 @@ import (
 	"time"
 
 	extism "github.com/extism/go-sdk"
-	"github.com/owncast/owncast-plugin-sdk/host-runtime/kv"
-	"github.com/owncast/owncast-plugin-sdk/host-runtime/plugin"
+	"github.com/owncast/owncast/services/plugins/kv"
+	plugin "github.com/owncast/owncast/services/plugins"
 )
 
 const defaultPort = "8080"
@@ -345,8 +345,32 @@ type devState struct {
 	pluginName string
 }
 
+// devChatUser turns the /_dev/chat `user` field into the ChatUser object the
+// production host sends. As a convenience the field may be a bare string
+// (`{"user":"alice"}`) — the common case for quick curl testing — which is
+// expanded into {id, displayName}. An object is passed through as-is so an
+// author can exercise isBot/isAuthenticated/scopes. Empty defaults to a
+// stand-in dev viewer.
+func devChatUser(raw json.RawMessage) *plugin.HostChatUser {
+	if len(raw) == 0 || string(raw) == "null" {
+		return &plugin.HostChatUser{ID: "dev-user", DisplayName: "dev-user", IsAuthenticated: true}
+	}
+	var name string
+	if err := json.Unmarshal(raw, &name); err == nil {
+		if name == "" {
+			name = "dev-user"
+		}
+		return &plugin.HostChatUser{ID: name, DisplayName: name, IsAuthenticated: true}
+	}
+	var u plugin.HostChatUser
+	if err := json.Unmarshal(raw, &u); err == nil {
+		return &u
+	}
+	return &plugin.HostChatUser{ID: "dev-user", DisplayName: "dev-user", IsAuthenticated: true}
+}
+
 // record appends a message to the in-memory chat log and returns it.
-func (d *devState) record(user, body string) plugin.HostChatMessage {
+func (d *devState) record(user *plugin.HostChatUser, body string) plugin.HostChatMessage {
 	d.mu.Lock()
 	defer d.mu.Unlock()
 	d.nextID++
@@ -394,7 +418,11 @@ func (d *devState) onPluginChat(req plugin.ChatSendRequest) {
 	default:
 		fmt.Fprintf(os.Stderr, "[chat.send by %s] %s\n", label, req.Text)
 	}
-	d.record(label, req.Text)
+	d.record(&plugin.HostChatUser{
+		ID:          "bot:" + req.PluginSlug,
+		DisplayName: label,
+		IsBot:       true,
+	}, req.Text)
 }
 
 // handleChat drives the loaded plugin's chat handling end to end: it runs the
@@ -411,18 +439,16 @@ func (d *devState) handleChat(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	var body struct {
-		User string `json:"user"`
-		Body string `json:"body"`
+		User json.RawMessage `json:"user"`
+		Body string          `json:"body"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
 		http.Error(w, "invalid JSON body", http.StatusBadRequest)
 		return
 	}
-	if body.User == "" {
-		body.User = "dev-user"
-	}
+	user := devChatUser(body.User)
 
-	payload := map[string]any{"user": body.User, "body": body.Body}
+	payload := map[string]any{"user": user, "body": body.Body}
 	final, allowed, reason := d.dispatcher.Filter(r.Context(), plugin.EventChatMessageReceived, payload)
 	if !allowed {
 		writeJSON(w, http.StatusOK, map[string]any{
@@ -439,7 +465,7 @@ func (d *devState) handleChat(w http.ResponseWriter, r *http.Request) {
 			finalBody = b
 		}
 	}
-	msg := d.record(body.User, finalBody)
+	msg := d.record(user, finalBody)
 	d.dispatcher.Dispatch(r.Context(), plugin.EventChatMessageReceived, final)
 
 	writeJSON(w, http.StatusOK, map[string]any{

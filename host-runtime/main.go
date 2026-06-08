@@ -8,13 +8,12 @@ import (
 	"net/http"
 	"os"
 	"path"
-	"path/filepath"
 	"strings"
 	"time"
 
 	extism "github.com/extism/go-sdk"
-	"github.com/owncast/owncast-plugin-sdk/host-runtime/kv"
-	"github.com/owncast/owncast-plugin-sdk/host-runtime/plugin"
+	"github.com/owncast/owncast/services/plugins/kv"
+	plugin "github.com/owncast/owncast/services/plugins"
 )
 
 // demoFS is the in-memory storage.fs backing for the demo host, keyed by
@@ -41,10 +40,16 @@ func isAuthenticatedHeader(r *http.Request) bool {
 }
 
 type ChatMessage struct {
-	ID        string    `json:"id"`
-	User      string    `json:"user"`
-	Body      string    `json:"body"`
-	Timestamp time.Time `json:"timestamp"`
+	ID        string               `json:"id"`
+	User      *plugin.HostChatUser `json:"user,omitempty"`
+	Body      string               `json:"body"`
+	Timestamp time.Time            `json:"timestamp"`
+}
+
+// chatUser builds the nested ChatUser object the host sends with every chat
+// message, from a bare display name.
+func chatUser(name string) *plugin.HostChatUser {
+	return &plugin.HostChatUser{ID: name, DisplayName: name, IsAuthenticated: true}
 }
 
 func main() {
@@ -56,11 +61,7 @@ func main() {
 	ctx := context.Background()
 	extismSetLogLevel()
 
-	store, err := kv.NewBolt(filepath.Join(pluginsDir, "..", "plugin-data.db"))
-	if err != nil {
-		log.Fatalf("open kv store: %v", err)
-	}
-	defer store.Close()
+	store := kv.NewMemory() // demo host: in-memory KV, no cross-run persistence
 
 	env := &plugin.HostEnv{
 		KV: store,
@@ -280,16 +281,16 @@ func main() {
 
 	// 3) Chat traffic, exercises filter chain + notifications.
 	messages := []ChatMessage{
-		{ID: "1", User: "alice", Body: "hello world", Timestamp: t0},
-		{ID: "2", User: "bob", Body: "what the hell, this is great", Timestamp: t0.Add(1 * time.Second)},
-		{ID: "3", User: "alice", Body: "going great!", Timestamp: t0.Add(1500 * time.Millisecond)},
-		{ID: "4", User: "alice", Body: "damn good content", Timestamp: t0.Add(4 * time.Second)},
-		{ID: "5", User: "alice", Body: "/announce stream is live", Timestamp: t0.Add(7 * time.Second)},
-		{ID: "6", User: "bob", Body: "!ip", Timestamp: t0.Add(10 * time.Second)},
-		{ID: "7", User: "bob", Body: "!uptime", Timestamp: t0.Add(12 * time.Second)},
+		{ID: "1", User: chatUser("alice"), Body: "hello world", Timestamp: t0},
+		{ID: "2", User: chatUser("bob"), Body: "what the hell, this is great", Timestamp: t0.Add(1 * time.Second)},
+		{ID: "3", User: chatUser("alice"), Body: "going great!", Timestamp: t0.Add(1500 * time.Millisecond)},
+		{ID: "4", User: chatUser("alice"), Body: "damn good content", Timestamp: t0.Add(4 * time.Second)},
+		{ID: "5", User: chatUser("alice"), Body: "/announce stream is live", Timestamp: t0.Add(7 * time.Second)},
+		{ID: "6", User: chatUser("bob"), Body: "!ip", Timestamp: t0.Add(10 * time.Second)},
+		{ID: "7", User: chatUser("bob"), Body: "!uptime", Timestamp: t0.Add(12 * time.Second)},
 	}
 	for _, msg := range messages {
-		fmt.Printf("\n> [%s] %s: %q\n", msg.Timestamp.Sub(t0), msg.User, msg.Body)
+		fmt.Printf("\n> [%s] %s: %q\n", msg.Timestamp.Sub(t0), msg.User.DisplayName, msg.Body)
 		dispatcher.Dispatch(ctx, plugin.EventChatMessageReceived, msg)
 	}
 

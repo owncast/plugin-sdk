@@ -16,7 +16,7 @@ import (
 	"path/filepath"
 
 	extism "github.com/extism/go-sdk"
-	"github.com/owncast/owncast-plugin-sdk/host-runtime/plugin"
+	plugin "github.com/owncast/owncast/services/plugins"
 	"github.com/owncast/owncast-plugin-sdk/host-runtime/plugin/testing"
 )
 
