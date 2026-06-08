@@ -1,0 +1,1 @@
+../../../sdks/js/create-owncast-plugin/template/.agents/skills/create-owncast-plugin/SKILL.md
