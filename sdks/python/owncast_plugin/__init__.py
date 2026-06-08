@@ -118,9 +118,18 @@ _HANDLERS = {
 _NOTIFY = {}    # event -> (fn, wrap)
 _FILTER = {}    # event -> (fn, wrap)
 _CUSTOM = {}    # custom event -> fn
-_HTTP = [None]  # single on_http_request handler
+_HTTP = [None]  # catch-all on_http_request handler (no path/method given)
+_ROUTES = []    # list of (method_or_"*", path, fn) for path/method routing
 _TAB = {}       # slug -> fn
 _PAGE = {}      # slug -> fn
+
+
+def _add_route(methods, path, fn):
+    if methods is None:
+        _ROUTES.append(("*", path, fn))
+    else:
+        for m in methods:
+            _ROUTES.append((m.upper(), path, fn))
 _TIMERS = {}    # timer id -> (fn, repeat)
 _next_timer = [1]
 
@@ -141,9 +150,44 @@ class _Plugin:
             return fn
         return deco
 
-    def on_http_request(self, fn):
-        _HTTP[0] = fn
-        return fn
+    def on_http_request(self, arg=None, *, methods=None):
+        """HTTP handler. Three forms:
+          @plugin.on_http_request              — catch-all (req.path/req.method parsed by you)
+          @plugin.on_http_request("/api/x")    — only requests to that exact path (any method)
+          @plugin.on_http_request("/api/x", methods=["GET","POST"])  — path + methods
+        Routes are matched before the catch-all; the path is relative to the
+        plugin's /plugins/<slug>/ root (e.g. "/api/messages")."""
+        if callable(arg):  # bare @plugin.on_http_request
+            _HTTP[0] = arg
+            return arg
+
+        def deco(fn):
+            _add_route(methods, arg, fn)
+            return fn
+
+        return deco
+
+    def route(self, path, methods=None):
+        """Register an HTTP handler for `path` (and optionally specific methods)."""
+        def deco(fn):
+            _add_route(methods, path, fn)
+            return fn
+        return deco
+
+    def get(self, path):
+        return self.route(path, ["GET"])
+
+    def post(self, path):
+        return self.route(path, ["POST"])
+
+    def put(self, path):
+        return self.route(path, ["PUT"])
+
+    def delete(self, path):
+        return self.route(path, ["DELETE"])
+
+    def patch(self, path):
+        return self.route(path, ["PATCH"])
 
     def on_tab_content(self, slug):
         def deco(fn):
@@ -477,12 +521,31 @@ def _dispatch_filter(envelope):
     return result if isinstance(result, dict) else {"action": "pass"}
 
 
+def _http_response(resp):
+    if isinstance(resp, dict):
+        return resp
+    if resp is None:
+        return {"status": 204}
+    return {"status": 200, "body": str(resp)}
+
+
 def _dispatch_http(request):
-    fn = _HTTP[0]
-    if fn is None:
-        return {"status": 404, "body": "not found"}
-    resp = fn(_Obj(request))
-    return resp if isinstance(resp, dict) else {"status": 200, "body": str(resp)}
+    method = (request.get("method") or "GET").upper()
+    path = request.get("path") or "/"
+    req = _Obj(request)
+    path_matched = False
+    for m, p, fn in _ROUTES:
+        if p != path:
+            continue
+        path_matched = True
+        if m == "*" or m == method:
+            return _http_response(fn(req))
+    # A registered path exists but no handler for this method.
+    if path_matched:
+        return {"status": 405, "body": "method not allowed"}
+    if _HTTP[0] is not None:
+        return _http_response(_HTTP[0](req))
+    return {"status": 404, "body": "not found"}
 
 
 def _dispatch_tab_content(request):
