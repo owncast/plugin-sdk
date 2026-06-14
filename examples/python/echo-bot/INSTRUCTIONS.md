@@ -1,6 +1,6 @@
 # Echo Bot
 
-A chat bot that replies to **every** message with `"<user> said: <message>"`, posting under its own bot identity ("Py Echo Bot"). This was the original Python spike that proved the python-pdk round trip.
+A chat bot that replies to **every** message with `"<user> said: <message>"`, posting under its own bot identity ("Example Echo").
 
 ## How to use it
 

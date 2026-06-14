@@ -3,7 +3,7 @@
   "name": "Example Tabs Demo",
   "slug": "tabs-demo",
   "version": "0.1.0",
-  "description": "Adds two static tabs to the viewer page (alongside Followers and About). Demonstrates the manifest.tabs capability with no dependency on a live stream or chat.",
+  "description": "Adds two static tabs to the viewer page (alongside Followers and About). Demonstrates the manifest.tabs capability with no dependency on a live stream or chat. This example was written in Python.",
   "permissions": [
     "ui.modify"
   ],

@@ -3,7 +3,7 @@
   "name": "Example Styles Demo",
   "slug": "styles-demo",
   "version": "0.1.0",
-  "description": "Ships a CSS file that pins a banner to the top of the viewer page so an admin can see at a glance that the plugin's stylesheet loaded, with no dependency on a live stream or chat.",
+  "description": "Ships a CSS file that pins a banner to the top of the viewer page so an admin can see at a glance that the plugin's stylesheet loaded, with no dependency on a live stream or chat. This example was written in JavaScript.",
   "permissions": [
     "ui.modify",
     "http.serve"

@@ -6,7 +6,7 @@ One self-contained plugin per directory, authored in Python and compiled to wasm
 | ------------------------------------------------- | ------------------------------------------------------------------------------------------------------- |
 | [hello-world](./hello-world/)                     | Minimum viable plugin, proves the load + `register()` path works.                                       |
 | [chat-logger](./chat-logger/)                     | Logs every chat message; the simplest notification handler.                                             |
-| [echo-bot](./echo-bot/)                           | Posts a reply to every chat message via `owncast.chat.send` (the original Python spike, `py-echo-bot`). |
+| [echo-bot](./echo-bot/)                           | Posts a reply to every chat message via `owncast.chat.send`. |
 | [message-counter](./message-counter/)             | Per-user message counter persisted in the plugin's namespaced config.                                   |
 | [profanity-filter](./profanity-filter/)           | `filter.modify(payload)`, rewrites flagged words to asterisks.                                          |
 | [slow-mode](./slow-mode/)                         | `filter.drop(reason)`, rate-limits per user, with in-memory state.                                      |

@@ -1,8 +1,13 @@
 {
   "api": "1",
-  "name": "Py Echo Bot",
-  "slug": "py-echo-bot",
+  "name": "Example Echo Bot",
+  "slug": "echo-bot",
   "version": "0.1.0",
-  "description": "Spike: a Python-authored echo bot proving the python-pdk round trip.",
-  "permissions": ["chat.send"]
+  "description": "Echoes chat messages back with a prefix. This example was written in Python.",
+  "permissions": [
+    "chat.send"
+  ],
+  "bot": {
+    "displayName": "Example Echo"
+  }
 }

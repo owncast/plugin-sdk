@@ -3,7 +3,7 @@
   "name": "Example Chat Overlay",
   "slug": "overlay",
   "version": "0.1.0",
-  "description": "Ships a static HTML overlay page and a JSON API at /plugins/overlay/api/messages backed by owncast.chat.history()",
+  "description": "Ships a static HTML overlay page and a JSON API at /plugins/overlay/api/messages backed by owncast.chat.history(). This example was written in Python.",
   "permissions": [
     "http.serve",
     "chat.history",

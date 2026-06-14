@@ -166,94 +166,27 @@ async function buildMain() {
       "no plugin source found (expected src/plugin.ts or plugin.js)",
     );
 
-  // Synthesize an entry that injects the manifest, requires user code,
-  // then re-exports the SDK runtime exports as wasm-visible exports.
+  // Shared-engine model: bundle the author's plugin into a tiny CommonJS
+  // script with @owncast/plugin-sdk marked EXTERNAL. It ships in the .ocpkg as
+  // plugin.js; the host infers the JavaScript runtime from that filename and
+  // runs it on the embedded JS engine, which provides
+  // require("@owncast/plugin-sdk"). No per-plugin wasm, no extism-js.
   const buildDir = path.join(cwd, ".owncast-build");
   fs.mkdirSync(buildDir, { recursive: true });
-  const synthEntry = path.join(buildDir, "entry.js");
-  const manifestJSON = JSON.stringify(manifest);
-  // Always emit register/on_event/on_filter as wasm exports. The SDK derives
-  // subscriptions at runtime from the plugin's handler methods and merges
-  // them into the manifest returned by register(). The host then only calls
-  // on_event/on_filter for plugins actually subscribed to that event, so
-  // unused exports are harmless.
-  const entrySrc = `const sdk = require("@owncast/plugin-sdk");
-const MANIFEST_BASE = ${manifestJSON};
-require(${JSON.stringify(entry)});
-function register() {
-  const manifest = Object.assign({}, MANIFEST_BASE, { subscriptions: sdk.describeSubscriptions() });
-  Host.outputString(JSON.stringify(manifest));
-  return 0;
-}
-function on_event() {
-  const envelope = JSON.parse(Host.inputString());
-  sdk.dispatchEvent(envelope);
-  return 0;
-}
-function on_filter() {
-  const envelope = JSON.parse(Host.inputString());
-  const result = sdk.dispatchFilter(envelope);
-  Host.outputString(JSON.stringify(result));
-  return 0;
-}
-function on_http_request() {
-  const request = JSON.parse(Host.inputString());
-  const response = sdk.dispatchHttp(request);
-  Host.outputString(JSON.stringify(response));
-  return 0;
-}
-function on_tab_content() {
-  const req = JSON.parse(Host.inputString());
-  Host.outputString(sdk.dispatchTabContent(req));
-  return 0;
-}
-function on_page_content() {
-  const req = JSON.parse(Host.inputString());
-  Host.outputString(sdk.dispatchPageContent(req));
-  return 0;
-}
-module.exports = { register, on_event, on_filter, on_http_request, on_tab_content, on_page_content };
-`;
-  fs.writeFileSync(synthEntry, entrySrc);
-
-  // Bundle to a single CJS file targeting the QuickJS runtime extism-js uses.
-  const bundledJS = path.join(buildDir, "bundle.js");
+  const scriptOut = path.join(cwd, `${slug}.js`);
   await esbuild.build({
-    entryPoints: [synthEntry],
+    entryPoints: [entry],
     bundle: true,
     format: "cjs",
     platform: "neutral",
     target: "es2020",
-    outfile: bundledJS,
+    external: ["@owncast/plugin-sdk"],
+    outfile: scriptOut,
     logLevel: "warning",
   });
 
-  // Generate index.d.ts declaring exports + host imports based on permissions.
-  const dts = path.join(buildDir, "index.d.ts");
-  fs.writeFileSync(dts, generateInterface(manifest));
-
-  // Find toolchain.
-  const cache = findCacheDir();
-  const extismJs = path.join(cache, "extism-js");
-  if (!fs.existsSync(extismJs)) {
-    throw new Error(
-      `extism-js not found at ${extismJs}, run \`npm install\` to fetch the toolchain`,
-    );
-  }
-  const env = toolchainEnv(cache);
-
-  const wasmOut = path.join(cwd, `${slug}.wasm`);
-  execFileSync(extismJs, [bundledJS, "-i", dts, "-o", wasmOut], {
-    stdio: "inherit",
-    env,
-  });
-
-  // public/ and assets/ live at the source root; the host's
-  // loose-files loader picks them up as siblings of the built
-  // <slug>.wasm without any rename, so the build CLI doesn't need to
-  // create or mirror anything for them.
-
-  console.log(`built ${path.relative(cwd, wasmOut)}`);
+  // public/ and assets/ live at the source root; the packager picks them up.
+  console.log(`built ${path.relative(cwd, scriptOut)}`);
 }
 
 // `owncast-plugin package`, bundle the project into a single .ocpkg file
@@ -269,16 +202,19 @@ async function packageMain() {
   const manifest = readAndResolveManifest(manifestPath);
   const slug = manifest.slug;
 
-  const wasmPath = path.join(cwd, `${slug}.wasm`);
-  if (!fs.existsSync(wasmPath)) {
+  const scriptPath = path.join(cwd, `${slug}.js`);
+  if (!fs.existsSync(scriptPath)) {
     await buildMain();
   }
 
+  // The code entry's name (plugin.js) is what tells the host this is a
+  // JavaScript plugin — no "type" field in the manifest. The manifest ships
+  // verbatim.
   const publicDir = path.join(cwd, "public");
   const assetsDir = path.join(cwd, "assets");
   const zip = new JSZip();
   zip.file("plugin.manifest.json", fs.readFileSync(manifestPath));
-  zip.file("plugin.wasm", fs.readFileSync(wasmPath));
+  zip.file("plugin.js", fs.readFileSync(scriptPath));
   let fileCount = 2;
   // Bundle a top-level icon.png if the plugin source root has one.
   // The host reads it from /api/plugins/<slug>/icon to render in the
@@ -329,19 +265,19 @@ async function packageMain() {
     `packaged ${path.relative(cwd, outPath)} (${sizeKb} KB, ${fileCount} files)`,
   );
 
-  // Drop the intermediate <slug>.wasm now that it's bundled inside the
+  // Drop the intermediate <slug>.js now that it's bundled inside the
   // .ocpkg. The .ocpkg is the only artifact authors care about: leaving
-  // the loose .wasm next to it just confuses "what do I ship". Only
+  // the loose script next to it just confuses "what do I ship". Only
   // runs on a successful package so a mid-pipeline failure leaves the
   // last good build in place for debugging.
   try {
-    fs.unlinkSync(wasmPath);
+    fs.unlinkSync(scriptPath);
   } catch (e) {
     // Don't fail the package step over a cleanup miss. The .ocpkg is
     // already written; surface the warning so the author notices the
     // straggler but treat the run as successful.
     if (e.code !== "ENOENT") {
-      console.warn(`warning: could not clean up ${path.relative(cwd, wasmPath)}: ${e.message}`);
+      console.warn(`warning: could not clean up ${path.relative(cwd, scriptPath)}: ${e.message}`);
     }
   }
 }

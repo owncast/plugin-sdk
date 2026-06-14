@@ -3,7 +3,7 @@
   "name": "Example Echo Bot",
   "slug": "echo-bot",
   "version": "0.1.0",
-  "description": "Echoes chat messages back with a prefix",
+  "description": "Echoes chat messages back with a prefix. This example was written in JavaScript.",
   "permissions": [
     "chat.send"
   ],

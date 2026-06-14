@@ -3,6 +3,6 @@
   "name": "Example Chat Logger",
   "slug": "chat-logger",
   "version": "0.1.0",
-  "description": "Logs every chat message via console.log (host stderr)",
+  "description": "Logs every chat message via console.log (host stderr). This example was written in JavaScript.",
   "permissions": []
 }

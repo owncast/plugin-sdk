@@ -3,6 +3,6 @@
   "name": "Hello World",
   "slug": "hello-world",
   "version": "0.1.0",
-  "description": "Minimal plugin proving the load path works",
+  "description": "Minimal plugin proving the load path works. This example was written in JavaScript.",
   "permissions": []
 }

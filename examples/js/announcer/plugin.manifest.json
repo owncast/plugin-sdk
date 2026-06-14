@@ -3,6 +3,6 @@
   "name": "Example Announcer",
   "slug": "announcer",
   "version": "0.1.0",
-  "description": "Handles announcement.broadcast events",
+  "description": "Handles announcement.broadcast events. This example was written in JavaScript.",
   "permissions": []
 }

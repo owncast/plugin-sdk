@@ -584,19 +584,20 @@ func loadTarget(ctx context.Context, env *plugin.HostEnv, target string) (*plugi
 	if !exists(manifestPath) {
 		fatal("no plugin.manifest.json in %s", target)
 	}
-	// readManifestSlug runs through ParseManifest so any author-omitted
-	// slug is auto-derived from the manifest's display name the same way
-	// the host does at install time.
-	slug, err := readManifestSlug(manifestPath)
+	// ParseManifest so any author-omitted slug is auto-derived the same way the
+	// host does at install time. The build artifact is found by extension
+	// (<slug>.js / <slug>.py / <slug>.wasm); its filename tells the host the
+	// runtime, so the manifest declares no type.
+	m, err := readManifest(manifestPath)
 	if err != nil {
 		fatal("read manifest: %v", err)
 	}
-	wasmPath := filepath.Join(target, slug+".wasm")
-	if !exists(wasmPath) {
-		fatal("no %s.wasm in %s, run `owncast-plugin package` first", slug, target)
+	artifactPath, ok := findCodeArtifact(target, m.Slug)
+	if !ok {
+		fatal("no %s.{js,py,wasm} in %s, run `owncast-plugin package` first", m.Slug, target)
 	}
 
-	loaded, err := plugin.LoadPlugin(ctx, env, wasmPath, manifestPath)
+	loaded, err := plugin.LoadPlugin(ctx, env, artifactPath, manifestPath)
 	if err != nil {
 		fatal("load plugin: %v", err)
 	}
@@ -606,7 +607,7 @@ func loadTarget(ctx context.Context, env *plugin.HostEnv, target string) (*plugi
 		loaded.AssetsFS = os.DirFS(assetsDir)
 		assetsDescription = assetsDir
 	}
-	return loaded, slug, assetsDescription
+	return loaded, m.Slug, assetsDescription
 }
 
 func logging(h http.Handler) http.Handler {
@@ -639,16 +640,25 @@ func writeJSON(w http.ResponseWriter, status int, body any) {
 // rules apply the same way they would when the plugin is loaded by a
 // real host. The returned slug is what the wasm file and route
 // segments key off.
-func readManifestSlug(path string) (string, error) {
+func readManifest(path string) (*plugin.Manifest, error) {
 	data, err := os.ReadFile(path)
 	if err != nil {
-		return "", err
+		return nil, err
 	}
-	m, err := plugin.ParseManifest(data)
-	if err != nil {
-		return "", err
+	return plugin.ParseManifest(data)
+}
+
+// findCodeArtifact locates a plugin's built code artifact by extension —
+// <slug>.js (JavaScript), <slug>.py (Python), or <slug>.wasm (self-contained).
+// The extension is what tells the host the runtime; LoadPlugin infers it.
+func findCodeArtifact(dir, slug string) (string, bool) {
+	for _, ext := range []string{".js", ".py", ".wasm"} {
+		p := filepath.Join(dir, slug+ext)
+		if exists(p) {
+			return p, true
+		}
 	}
-	return m.Slug, nil
+	return "", false
 }
 
 func isVersionArg(arg string) bool {

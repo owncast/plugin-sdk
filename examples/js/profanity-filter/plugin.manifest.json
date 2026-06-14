@@ -3,7 +3,7 @@
   "name": "Example Profanity Filter",
   "slug": "profanity-filter",
   "version": "0.1.0",
-  "description": "Redacts a hardcoded wordlist from chat",
+  "description": "Redacts a hardcoded wordlist from chat. This example was written in JavaScript.",
   "permissions": [
     "chat.filter"
   ]

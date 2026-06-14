@@ -41,16 +41,17 @@ func main() {
 	if !exists(manifestPath) {
 		fatal("no plugin.manifest.json in %s", abs)
 	}
-	// Use ParseManifest so the slug is auto-derived from the display
-	// name when the manifest omits `slug`, matching what the build CLI
-	// does when it writes <slug>.wasm.
-	slug, err := readManifestSlug(manifestPath)
+	// ParseManifest so the slug auto-derives from the display name when the
+	// manifest omits it. The build artifact is found by its extension
+	// (<slug>.js / <slug>.py / <slug>.wasm); its filename tells the host the
+	// runtime, so the manifest declares no type.
+	m, err := readManifest(manifestPath)
 	if err != nil {
 		fatal("read manifest: %v", err)
 	}
-	wasmPath := filepath.Join(abs, slug+".wasm")
-	if !exists(wasmPath) {
-		fatal("no %s.wasm in %s, run `owncast-plugin package` first", slug, abs)
+	artifactPath, ok := findCodeArtifact(abs, m.Slug)
+	if !ok {
+		fatal("no %s.{js,py,wasm} in %s, run `owncast-plugin package` first", m.Slug, abs)
 	}
 	testsDir := filepath.Join(abs, "__tests__")
 	if !exists(testsDir) {
@@ -72,7 +73,7 @@ func main() {
 	pass, total := 0, 0
 	for _, f := range files {
 		rel, _ := filepath.Rel(abs, f)
-		results, err := testing.RunFile(ctx, wasmPath, manifestPath, f)
+		results, err := testing.RunFile(ctx, artifactPath, manifestPath, f)
 		if err != nil {
 			fmt.Printf("FAIL  %s\n        %v\n", rel, err)
 			total++
@@ -98,21 +99,29 @@ func main() {
 	}
 }
 
-// readManifestSlug parses the on-disk manifest through the SDK's full
-// validator so the slug auto-derives from the display name when the
-// manifest omits it, matching what the build CLI does when it writes
-// <slug>.wasm. Returning the resolved slug keeps the binary's
-// "where's my wasm" lookup in lock-step with the build output.
-func readManifestSlug(path string) (string, error) {
+// readManifest parses the on-disk manifest through the SDK's full validator so
+// the slug auto-derives from the display name when omitted and the runtime type
+// is normalized — keeping the binary's artifact lookup in lock-step with what
+// the build CLI writes.
+func readManifest(path string) (*plugin.Manifest, error) {
 	data, err := os.ReadFile(path)
 	if err != nil {
-		return "", err
+		return nil, err
 	}
-	m, err := plugin.ParseManifest(data)
-	if err != nil {
-		return "", err
+	return plugin.ParseManifest(data)
+}
+
+// findCodeArtifact locates a plugin's built code artifact by extension —
+// <slug>.js (JavaScript), <slug>.py (Python), or <slug>.wasm (self-contained).
+// The extension is what tells the host the runtime; LoadPlugin infers it.
+func findCodeArtifact(dir, slug string) (string, bool) {
+	for _, ext := range []string{".js", ".py", ".wasm"} {
+		p := filepath.Join(dir, slug+ext)
+		if exists(p) {
+			return p, true
+		}
 	}
-	return m.Slug, nil
+	return "", false
 }
 
 func isVersionArg(arg string) bool {

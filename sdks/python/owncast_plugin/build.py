@@ -183,61 +183,35 @@ def _read_manifest(project):
 
 
 def build(project, extism_py=None, env=None):
-    """Compile project's plugin into <slug>.wasm. extism_py/env let a caller
-    (the CLI) supply a managed toolchain; otherwise extism-py is resolved from
-    PATH (or ~/.local/bin) and the ambient environment is used."""
-    manifest, slug = _read_manifest(project)
-    permissions = manifest.get("permissions", [])
-
-    sdk_src = open(SDK_RUNTIME).read()
+    """Shared-engine model: emit the author's plugin as <slug>.py (the plugin
+    source with the `from owncast_plugin import ...` line stripped — the SDK
+    names are globals in the embedded engine). No SDK inlining, no host import
+    block, no extism-py. The host infers the Python runtime from the plugin.py
+    filename and runs it on the embedded Python engine. extism_py/env are
+    accepted for CLI signature compatibility but unused."""
+    _manifest, slug = _read_manifest(project)
     author_src = strip_sdk_import(open(find_entry(project)).read())
-    manifest_base = {
-        "slug": slug,
-        "version": manifest.get("version", "0.0.0"),
-        "permissions": permissions,
-    }
-
-    combined = "\n\n".join([
-        sdk_src,
-        "# --- host imports (granted permissions + ambient) ---",
-        host_import_block(permissions),
-        "# --- author code ---",
-        author_src,
-        "# --- generated exports ---",
-        EXPORTS % json.dumps(manifest_base),
-    ])
-
-    build_dir = os.path.join(project, ".owncast-build")
-    os.makedirs(build_dir, exist_ok=True)
-    entry = os.path.join(build_dir, "entry.py")
-    with open(entry, "w") as f:
-        f.write(combined)
-
-    extism_py = extism_py or shutil.which("extism-py") or os.path.expanduser("~/.local/bin/extism-py")
-    if not os.path.exists(extism_py):
-        sys.exit("extism-py not found (install the extism Python PDK, or use the owncast-plugin-py CLI which fetches it)")
-    out = os.path.join(project, slug + ".wasm")
-    proc = subprocess.run([extism_py, entry, "-o", out], capture_output=True, text=True, env=env)
-    if proc.returncode != 0:
-        sys.stderr.write(proc.stdout + proc.stderr)
-        sys.exit("extism-py failed")
-    print("built %s.wasm" % slug)
+    out = os.path.join(project, slug + ".py")
+    with open(out, "w") as f:
+        f.write(author_src)
+    print("built %s.py" % slug)
     return slug
 
 
 def package(project, extism_py=None, env=None):
-    """Build, then zip the manifest + wasm + public/ + assets/ (+ icon.png,
-    INSTRUCTIONS.md) into <slug>.ocpkg — the single distributable file. Matches
-    the JS SDK's `owncast-plugin package` layout exactly (the wasm is stored as
-    plugin.wasm at the zip root), so the host loads Python and JS packages
-    identically."""
+    """Build, then zip the manifest + plugin.py + public/ + assets/ (+ icon.png,
+    INSTRUCTIONS.md) into <slug>.ocpkg — the single distributable file. The code
+    entry's name (plugin.py) is what tells the host this is a Python plugin, so
+    no "type" field is needed in the manifest; it ships verbatim. Matches the JS
+    SDK's `owncast-plugin package` layout so the host loads both identically."""
     slug = build(project, extism_py=extism_py, env=env)
-    wasm = os.path.join(project, slug + ".wasm")
+    script = os.path.join(project, slug + ".py")
     out = os.path.join(project, slug + ".ocpkg")
+
     count = 0
     with zipfile.ZipFile(out, "w", zipfile.ZIP_DEFLATED, compresslevel=6) as z:
         z.write(os.path.join(project, "plugin.manifest.json"), "plugin.manifest.json")
-        z.write(wasm, "plugin.wasm")
+        z.write(script, "plugin.py")
         count += 2
         for name in ("icon.png", "INSTRUCTIONS.md"):
             p = os.path.join(project, name)
@@ -254,7 +228,7 @@ def package(project, extism_py=None, env=None):
                     rel = os.path.relpath(full, base).replace(os.sep, "/")
                     z.write(full, "%s/%s" % (sub, rel))
                     count += 1
-    os.remove(wasm)
+    os.remove(script)
     size_kb = round(os.path.getsize(out) / 1024)
     print("packaged %s.ocpkg (%d KB, %d files)" % (slug, size_kb, count))
     return slug

@@ -3,7 +3,7 @@
   "name": "Example Buggy Filter (demo)",
   "slug": "buggy-filter",
   "version": "0.1.0",
-  "description": "Always throws, exercises fail-open behavior",
+  "description": "Always throws, exercises fail-open behavior. This example was written in Python.",
   "permissions": [
     "chat.filter"
   ]

@@ -3,7 +3,7 @@
   "name": "Timer Bot",
   "slug": "timer-bot",
   "version": "0.1.0",
-  "description": "Chat-driven demo of owncast.timer (setTimeout/setInterval/clear) and the once-a-second onTick event. Commands: !remind, !every, !stop, !countdown.",
+  "description": "Chat-driven demo of owncast.timer (setTimeout/setInterval/clear) and the once-a-second onTick event. Commands: !remind, !every, !stop, !countdown. This example was written in JavaScript.",
   "permissions": [
     "chat.send"
   ]
