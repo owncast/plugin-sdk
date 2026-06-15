@@ -1,5 +1,10 @@
 # ip-bot: responds to !ip in chat by fetching the server's public IP
 # from api.ipify.org (network.fetch + manifest network.allowedHosts).
+#
+# A single, fixed command — so this example parses msg.body by hand to show
+# that's perfectly fine. For multiple commands, aliases, cooldowns, or
+# moderator gating, declare a plugin.commands({...}) table instead (see the
+# stream-ops / stream-tracker / timer-bot examples).
 import json
 
 from owncast_plugin import plugin, owncast

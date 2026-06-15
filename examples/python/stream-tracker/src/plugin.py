@@ -2,10 +2,11 @@
 #
 # On stream lifecycle / chat user activity, it persists a small running
 # state in plugin config (when the stream started; who's currently in
-# chat). When a viewer types !uptime, !who, or !server, it answers via
-# owncast.chat.send, posting as the plugin's own bot ("stream-tracker")
-# which the host provisions automatically. Action-style messages
-# announce stream start / title changes.
+# chat). Interactive commands (!uptime, !who, !server) are declared with
+# plugin.commands(...) — the SDK wires the chat subscription, so there's no
+# on_chat_message — and answered via owncast.chat.send, posting as the
+# plugin's own bot ("stream-tracker") which the host provisions automatically.
+# Action-style messages announce stream start / title changes.
 import json
 from datetime import datetime, timezone
 
@@ -75,31 +76,36 @@ def on_chat_user_renamed(change):
     )
 
 
-# ── interactive commands ────────────────────────────────────────────
-@plugin.on_chat_message
-def on_chat_message(msg):
-    body = msg.body.strip()
-    if body == "!uptime":
-        state = owncast.stream.current()
-        if not state.online:
-            owncast.chat.send("stream is offline")
-            return
-        # "Now" is the moment the user asked, not wallclock.
-        asked_at = _epoch_ms(msg.timestamp) if msg.timestamp else 0
-        started_at = _epoch_ms(state.started_at) if state.started_at else asked_at
-        seconds = (asked_at - started_at) // 1000
-        owncast.chat.send(
-            f'uptime: {seconds}s, {state.viewers} viewer(s), "{state.title}"'
-        )
+# ── interactive commands (no on_chat_message needed) ────────────────
+def _uptime(ctx):
+    state = owncast.stream.current()
+    if not state.online:
+        ctx.reply("stream is offline")
         return
-    if body == "!who":
-        users = user_list()
-        owncast.chat.send(
-            "no one's here yet"
-            if len(users) == 0
-            else f"in chat: {', '.join(users)}"
-        )
-        return
-    if body == "!server":
-        info = owncast.server.info()
-        owncast.chat.send(f"{info.name} v{info.version}, {info.summary}")
+    # "Now" is the moment the user asked, not wallclock.
+    asked_at = _epoch_ms(ctx.msg.timestamp) if ctx.msg.timestamp else 0
+    started_at = _epoch_ms(state.started_at) if state.started_at else asked_at
+    seconds = (asked_at - started_at) // 1000
+    ctx.reply(f'uptime: {seconds}s, {state.viewers} viewer(s), "{state.title}"')
+
+
+def _who(ctx):
+    users = user_list()
+    owncast.chat.send(
+        "no one's here yet" if len(users) == 0 else f"in chat: {', '.join(users)}"
+    )
+
+
+def _server(ctx):
+    info = owncast.server.info()
+    owncast.chat.send(f"{info.name} v{info.version}, {info.summary}")
+
+
+plugin.commands({
+    "uptime": {
+        "description": "How long the stream has been live, plus viewers and title",
+        "run": _uptime,
+    },
+    "who": {"description": "List who's currently in chat", "run": _who},
+    "server": {"description": "Show the server name, version, and summary", "run": _server},
+})

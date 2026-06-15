@@ -76,3 +76,6 @@ sdks/python/build/
 
 host-runtime/owncast-plugin-test
 host-runtime/owncast-plugin-serve
+
+# Engine-build toolchain (fetched by engines/install-toolchain.mjs)
+engines/.toolchain/

@@ -2,7 +2,7 @@
   "api": "1",
   "name": "Example Manual Video Settings",
   "slug": "manual-video-settings",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Admin form to manually edit transcoding output: latency level, codec, and per-variant resolution / framerate / bitrate. This example was written in JavaScript.",
   "permissions": [
     "http.serve",

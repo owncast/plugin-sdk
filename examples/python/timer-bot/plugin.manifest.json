@@ -2,7 +2,7 @@
   "api": "1",
   "name": "Timer Bot",
   "slug": "timer-bot",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Chat-driven demo of owncast.timer (setTimeout/setInterval/clear) and the once-a-second onTick event. Commands: !remind, !every, !stop, !countdown. This example was written in Python.",
   "permissions": [
     "chat.send"

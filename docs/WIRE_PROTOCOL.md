@@ -4,7 +4,7 @@ The contract between the Owncast host runtime and a plugin. This document is the
 
 ## Overview
 
-A plugin is a WebAssembly module exposing four well-known exports and (conditionally) importing a fixed set of host functions. Communication is single-buffer in / single-buffer out at the wasm ABI: the host writes a JSON or text body before the call, the plugin reads it via the Extism `Host.input*()` helpers, and any return value is written via `Host.output*()`.
+At the wasm ABI a plugin is a module exposing a fixed set of well-known exports and importing a fixed set of host functions. For interpreted plugins (JavaScript, Python) that module is the host-embedded **shared engine** (one per language, compiled once and instantiated per plugin) running the plugin's source, which the host injects via Extism config at load; a plugin authored directly as a self-contained wasm module presents the same ABI itself. Either way the protocol below is identical. Communication is single-buffer in / single-buffer out: the host writes a JSON or text body before the call, the plugin reads it via the Extism `Host.input*()` helpers, and any return value is written via `Host.output*()`.
 
 ## Exports (plugin → host)
 
@@ -12,7 +12,7 @@ Every plugin must export these functions:
 
 | Function          | Input                      | Output                      | Purpose                                                                                               |
 | ----------------- | -------------------------- | --------------------------- | ----------------------------------------------------------------------------------------------------- |
-| `register`        | none                       | JSON `Manifest`             | Returns the plugin's subscriptions for the host to compare against the static `plugin.manifest.json`. |
+| `register`        | none                       | JSON `Manifest`             | Returns the plugin's derived `subscriptions` (compared against the static `plugin.manifest.json`) and its chat `commands` metadata (aggregated by the host for `!help`). |
 | `on_event`        | JSON `Envelope`            | none                        | Notification dispatch. Fire-and-forget.                                                               |
 | `on_filter`       | JSON `Envelope`            | JSON `FilterResult`         | Filter chain entry point.                                                                             |
 | `on_http_request` | JSON `IncomingHttpRequest` | JSON `OutgoingHttpResponse` | HTTP request handler for `/plugins/<name>/*`.                                                         |
@@ -21,9 +21,17 @@ Every plugin must export these functions:
 
 `ContentRequest` shape: `{ "slug": "<tab-or-slot-slug>", "user"?: ChatUser }`. The host calls the appropriate export when building the `/api/config` response; the returned string is inlined directly as the body. An empty string is valid (renders nothing). Each entry point has a per-call timeout enforced by the host. See the host's `dispatcher.go` and `server.go` for current values.
 
+### `register` output
+
+`register` returns the static manifest echoed back, plus two fields the SDK
+derives at runtime (so authors maintain neither by hand):
+
+- **`subscriptions`** — `{ notify: [{event}], filter: [{event, priority?}] }`, derived from which handlers the plugin defined. The host validates these against the sidecar manifest's permissions.
+- **`commands`** — `[{ name, prefix, description?, usage?, aliases?, modOnly? }]`, derived from the plugin's `defineCommands`/`commands` table. Purely informational: the host aggregates it across all loaded plugins to answer the host-owned `!help` (the plugin's own router does the matching). Empty when the plugin declares no commands.
+
 ## Imports (host → plugin)
 
-Host functions are wired in conditionally based on the manifest's declared permissions. A plugin that doesn't declare a permission won't see the matching imports, calling a wrapper that needs an absent import throws a clear error in the SDK.
+Because all plugins of a language share one engine, the engine imports the **full** set of host functions and the host enforces **permissions at call time**: every host function resolves the calling plugin's identity (from a per-instance config value the host sets at load) and rejects the call — returning a zero/empty result and logging — when the plugin's manifest didn't grant the matching permission. The SDK wrappers still map one-to-one to these imports, so an author only ever calls the ones their permissions allow. (A self-contained wasm plugin that imports an ungranted host function instead fails to link at instantiation, the older structural enforcement.)
 
 ### `chat.send`
 
@@ -145,11 +153,11 @@ These paths under `/plugins/<name>/` are owned by the host. The plugin's `on_htt
 
 ### `GET /api/plugins/<name>/icon`
 
-Returns the raw bytes of the plugin's `icon.png` if one was bundled at the root of the `.ocpkg` (or sits next to the `.wasm` as `<base>.icon.png` for the loose-files layout). 404 when no icon is present. No `http.serve` permission required: this is a host endpoint, served independently of the plugin's own routes, so a plugin that ships an icon for the admin UI doesn't need any HTTP surface of its own. Returned with `Content-Type: image/png` and `Cache-Control: no-cache` so a swapped icon shows up on the next admin reload.
+Returns the raw bytes of the plugin's `icon.png` if one was bundled at the root of the `.ocpkg` (or next to the plugin's code file as `<base>.icon.png` for the loose-files layout). 404 when no icon is present. No `http.serve` permission required: this is a host endpoint, served independently of the plugin's own routes, so a plugin that ships an icon for the admin UI doesn't need any HTTP surface of its own. Returned with `Content-Type: image/png` and `Cache-Control: no-cache` so a swapped icon shows up on the next admin reload.
 
 ### `GET /api/admin/plugins/<name>/instructions`
 
-Returns the raw markdown of the plugin's `INSTRUCTIONS.md` if one was bundled at the root of the `.ocpkg` (or sits next to the `.wasm` as `<base>.INSTRUCTIONS.md` for the loose-files layout). 404 when none is present. Admin-authenticated, since it's part of the plugin-management API rather than a public asset. No `http.serve` permission required. Returned with `Content-Type: text/markdown` and `Cache-Control: no-cache` so swapped instructions show up on the next admin reload; the admin UI renders the markdown in an **Instructions** tab on the plugin's details page.
+Returns the raw markdown of the plugin's `INSTRUCTIONS.md` if one was bundled at the root of the `.ocpkg` (or next to the plugin's code file as `<base>.INSTRUCTIONS.md` for the loose-files layout). 404 when none is present. Admin-authenticated, since it's part of the plugin-management API rather than a public asset. No `http.serve` permission required. Returned with `Content-Type: text/markdown` and `Cache-Control: no-cache` so swapped instructions show up on the next admin reload; the admin UI renders the markdown in an **Instructions** tab on the plugin's details page.
 
 ### `GET /plugins/<name>/_sse/<channel>`
 

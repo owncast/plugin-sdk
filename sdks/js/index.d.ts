@@ -312,6 +312,22 @@ export interface TickEvent {
 }
 
 export interface PluginDef {
+  /** Declarative chat-command table. When set, the SDK wires the chat
+   *  subscription and prefix parsing for you — no onChatMessage needed. Maps
+   *  canonical command name → definition (run/description/usage/aliases/
+   *  modOnly/cooldownMs/...); see {@link CommandDefinition}. For advanced
+   *  composition (e.g. dropping command messages via a filter) use the
+   *  lower-level {@link defineCommands} router instead. If you also provide
+   *  onChatMessage, the router runs first and then onChatMessage runs for every
+   *  message. */
+  commands?: Record<string, CommandDefinition>;
+  /** Command prefix for the `commands` table. Default "!". */
+  commandPrefix?: string;
+  /** Match command names case-sensitively. Default false. */
+  commandsCaseSensitive?: boolean;
+  /** Called when a prefixed message matched no command in `commands`. */
+  onUnknownCommand?(ctx: CommandContext): void;
+
   /** Notification handler for chat messages. Fire-and-forget. */
   onChatMessage?(msg: ChatMessage): void | Promise<void>;
 
@@ -407,6 +423,11 @@ export interface CommandContext {
 
 /** One command in a {@link defineCommands} table. */
 export interface CommandDefinition {
+  /** Short, human-readable summary of what the command does. Surfaced in
+   *  command listings (e.g. a future `!help`); ignored by the router itself. */
+  description?: string;
+  /** Optional usage/example string, e.g. "!latency <0-4>". */
+  usage?: string;
   /** Alternate names that invoke this command. */
   aliases?: string[];
   /** Only allow senders whose scopes include "MODERATOR". */

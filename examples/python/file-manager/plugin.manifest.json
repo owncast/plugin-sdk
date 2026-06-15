@@ -2,7 +2,7 @@
   "api": "1",
   "name": "Example File Manager",
   "slug": "file-manager",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Browse, upload, and delete files in the plugin's own private sandboxed storage (storage.fs), from an admin page. This example was written in Python.",
   "permissions": [
     "http.serve",

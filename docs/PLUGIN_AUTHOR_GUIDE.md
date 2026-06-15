@@ -2,6 +2,13 @@
 
 How to write, test, and ship a plugin. Aimed at JavaScript developers. Write some JS, run a command, get a plugin.
 
+> There's also a **Python SDK** (`owncast-plugin-py`) with the same capabilities
+> and a parallel API (snake_case fields, `@plugin` decorators / `plugin.commands`).
+> This guide's examples are JavaScript; the `examples/python/` directory mirrors
+> every example shown here. Either way you ship source — the host runs it on a
+> shared, embedded interpreter engine, so plugins don't bundle a runtime and
+> packages are a few KB.
+
 ## Contents
 
 - [Quick start](#quick-start)
@@ -45,8 +52,8 @@ How to write, test, and ship a plugin. Aimed at JavaScript developers. Write som
 ```sh
 npx create-owncast-plugin@latest my-plugin
 cd my-plugin
-npm install      # one-time toolchain fetch
-npm run build    # compile src/plugin.js to an intermediate build artifact
+npm install      # one-time: fetches the test/serve binaries
+npm run build    # bundle src/plugin.js into the shippable plugin.js
 npm test         # build, then run scenarios from __tests__/
 npm run serve    # build, then host the plugin on http://localhost:8080
 npm run package  # build, then bundle into my-plugin.ocpkg for distribution
@@ -356,46 +363,89 @@ filterChatMessage(msg) {
 `replyTo(msg, text)` is sugar over `sendTo(msg.clientId, text)`; pass a bare
 `clientId` if that's all you have.
 
-### Command framework
+### Commands and `!help`
 
 Rather than hand-rolling prefix parsing, aliases, cooldowns, and moderator
-gating in every chat bot, build a router with `defineCommands` and feed it your
-chat messages:
+gating, declare a **command table** and the SDK wires the chat subscription and
+prefix parsing for you — there's no `onChatMessage` to write. Give each command
+a `description` so it appears in the built-in `!help`:
 
 ```js
-const { definePlugin, defineCommands, filter } = require("@owncast/plugin-sdk");
+const { definePlugin } = require("@owncast/plugin-sdk");
 
-const commands = defineCommands({
-  prefix: "!", // default
+module.exports = definePlugin({
+  commandPrefix: "!", // optional, default "!"
   commands: {
-    uptime: { run: (ctx) => ctx.reply("we've been live a while!") },
+    uptime: {
+      description: "How long we've been live",
+      run: (ctx) => ctx.reply("we've been live a while!"),
+    },
     so: {
+      description: "Shout out a viewer",
+      usage: "!so <name>",
       aliases: ["shoutout"],
       cooldownMs: 10_000, // per user, clocked off msg.timestamp
       run: (ctx) => ctx.reply(`go follow ${ctx.args[0] || "someone cool"}`),
     },
     clear: {
+      description: "Clear the chat",
       modOnly: true, // requires the sender's scopes to include "MODERATOR"
       run: (ctx) => ctx.replyPrivately("done"),
       onDenied: (ctx) => ctx.replyPrivately("mods only"),
     },
   },
-  onUnknown: (ctx) => ctx.replyPrivately(`unknown command: ${ctx.command}`),
+  onUnknownCommand: (ctx) => ctx.replyPrivately(`unknown command: ${ctx.command}`),
 });
+```
 
+Each `run(ctx)` gets `{ msg, user, command, args, argString, reply, replyPrivately }`
+— `reply` posts publicly, `replyPrivately` whispers to the sender. Gating uses
+the sender identity on the message (`user.scopes`, `user.id`), so it's reliable,
+not a display-name guess.
+
+**Python** is identical via `plugin.commands(...)` (snake_case fields):
+
+```python
+from owncast_plugin import plugin, owncast
+
+plugin.commands({
+    "uptime": {"description": "How long we've been live",
+               "run": lambda ctx: ctx.reply("we've been live a while!")},
+})
+```
+
+#### `!help` is automatic
+
+The **host** owns `!help` — type it in chat and the host lists every command's
+`description` across all enabled plugins, posted as a system message. You don't
+implement it, and it works even if your plugin holds no `chat.send` permission.
+`modOnly` commands are hidden from non-moderators. The only thing you do to take
+part is declare a command table with descriptions.
+
+#### Hand-rolling is fine too
+
+For a single fixed command you can just check `msg.body` in `onChatMessage` (see
+the `ip-bot` and `relay` examples) — you simply won't show up in `!help` unless
+you declare a command table.
+
+#### Low-level router (`defineCommands`)
+
+The `commands` field is sugar over `defineCommands`, which returns a router you
+feed messages yourself. Reach for it when you want to compose — e.g. drop
+command messages from chat via a filter:
+
+```js
+const { definePlugin, defineCommands, filter } = require("@owncast/plugin-sdk");
+const commands = defineCommands({ commands: { /* same shape as above */ } });
 module.exports = definePlugin({
-  onChatMessage: commands,
-  // To hide command messages from chat, route through the filter instead:
-  // filterChatMessage: (msg) => (commands(msg) ? filter.drop("command") : filter.pass()),
+  filterChatMessage: (msg) => (commands(msg) ? filter.drop("command") : filter.pass()),
 });
 ```
 
 `commands(msg)` returns `true` when the message was a command (even if gated by
-`modOnly`/cooldown), `false` otherwise. Each `run(ctx)` gets
-`{ msg, user, command, args, argString, reply, replyPrivately }` — `reply` posts
-publicly, `replyPrivately` whispers to the sender. Gating uses the sender
-identity on the message (`user.scopes`, `user.id`), so it's reliable, not a
-display-name guess.
+`modOnly`/cooldown), `false` otherwise (Python: `define_commands(...)`). You can
+also combine the `commands` field with your own `onChatMessage`: both run on
+every chat message — the router first, then your handler.
 
 ## Permissions
 
@@ -977,7 +1027,7 @@ For repeatable assertions use `npm test` (scenario tests); the dev server is for
 
 ## Deployment
 
-A `.ocpkg` is the distribution format: a single file containing your `plugin.manifest.json`, the compiled plugin, your `public/` and `assets/` directories if you have them, and the optional `icon.png` and `INSTRUCTIONS.md`. It's what a server admin installs into Owncast; they don't see your `package.json`, `node_modules`, or anything else.
+A `.ocpkg` is the distribution format: a single file containing your `plugin.manifest.json`, your plugin **source** (`plugin.js` for JavaScript or `plugin.py` for Python — the interpreter lives in the Owncast host, so you ship source, not a compiled module), your `public/` and `assets/` directories if you have them, and the optional `icon.png` and `INSTRUCTIONS.md`. The host infers the runtime from that filename, so the manifest needs no `type` field. It's what a server admin installs into Owncast; they don't see your `package.json`, `node_modules`, or anything else.
 
 Bundle the `.ocpkg`:
 

@@ -7,6 +7,11 @@
 
 let registered = null;
 
+// Command metadata recorded by defineCommands, reported to the host via
+// register() so it can build a unified `!help` across all plugins. One entry
+// per command: { name, prefix, description, usage, aliases, modOnly }.
+const commandManifest = [];
+
 // Host-driven timers. The sandbox has no setTimeout, so owncast.timer.* asks
 // the host to schedule a callback and call back via the internal "timer.fire"
 // event. The author's callback stays here in the long-lived instance, keyed by
@@ -149,6 +154,28 @@ const isFn = (x) => typeof x === JsType.Function;
 const isObj = (x) => x !== null && typeof x === JsType.Object;
 
 function definePlugin(def) {
+  // `commands` is declarative sugar: give definePlugin a command table (and an
+  // optional commandPrefix) and the SDK wires the chat subscription for you —
+  // no onChatMessage needed. It expands into an onChatMessage handler here, so
+  // subscription derivation and dispatch treat it like any chat handler. If you
+  // also pass onChatMessage, the command router runs first, then your handler.
+  // For advanced composition (e.g. dropping command messages from chat via a
+  // filter), use the lower-level defineCommands() router directly instead.
+  if (def && isObj(def.commands)) {
+    const router = defineCommands({
+      prefix: def.commandPrefix,
+      caseSensitive: def.commandsCaseSensitive,
+      commands: def.commands,
+      onUnknown: def.onUnknownCommand,
+    });
+    const userHandler = def.onChatMessage;
+    def.onChatMessage = isFn(userHandler)
+      ? (msg) => {
+          router(msg);
+          userHandler(msg);
+        }
+      : router;
+  }
   registered = def;
   return def;
 }
@@ -183,13 +210,24 @@ function defineCommands(config) {
   const caseSensitive = !!config.caseSensitive;
   const norm = (s) => (caseSensitive ? s : s.toLowerCase());
 
-  // Resolve every name and alias to its canonical command definition.
+  // Resolve every name and alias to its canonical command definition, and
+  // record metadata so the host can build a unified `!help` (see
+  // describeCommands). Metadata is reported via register(); it never affects
+  // routing.
   const table = new Map();
   const defs = config.commands || {};
   for (const name of Object.keys(defs)) {
     const def = defs[name];
     table.set(norm(name), { name, def });
     for (const alias of def.aliases || []) table.set(norm(alias), { name, def });
+    commandManifest.push({
+      name,
+      prefix,
+      description: def.description || "",
+      usage: def.usage || "",
+      aliases: def.aliases || [],
+      modOnly: !!def.modOnly,
+    });
   }
 
   // Per-(command,user) cooldown clock, in memory for the plugin's lifetime.
@@ -284,6 +322,13 @@ function describeSubscriptions() {
     }
   }
   return { notify, filter: filterSubs };
+}
+
+// Used by the build-generated entry to report the plugin's chat commands in
+// register(), so the host can answer a unified `!help`. Empty when the plugin
+// declares no commands.
+function describeCommands() {
+  return commandManifest;
 }
 
 function dispatchEvent(envelope) {
@@ -909,6 +954,7 @@ module.exports = {
   Events,
   Permissions,
   describeSubscriptions,
+  describeCommands,
   dispatchEvent,
   dispatchFilter,
   dispatchHttp,

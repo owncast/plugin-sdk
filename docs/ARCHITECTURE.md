@@ -9,55 +9,70 @@ protocol, see the [Wire Protocol](./WIRE_PROTOCOL.md).
 
 This repository is where the Owncast plugin system is developed. It contains:
 
-- the **host runtime** (Go) that loads and runs plugins,
-- the **JavaScript SDK** authors write plugins against, plus the build CLI and a
-  project scaffolder,
-- the **toolchain** that compiles a plugin to WebAssembly,
-- **example plugins** and their tests.
-
-The host runtime is also the code that gets vendored into the Owncast server to
-run plugins in production. So this repo is both the SDK _and_ the reference host;
-Owncast embeds a copy of `host-runtime/plugin` (see
-[Relationship to Owncast](#relationship-to-owncast)).
+- the **JavaScript and Python SDKs** authors write plugins against, plus the
+  build CLIs and a project scaffolder,
+- the **shared interpreter engines** (one per language) and the toolchain that
+  builds them,
+- the **host runtime** (Go) that loads and runs plugins — the runtime itself now
+  lives in Owncast (`services/plugins`) and is imported here (see
+  [Relationship to Owncast](#relationship-to-owncast)),
+- **example plugins** (parallel JS and Python ports) and their tests.
 
 ## Execution model
 
-A plugin is authored in JavaScript/TypeScript and compiled to a WebAssembly
-module by [`extism-js`](https://github.com/extism/js-pdk) (which embeds a QuickJS
-interpreter). The host loads that module with [Extism](https://extism.org), built
-on [Wazero](https://wazero.io), a pure-Go wasm runtime (no CGo, no subprocess).
+Plugins are authored in **JavaScript/TypeScript or Python**. Rather than each
+plugin compiling its own interpreter into a self-contained module, the host
+embeds **one shared engine per language** — a QuickJS (JS) or CPython (Python)
+interpreter compiled to WebAssembly with the Extism PDK
+([`extism-js`](https://github.com/extism/js-pdk) /
+[`extism-py`](https://github.com/extism/python-pdk)). The host compiles each
+engine **once** with [Extism](https://extism.org) on [Wazero](https://wazero.io)
+(pure-Go wasm, no CGo/subprocess) and **instantiates it per plugin**, injecting
+the plugin's source via Extism config at load. This collapses per-plugin memory
+(N plugins share one compiled engine instead of N copies) and shrinks plugin
+packages from megabytes to a few KB.
 
-- The plugin exports a fixed set of functions: `register`, `on_event`,
-  `on_filter`, `on_http_request`.
-- The host provides **host functions** (`owncast_*`) the plugin may import, but
-  only the ones its manifest's **permissions** allow. Importing an ungranted
-  host function fails at instantiation, so permissions are enforced structurally,
-  not just by convention.
+A plugin authored directly as a self-contained wasm module (Rust/Go/etc.) is
+also supported and loaded as-is; the host picks the path from the package's code
+file (see [build flow](#toolchain-and-build-flow)).
+
+- Every plugin exports the same fixed functions: `register`, `on_event`,
+  `on_filter`, `on_http_request`, `on_tab_content`, `on_page_content`.
+- The host provides **host functions** (`owncast_*`). Because all plugins of a
+  language share one engine, the engine imports the full set and the host
+  enforces each plugin's **permissions at call time**: a host function resolves
+  the calling plugin's identity (from a per-instance config value) and rejects
+  the call if the plugin's manifest didn't grant the permission.
 - Everything crosses the boundary as JSON.
 
 ## Repository layout
 
 ```
-host-runtime/            Go module: the host runtime + the two Go CLIs
-  plugin/                the runtime library (see below)
+host-runtime/            Go module: imports the runtime + builds the two Go CLIs
   cmd/owncast-plugin-serve/   localhost dev server
   cmd/owncast-plugin-test/    scenario test runner
   main.go                a demo host that simulates a stream
 sdks/js/                 @owncast/plugin-sdk, the npm package
-  index.js               definePlugin() + the owncast.* host wrappers
+  index.js               definePlugin()/defineCommands() + the owncast.* wrappers
   index.d.ts             TypeScript types (the author-facing contract)
   bin/owncast-plugin.js  the build/package/test/serve CLI
-  scripts/postinstall.js fetches the toolchain binaries
+  scripts/postinstall.js fetches the test/serve binaries
   create-owncast-plugin/ npm initializer (scaffolder)
-examples/js/             one self-contained example plugin per directory
-tools/                   toolchain binaries (fetched/built; gitignored)
+sdks/python/             owncast-plugin-py: the Python SDK + build CLI
+engines/                 the shared engines' fixed bootstrap + build scripts
+  javascript/entry.js    the JS engine bootstrap (SDK + dispatch + script loader)
+  build.mjs, build_py.py  build the engine wasms, copy them into Owncast's embed dir
+examples/js/, examples/python/   parallel example plugins (one dir per plugin)
+tools/                   engine-build toolchain (extism-js/py, binaryen; gitignored)
 docs/                    these documents
 .github/workflows/       release workflow for the Go binaries
 ```
 
-## The host runtime (`host-runtime/plugin`)
+## The host runtime (`services/plugins`)
 
-The core library. Key files:
+The core library — it lives in the Owncast repo (`services/plugins`) as the
+single source of truth, and `host-runtime/` here imports it so the dev CLIs run
+the exact production code. Key files:
 
 - **`manager.go`**, discovers plugins in a directory, tracks them as
   _discovered_ vs _enabled_, and handles enable/disable/reload. The enabled set
@@ -70,7 +85,16 @@ The core library. Key files:
   the plugin pushes to.
 - **`hostfns.go`**, the heart of the contract: the host-function definitions,
   the **permission** constants, and the **types** plugins receive. Every host
-  function reads a function-pointer field from a `HostEnv` struct.
+  function reads a function-pointer field from a `HostEnv` struct and resolves
+  the **calling plugin's identity + permission at call time** (see `registry.go`).
+- **`engines/`** + **`engine_cache.go`**, the embedded per-language engine wasms
+  (`go:embed`) and the cache that compiles each once and instantiates it per
+  plugin.
+- **`registry.go`**, the per-plugin identity registry shared host functions look
+  up to scope a call (slug, granted permissions, kv namespace, assets) — the
+  call-time replacement for the old per-plugin closures.
+- **`help.go`**, the host-owned unified `!help`: aggregates each plugin's
+  reported command metadata and renders the listing.
 - **`kv/`**, the key/value store interface plugins get (memory + bolt
   implementations here; Owncast backs it with its datastore).
 - **`testing/`**, a mock host (`MockHost`) and the scenario runner used by
@@ -122,36 +146,52 @@ contract these three representations encode.
 
 ## Toolchain and build flow
 
-`owncast-plugin build` (in `sdks/js/bin/owncast-plugin.js`) turns a plugin
-project into a `.wasm`:
+There are two separate builds: the **engines** (built rarely, by maintainers)
+and an author's **plugin** (built often, by anyone — no wasm toolchain needed).
 
-1. **esbuild** bundles the author's `src/plugin.{ts,js}` + the SDK runtime into a
-   single CommonJS file targeting QuickJS.
-2. **`extism-js`** compiles that bundle to wasm, using a generated
-   `index.d.ts` that declares exactly the host imports the manifest's permissions
-   allow.
-3. **binaryen** (`wasm-merge`/`wasm-opt`) post-processes the module.
-4. `owncast-plugin package` zips the manifest + wasm + `public/` (web-served)
-   + `assets/` (host-read for manifest-inlined content), plus the optional
-   `icon.png` and `INSTRUCTIONS.md`, into a single `.ocpkg`.
+### Building a plugin (what authors run)
 
-The toolchain binaries are fetched by the npm `postinstall`
-(`sdks/js/scripts/postinstall.js`) into `sdks/js/bin/.cache`:
+Because the interpreter is host-side, an author's build just produces their
+**source**, not a wasm module:
 
-- `extism-js` from [extism/js-pdk](https://github.com/extism/js-pdk) releases,
-- `wasm-merge`/`wasm-opt` from [binaryen](https://github.com/WebAssembly/binaryen)
-  releases,
-- `owncast-plugin-test` and `owncast-plugin-serve` from **this repo's** GitHub
-  releases (they're Go binaries built from `host-runtime/`). `tools/bootstrap.sh`
-  builds them locally for development.
+- **JS** (`sdks/js/bin/owncast-plugin.js`): `owncast-plugin build` runs **esbuild**
+  to bundle `src/plugin.{ts,js}` into a single CommonJS file with
+  `@owncast/plugin-sdk` marked _external_ (the SDK lives in the engine), emitting
+  `<slug>.js`.
+- **Python** (`sdks/python`): the build strips the SDK import line and emits
+  `<slug>.py` (the SDK is a global in the engine).
 
-`.github/workflows/release.yml` cross-compiles those two Go binaries (pure Go,
-`CGO_ENABLED=0`) for linux/darwin × amd64/arm64 on every `v*` tag and uploads
-them as release assets named to match what `postinstall.js` downloads.
+`owncast-plugin package` then zips the manifest + that code file + `public/`
+(web-served) + `assets/` (host-read for manifest-inlined content), plus optional
+`icon.png` / `INSTRUCTIONS.md`, into a single `.ocpkg`. The code entry is named
+by language — **`plugin.js`**, **`plugin.py`**, or **`plugin.wasm`** for a
+self-contained module — and the host **infers the runtime from that filename**,
+so the manifest needs no `type` field. Authors no longer touch `extism-js`/
+`extism-py` or binaryen at all.
+
+### Building the engines (what maintainers run)
+
+`engines/build.mjs` and `engines/build_py.py` compile the fixed bootstrap entry
+(SDK runtime + dispatch shim + a loader that reads the plugin's source from
+config) into `engine.wasm` per language, via **`extism-js`/`extism-py`** +
+**binaryen**, and copy the result into Owncast's embed dir
+(`services/plugins/engines/{javascript,python}/engine.wasm`, committed so
+Owncast's Go build stays toolchain-free). `make` fetches the engine toolchain
+itself (`engines/install-toolchain.mjs` → `engines/.toolchain/`); the
+author-facing SDK install does **not** ship any wasm tooling. Rebuild + recommit
+when the SDK runtime or bootstrap changes — full runbook in
+[`engines/README.md`](../engines/README.md).
+
+The npm `postinstall` (`sdks/js/scripts/postinstall.js`) fetches just the
+`owncast-plugin-test` / `owncast-plugin-serve` Go binaries (built from
+`host-runtime/`) for `test`/`serve` — that's all an author's install downloads;
+`tools/bootstrap.sh` builds them locally. `.github/workflows/release.yml`
+cross-compiles those two (pure Go, `CGO_ENABLED=0`) for linux/darwin ×
+amd64/arm64 on every `v*` tag.
 
 ## Command-line tools
 
-- `owncast-plugin build` / `package`, compile / bundle a plugin.
+- `owncast-plugin build` / `package`, bundle a plugin's source into a `.ocpkg`.
 - `owncast-plugin test`, run `__tests__/*.test.json` scenarios against a built
   plugin (delegates to the `owncast-plugin-test` Go binary, which uses the real
   runtime with `MockHost`).
@@ -162,8 +202,9 @@ them as release assets named to match what `postinstall.js` downloads.
 ## Testing
 
 - **Scenario tests** (`*.test.json`) describe `given` state, `events`/`http`
-  steps, and `expect` assertions; the runner loads the real wasm with `MockHost`,
-  so passing here means the same code path passes in production.
+  steps, and `expect` assertions; the runner loads the plugin on the real
+  embedded engine with `MockHost`, so passing here means the same code path
+  passes in production.
 - **Go tests** cover the runtime packages (`manager`, `dispatcher`, `server`,
   `sse`, `testing`).
 - **Contract/drift tests** keep the Go/TS/snapshot representations aligned.

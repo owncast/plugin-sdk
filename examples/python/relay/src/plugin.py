@@ -1,3 +1,7 @@
+# One command with a custom "/" prefix and a free-text argument, parsed by hand
+# to show manual parsing is fine. A plugin.commands({...}) table (used by
+# stream-ops / stream-tracker / timer-bot) also supports a custom prefix if you
+# outgrow this.
 from owncast_plugin import plugin, owncast
 
 ANNOUNCEMENT_BROADCAST = "announcement.broadcast"

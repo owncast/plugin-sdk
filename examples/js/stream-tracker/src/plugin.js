@@ -2,11 +2,11 @@
 //
 // On stream lifecycle / chat user activity, it persists a small running
 // state in plugin config (when the stream started; who's currently in
-// chat). When a
-// viewer types !uptime, !who, or !server, it answers via owncast.chat.send
-//, posting as the plugin's own bot ("stream-tracker") which the host
-// provisions automatically. Action-style messages announce stream start /
-// title changes.
+// chat). Interactive commands (!uptime, !who, !server) are declared with
+// definePlugin's `commands` table — the SDK wires the chat subscription, so
+// there's no onChatMessage — and answered via owncast.chat.send, posting as
+// the plugin's own bot ("stream-tracker") which the host provisions
+// automatically. Action-style messages announce stream start / title changes.
 const { definePlugin, owncast } = require("@owncast/plugin-sdk");
 
 function userList() {
@@ -56,40 +56,46 @@ module.exports = definePlugin({
     );
   },
 
-  // ── interactive commands ────────────────────────────────────────────
-  onChatMessage(msg) {
-    const body = msg.body.trim();
-    if (body === "!uptime") {
-      const state = owncast.stream.current();
-      if (!state.online) {
-        owncast.chat.send("stream is offline");
-        return;
-      }
-      // "Now" is the moment the user asked, not wallclock.
-      const askedAt = msg.timestamp
-        ? new Date(msg.timestamp).getTime()
-        : Date.now();
-      const startedAt = state.startedAt
-        ? new Date(state.startedAt).getTime()
-        : askedAt;
-      const seconds = Math.floor((askedAt - startedAt) / 1000);
-      owncast.chat.send(
-        `uptime: ${seconds}s, ${state.viewers} viewer(s), "${state.title}"`,
-      );
-      return;
-    }
-    if (body === "!who") {
-      const users = userList();
-      owncast.chat.send(
-        users.length === 0
-          ? "no one's here yet"
-          : `in chat: ${users.join(", ")}`,
-      );
-      return;
-    }
-    if (body === "!server") {
-      const info = owncast.server.info();
-      owncast.chat.send(`${info.name} v${info.version}, ${info.summary}`);
-    }
+  // ── interactive commands (no onChatMessage needed) ──────────────────
+  commands: {
+    uptime: {
+      description: "How long the stream has been live, plus viewers and title",
+      run: (ctx) => {
+        const state = owncast.stream.current();
+        if (!state.online) {
+          ctx.reply("stream is offline");
+          return;
+        }
+        // "Now" is the moment the user asked, not wallclock.
+        const askedAt = ctx.msg.timestamp
+          ? new Date(ctx.msg.timestamp).getTime()
+          : Date.now();
+        const startedAt = state.startedAt
+          ? new Date(state.startedAt).getTime()
+          : askedAt;
+        const seconds = Math.floor((askedAt - startedAt) / 1000);
+        ctx.reply(
+          `uptime: ${seconds}s, ${state.viewers} viewer(s), "${state.title}"`,
+        );
+      },
+    },
+    who: {
+      description: "List who's currently in chat",
+      run: () => {
+        const users = userList();
+        owncast.chat.send(
+          users.length === 0
+            ? "no one's here yet"
+            : `in chat: ${users.join(", ")}`,
+        );
+      },
+    },
+    server: {
+      description: "Show the server name, version, and summary",
+      run: () => {
+        const info = owncast.server.info();
+        owncast.chat.send(`${info.name} v${info.version}, ${info.summary}`);
+      },
+    },
   },
 });

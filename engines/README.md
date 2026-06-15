@@ -26,11 +26,13 @@ Regenerate whenever any of these change:
 You do **not** regenerate engines to publish a plugin — author plugins ship
 source and run on whatever engine the host already embeds.
 
-## Prerequisites (one-time)
+## Prerequisites
 
-- **Node** (this repo uses 24.x) and, in `sdks/js/`, `npm install` — its
-  postinstall fetches `extism-js` + binaryen into `sdks/js/bin/.cache`, which the
-  JS engine build uses.
+- **Node** (this repo uses 24.x). `make` fetches the JS engine toolchain
+  (`extism-js` + binaryen) itself into `engines/.toolchain/` via
+  `install-toolchain.mjs` — you do **not** need `npm install` for this, and the
+  author-facing `@owncast/plugin-sdk` install no longer downloads any wasm
+  tooling.
 - **Python 3** and the `extism-py` toolchain. The Python SDK fetches it on first
   use; running any Python plugin build once (or `owncast-plugin-py build`)
   populates `~/.cache/owncast-plugin-sdk/`. Override the binary with `EXTISM_PY`.

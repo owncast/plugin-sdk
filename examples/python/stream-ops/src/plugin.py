@@ -1,40 +1,56 @@
 # stream-ops: exercises read-only broadcast telemetry, the video config
-# read/write pair, and the permission split between them.
+# read/write pair, and the permission split between them. Commands are declared
+# with plugin.commands(...) — the SDK wires the chat subscription and prefix
+# parsing, so there's no on_chat_message to write.
 #
 #   !broadcaster   - the inbound encode (resolution + codecs). Read-only
-#                    telemetry; there's nothing to write, so it lives under
-#                    the plain `server.read` permission.
+#                    telemetry under the plain `server.read` permission.
 #   !videoconfig   - the current output config (latency, codec, variant
-#                    count). Settable knobs, read under `videoconfig.read`.
+#                    count), read under `videoconfig.read`.
 #   !latency <n>   - change the output latency level via
 #                    owncast.video_config.write, a write that needs the
 #                    separate, higher-privilege `videoconfig.write`. Partial
 #                    update: only latencyLevel is sent, leaving codec/variants
 #                    untouched.
-import re
-
 from owncast_plugin import plugin, owncast
 
 
-@plugin.on_chat_message
-def stream_ops(msg):
-    body = (msg.body or "").strip()
+def _broadcaster(ctx):
+    b = owncast.stream.broadcaster()
+    codecs = "/".join(b.codecs or []) or "?"
+    owncast.chat.send(f"broadcaster: {b.resolution or '?'} via {codecs}")
 
-    if body == "!broadcaster":
-        b = owncast.stream.broadcaster()
-        codecs = "/".join(b.codecs or []) or "?"
-        owncast.chat.send(f"broadcaster: {b.resolution or '?'} via {codecs}")
+
+def _videoconfig(ctx):
+    c = owncast.video_config.read()
+    owncast.chat.send(
+        f"latency {c.latency_level}, codec {c.codec}, {len(c.variants)} variant(s)"
+    )
+
+
+def _latency(ctx):
+    if not ctx.args:
         return
-
-    if body == "!videoconfig":
-        c = owncast.video_config.read()
-        owncast.chat.send(
-            f"latency {c.latency_level}, codec {c.codec}, {len(c.variants)} variant(s)"
-        )
+    try:
+        level = int(ctx.args[0])
+    except ValueError:
         return
+    owncast.video_config.write({"latencyLevel": level})
+    owncast.chat.send(f"latency set to {level}")
 
-    m = re.match(r"^!latency\s+(\d+)$", body)
-    if m:
-        level = int(m.group(1))
-        owncast.video_config.write({"latencyLevel": level})
-        owncast.chat.send(f"latency set to {level}")
+
+plugin.commands({
+    "broadcaster": {
+        "description": "Report the inbound encode (resolution + codecs)",
+        "run": _broadcaster,
+    },
+    "videoconfig": {
+        "description": "Report the current output video config (latency, codec, variants)",
+        "run": _videoconfig,
+    },
+    "latency": {
+        "description": "Set the output latency level",
+        "usage": "!latency <n>",
+        "run": _latency,
+    },
+})

@@ -25,27 +25,6 @@ function fail(e) {
   process.exit(1);
 }
 
-// toolchainEnv extends the current environment with the variables
-// the dynamic linker needs to find `libbinaryen` next to `wasm-merge`
-// and `wasm-opt` (which extism-js shells out to during the wasm
-// pipeline). Linux uses LD_LIBRARY_PATH; macOS uses DYLD_LIBRARY_PATH
-// plus DYLD_FALLBACK_LIBRARY_PATH (Apple Silicon strips
-// DYLD_LIBRARY_PATH in some sandboxed contexts, the FALLBACK
-// variant survives). Setting all three is safe on both OSes; the
-// inactive ones are ignored. This is the difference between "build
-// succeeds" and `library not loaded: @rpath/libbinaryen.dylib` on
-// macOS.
-function toolchainEnv(cache) {
-  const libDir = path.join(cache, "lib");
-  return {
-    ...process.env,
-    PATH: `${cache}:${process.env.PATH}`,
-    LD_LIBRARY_PATH: `${libDir}:${process.env.LD_LIBRARY_PATH || ""}`,
-    DYLD_LIBRARY_PATH: `${libDir}:${process.env.DYLD_LIBRARY_PATH || ""}`,
-    DYLD_FALLBACK_LIBRARY_PATH: `${libDir}:${process.env.DYLD_FALLBACK_LIBRARY_PATH || "/usr/local/lib:/usr/lib"}`,
-  };
-}
-
 // slugPattern matches a valid plugin slug: a lowercase letter
 // followed by lowercase letters/digits/hyphens, up to 64 chars total.
 // Same shape the host + SDK + registry all validate against.
@@ -127,11 +106,9 @@ function runBinary(name, args) {
     );
     process.exit(1);
   }
-  const env = toolchainEnv(cache);
   try {
     execFileSync(bin, args.length > 0 ? args : [process.cwd()], {
       stdio: "inherit",
-      env,
     });
   } catch (e) {
     process.exit(typeof e.status === "number" ? e.status : 1);
@@ -302,112 +279,6 @@ function* walkFiles(dir) {
   }
 }
 
-function generateInterface(manifest) {
-  const exports = [
-    "register(): I32",
-    "on_event(): I32",
-    "on_filter(): I32",
-    "on_http_request(): I32",
-    "on_tab_content(): I32",
-    "on_page_content(): I32",
-  ];
-
-  const perms = new Set(manifest.permissions || []);
-  const imports = [];
-  // Timers are ambient (no permission): the host always provides them, since
-  // a plugin can't setTimeout in the sandbox.
-  imports.push("owncast_timer_set(id: I64, delayMs: I64, repeat: I64): I64");
-  imports.push("owncast_timer_clear(id: I64): void");
-  // Config is ambient too: a plugin reading its own manifest-declared config
-  // (admin override falling back to the declared default) needs no permission.
-  imports.push("owncast_config_get(keyPtr: PTR): PTR");
-  // Asset reading is ambient: a plugin reads only files it shipped itself.
-  imports.push("owncast_asset_read(pathPtr: PTR): PTR");
-  if (perms.has("chat.send")) {
-    imports.push("owncast_send_chat(textPtr: PTR): void");
-    imports.push("owncast_send_chat_action(textPtr: PTR): void");
-    imports.push("owncast_send_chat_system(bodyPtr: PTR): void");
-    imports.push("owncast_send_chat_to(clientId: I64, textPtr: PTR): void");
-  }
-  if (perms.has("chat.history")) {
-    imports.push("owncast_chat_history(limit: I64): PTR");
-    imports.push("owncast_chat_clients(): PTR");
-  }
-  if (perms.has("chat.moderate")) {
-    imports.push("owncast_delete_message(idPtr: PTR): void");
-    imports.push("owncast_kick_client(clientId: I64): void");
-  }
-  if (perms.has("notifications.send")) {
-    imports.push("owncast_notify_discord(textPtr: PTR): void");
-    imports.push("owncast_notify_browser_push(payloadPtr: PTR): void");
-    imports.push("owncast_notify_fediverse(payloadPtr: PTR): void");
-  }
-  if (perms.has("users.read")) {
-    imports.push("owncast_users_list(): PTR");
-    imports.push("owncast_user_get(idPtr: PTR): PTR");
-  }
-  if (perms.has("users.moderate")) {
-    imports.push(
-      "owncast_user_set_enabled(idPtr: PTR, enabled: I64, reasonPtr: PTR): void",
-    );
-    imports.push("owncast_ban_ip(ipPtr: PTR): void");
-  }
-  if (perms.has("storage.upload")) {
-    imports.push("owncast_storage_upload(namePtr: PTR, dataPtr: PTR): PTR");
-  }
-  if (perms.has("storage.fs")) {
-    imports.push("owncast_fs_read(pathPtr: PTR): PTR");
-    imports.push("owncast_fs_write(pathPtr: PTR, dataPtr: PTR): PTR");
-    imports.push("owncast_fs_list(dirPtr: PTR): PTR");
-    imports.push("owncast_fs_delete(pathPtr: PTR): PTR");
-    imports.push("owncast_fs_exists(pathPtr: PTR): I64");
-  }
-  if (perms.has("fediverse.post")) {
-    imports.push("owncast_fediverse_post(textPtr: PTR): PTR");
-  }
-  if (perms.has("storage.kv")) {
-    imports.push("owncast_kv_get(keyPtr: PTR): PTR");
-    imports.push("owncast_kv_set(keyPtr: PTR, valPtr: PTR): void");
-  }
-  if (perms.has("events.emit"))
-    imports.push(
-      "owncast_emit_event(eventTypePtr: PTR, payloadPtr: PTR): void",
-    );
-  if (perms.has("http.sse"))
-    imports.push(
-      "owncast_sse_send(channelPtr: PTR, eventPtr: PTR, dataPtr: PTR): void",
-    );
-  if (perms.has("server.read")) {
-    imports.push("owncast_stream_current(): PTR");
-    imports.push("owncast_server_info(): PTR");
-    imports.push("owncast_server_socials(): PTR");
-    imports.push("owncast_server_emotes(): PTR");
-    imports.push("owncast_server_federation(): PTR");
-    imports.push("owncast_stream_broadcaster(): PTR");
-    imports.push("owncast_server_tags(): PTR");
-  }
-  if (perms.has("videoconfig.read")) {
-    imports.push("owncast_video_config_read(): PTR");
-  }
-  if (perms.has("videoconfig.write")) {
-    imports.push("owncast_video_config_write(configPtr: PTR): PTR");
-  }
-  if (perms.has("ui.modify")) {
-    imports.push("owncast_add_actions(actionsPtr: PTR): void");
-    imports.push("owncast_clear_actions(): void");
-  }
-
-  let out = `declare module 'main' {\n`;
-  for (const e of exports) out += `  export function ${e};\n`;
-  out += `}\n`;
-  if (imports.length > 0) {
-    out += `\ndeclare module 'extism:host' {\n  interface user {\n`;
-    for (const i of imports) out += `    ${i};\n`;
-    out += `  }\n}\n`;
-  }
-  return out;
-}
-
 function findCacheDir() {
   // Look in node_modules/@owncast/plugin-sdk/bin/.cache (when used as a dep)
   // and in the repo's tools/ dir (when developing). The dev candidate
@@ -418,12 +289,10 @@ function findCacheDir() {
     path.join(__dirname, "..", "bin", ".cache"),
     path.join(__dirname, "..", "..", "..", "tools"),
   ];
-  // Pick the first candidate that has any of the expected tools, different
-  // commands need different binaries (build needs extism-js, test needs
-  // owncast-plugin-test) but they share a cache.
+  // Pick the first candidate that has the prebuilt host binaries (the only
+  // tooling the SDK ships now — `build` is pure esbuild and needs nothing here).
   for (const c of candidates) {
     if (
-      fs.existsSync(path.join(c, "extism-js")) ||
       fs.existsSync(path.join(c, "owncast-plugin-test")) ||
       fs.existsSync(path.join(c, "owncast-plugin-serve"))
     ) {

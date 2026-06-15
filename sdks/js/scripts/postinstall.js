@@ -1,10 +1,13 @@
 #!/usr/bin/env node
-// Downloads per-platform tooling into <sdk>/bin/.cache so the build CLI
-// finds it without polluting the user's system:
+// Downloads the prebuilt host binaries into <sdk>/bin/.cache so `owncast-plugin
+// test` / `serve` work without polluting the user's system:
 //
-//   - extism-js                 , JS → wasm compiler (extism/js-pdk releases)
-//   - wasm-merge, wasm-opt, lib , binaryen post-processing (WebAssembly/binaryen releases)
 //   - owncast-plugin-test/serve , scenario runner + dev server (this repo's releases)
+//
+// That's all an author needs: plugins ship source and run on the interpreter
+// engine the host already embeds, so the wasm compiler toolchain (extism-js,
+// binaryen) is NOT downloaded here — it's a maintainer-only dependency of the
+// engine build (see engines/install-toolchain.mjs).
 //
 // PoC scope: linux-x86_64 + darwin-arm64 + darwin-x86_64 covered.
 // owncast-plugin-test/serve downloads gracefully skip if the matching
@@ -15,10 +18,7 @@ const fs = require("fs");
 const path = require("path");
 const https = require("https");
 const zlib = require("zlib");
-const { execFileSync } = require("child_process");
 
-const EXTISM_JS_VERSION = "v1.6.0";
-const BINARYEN_VERSION = "version_119";
 const HOST_BINARIES_REPO = "owncast/plugin-sdk";
 
 // The host binaries (owncast-plugin-test/serve) implement the host-function
@@ -98,29 +98,6 @@ function platformKey() {
   throw new Error(`unsupported platform: ${platform}/${arch}`);
 }
 
-function extismJsURL() {
-  // extism-js release naming uses different conventions per OS.
-  const map = {
-    "linux-x86_64": `extism-js-x86_64-linux-${EXTISM_JS_VERSION}.gz`,
-    "linux-aarch64": `extism-js-aarch64-linux-${EXTISM_JS_VERSION}.gz`,
-    "darwin-x86_64": `extism-js-x86_64-macos-${EXTISM_JS_VERSION}.gz`,
-    "darwin-arm64": `extism-js-aarch64-macos-${EXTISM_JS_VERSION}.gz`,
-  };
-  const file = map[platformKey()];
-  return `https://github.com/extism/js-pdk/releases/download/${EXTISM_JS_VERSION}/${file}`;
-}
-
-function binaryenURL() {
-  const map = {
-    "linux-x86_64": `binaryen-${BINARYEN_VERSION}-x86_64-linux.tar.gz`,
-    "linux-aarch64": `binaryen-${BINARYEN_VERSION}-aarch64-linux.tar.gz`,
-    "darwin-x86_64": `binaryen-${BINARYEN_VERSION}-x86_64-macos.tar.gz`,
-    "darwin-arm64": `binaryen-${BINARYEN_VERSION}-arm64-macos.tar.gz`,
-  };
-  const file = map[platformKey()];
-  return `https://github.com/WebAssembly/binaryen/releases/download/${BINARYEN_VERSION}/${file}`;
-}
-
 function hostBinaryURL(name, version) {
   // Per-platform asset naming matches Go's GOOS-GOARCH convention so the
   // release CI can `go build` once per matrix entry without renaming.
@@ -154,38 +131,6 @@ function download(url, dest) {
 async function main() {
   const cacheDir = path.join(__dirname, "..", "bin", ".cache");
   fs.mkdirSync(cacheDir, { recursive: true });
-
-  const extismDest = path.join(cacheDir, "extism-js");
-  if (!fs.existsSync(extismDest)) {
-    const gz = path.join(cacheDir, "extism-js.gz");
-    console.log(`[plugin-sdk] downloading extism-js ${EXTISM_JS_VERSION}...`);
-    await download(extismJsURL(), gz);
-    const buf = zlib.gunzipSync(fs.readFileSync(gz));
-    fs.writeFileSync(extismDest, buf);
-    fs.chmodSync(extismDest, 0o755);
-    fs.unlinkSync(gz);
-  }
-
-  const wasmMergeDest = path.join(cacheDir, "wasm-merge");
-  const wasmOptDest = path.join(cacheDir, "wasm-opt");
-  if (!fs.existsSync(wasmMergeDest) || !fs.existsSync(wasmOptDest)) {
-    const tar = path.join(cacheDir, "binaryen.tar.gz");
-    console.log(`[plugin-sdk] downloading binaryen ${BINARYEN_VERSION}...`);
-    await download(binaryenURL(), tar);
-    execFileSync("tar", ["xzf", tar, "-C", cacheDir]);
-    const extracted = path.join(cacheDir, `binaryen-${BINARYEN_VERSION}`);
-    fs.copyFileSync(path.join(extracted, "bin", "wasm-merge"), wasmMergeDest);
-    fs.copyFileSync(path.join(extracted, "bin", "wasm-opt"), wasmOptDest);
-    fs.chmodSync(wasmMergeDest, 0o755);
-    fs.chmodSync(wasmOptDest, 0o755);
-    // copy lib too, wasm-opt links against libbinaryen.so on linux
-    const libSrc = path.join(extracted, "lib");
-    if (fs.existsSync(libSrc)) {
-      fs.cpSync(libSrc, path.join(cacheDir, "lib"), { recursive: true });
-    }
-    fs.rmSync(extracted, { recursive: true });
-    fs.unlinkSync(tar);
-  }
 
   // owncast-plugin-test + owncast-plugin-serve, built from this repo's
   // host-runtime/ Go sources, published as gzipped release assets on
