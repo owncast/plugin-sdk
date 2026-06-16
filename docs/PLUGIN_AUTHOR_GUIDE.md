@@ -1046,6 +1046,8 @@ To remove a plugin, an admin clicks the trash icon on the plugin's row in the **
 
 `npm run build` produces only the intermediate compiled output and is faster, useful while iterating. `npm run package` is the step you run when you're ready to ship.
 
+To make your plugin discoverable to other operators rather than handing the `.ocpkg` around yourself, **publish it to the plugin directory** at [owncast.directory](https://owncast.directory) — see the [Publishing your plugin](https://owncast.online/docs/plugins/publishing) guide for the submission process.
+
 ## Recipes
 
 Complete working plugins, also in `examples/js/`:
