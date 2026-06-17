@@ -1,0 +1,1 @@
+../../../sdks/python/owncast_plugin/template/.agents/skills/create-owncast-plugin-py/SKILL.md

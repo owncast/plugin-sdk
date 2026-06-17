@@ -5,8 +5,8 @@ Guidance for AI coding agents working on this Owncast plugin (slug:
 without re-deriving how the runtime works. Tool-agnostic: "run" means use your
 shell tool; follow these steps with whatever model/harness you are.
 
-> **Skill available.** This plugin ships the `create-owncast-plugin` skill at
-> `.agents/skills/create-owncast-plugin/SKILL.md`. Skill-aware agents discover it
+> **Skill available.** This plugin ships the `create-owncast-plugin-py` skill at
+> `.agents/skills/create-owncast-plugin-py/SKILL.md`. Skill-aware agents discover it
 > automatically; otherwise read that file — it drives the full build-this-plugin
 > workflow (turn a plain-language request into handlers + manifest, then test and
 > package). This AGENTS.md is the quick reference; the skill is the playbook.

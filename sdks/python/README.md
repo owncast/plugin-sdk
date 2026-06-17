@@ -25,7 +25,7 @@ Scaffold a new plugin project (the Python peer of `npm create owncast-plugin`):
 owncast-plugin-py new my-plugin         # drops a working starter into ./my-plugin
 ```
 
-This writes a `my-plugin/` directory with `plugin.manifest.json`, `src/plugin.py`, a sample `__tests__/plugin.test.json`, and docs (README, INSTRUCTIONS.md, AGENTS.md + a `create-owncast-plugin` skill) already wired up. A plugin is just a directory:
+This writes a `my-plugin/` directory with `plugin.manifest.json`, `src/plugin.py`, a sample `__tests__/plugin.test.json`, and docs (README, INSTRUCTIONS.md, AGENTS.md + a `create-owncast-plugin-py` skill) already wired up. A plugin is just a directory:
 
 ```
 my-plugin/

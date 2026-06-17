@@ -1,15 +1,22 @@
 ---
-name: create-owncast-plugin
-description: "Build a complete Owncast plugin from a plain-language description and hand back an installable .ocpkg file. Use when someone wants to create, build, scaffold, or make an Owncast plugin (a chat bot, chat filter/moderation tool, stream-event responder, HTTP page/overlay/widget, admin page, fediverse integration, etc.) without needing to know the SDK internals."
+name: create-owncast-plugin-js
+description: "Build a complete Owncast plugin in JavaScript from a plain-language description and hand back an installable .ocpkg file. Use when someone wants to create, build, scaffold, or make an Owncast plugin in JavaScript/Node (a chat bot, chat filter/moderation tool, stream-event responder, HTTP page/overlay/widget, admin page, fediverse integration, etc.) without needing to know the SDK internals. If the author hasn't picked a language yet, start from create-owncast-plugin (the router) instead."
 ---
 
-# Create an Owncast plugin
+# Create an Owncast plugin (JavaScript)
 
-This skill walks any AI assistant through building a working Owncast plugin for a
-non-expert user: gather what they want in plain language, scaffold the project,
-write the code and manifest, verify it with tests, and produce the single
-`.ocpkg` file they upload to their Owncast server. The user should never have to
-understand the runtime — you do that part.
+This skill walks any AI assistant through building a working Owncast plugin in
+**JavaScript** for a non-expert user: gather what they want in plain language,
+scaffold the project, write the code and manifest, verify it with tests, and
+produce the single `.ocpkg` file they upload to their Owncast server. The user
+should never have to understand the runtime — you do that part.
+
+> **Picking a language?** Owncast plugins can be written in JavaScript or Python.
+> The two SDKs are first-class peers: the same handlers, APIs, permissions, and
+> manifest apply to both, and only the scaffolding and language syntax differ.
+> This skill is the **JavaScript** path. For Python, use `create-owncast-plugin-py`.
+> If the language isn't decided yet, start from the `create-owncast-plugin`
+> router — it gathers the author's intent and dispatches to the right one.
 
 This file is the complete operating guide. It is written to be tool-agnostic:
 wherever it says "ask the user," use whatever question mechanism your harness
@@ -363,6 +370,16 @@ The repository's `docs/PLUGIN_AUTHOR_GUIDE.md` is the exhaustive reference
 (every handler, every API method, limits, SSE, admin pages, action buttons,
 viewer-page injection, full testing model). Read it when a request needs a
 feature this summary only outlines. Worked examples live in `examples/js/`.
+
+The public documentation at <https://owncast.online/docs/plugins> covers the same
+ground for authors who want a web reference: the
+[JavaScript SDK](https://owncast.online/docs/plugins/sdks/javascript),
+[Manifest](https://owncast.online/docs/plugins/manifest),
+[Events](https://owncast.online/docs/plugins/events),
+[Owncast APIs](https://owncast.online/docs/plugins/apis),
+[Permissions](https://owncast.online/docs/plugins/permissions),
+[Testing](https://owncast.online/docs/plugins/testing), and
+[Packaging](https://owncast.online/docs/plugins/packaging) pages.
 
 ## Checklist before you hand off the .ocpkg
 

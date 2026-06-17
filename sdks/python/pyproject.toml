@@ -31,5 +31,5 @@ owncast_plugin = [
     "template/*",
     "template/src/*",
     "template/__tests__/*",
-    "template/.agents/skills/create-owncast-plugin/*",
+    "template/.agents/skills/create-owncast-plugin-py/*",
 ]
