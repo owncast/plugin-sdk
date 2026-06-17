@@ -1,0 +1,10 @@
+{
+  "api": "1",
+  "name": "Mod Commands",
+  "slug": "mod-commands",
+  "version": "0.1.0",
+  "description": "Demonstrates a custom command prefix and a moderator-only command with on_denied gating. This example was written in Python.",
+  "permissions": [
+    "chat.send"
+  ]
+}

@@ -1,0 +1,88 @@
+[
+  {
+    "name": "?ping replies to anyone",
+    "events": [
+      {
+        "event": "chat.message.received",
+        "payload": { "id": "m1", "user": { "id": "u-viewer", "displayName": "viewer" }, "body": "?ping", "timestamp": "2026-01-01T00:00:00Z" }
+      }
+    ],
+    "expect": { "chatSends": ["pong"] }
+  },
+  {
+    "name": "?p alias also runs ping",
+    "events": [
+      {
+        "event": "chat.message.received",
+        "payload": { "id": "m1a", "user": { "id": "u-viewer", "displayName": "viewer" }, "body": "?p", "timestamp": "2026-01-01T00:00:00Z" }
+      }
+    ],
+    "expect": { "chatSends": ["pong"] }
+  },
+  {
+    "name": "command names match case-insensitively (?PING)",
+    "events": [
+      {
+        "event": "chat.message.received",
+        "payload": { "id": "m1b", "user": { "id": "u-viewer", "displayName": "viewer" }, "body": "?PING", "timestamp": "2026-01-01T00:00:00Z" }
+      }
+    ],
+    "expect": { "chatSends": ["pong"] }
+  },
+  {
+    "name": "?announce works for a moderator",
+    "events": [
+      {
+        "event": "chat.message.received",
+        "payload": { "id": "m2", "user": { "id": "u-mod", "displayName": "mod", "scopes": ["MODERATOR"] }, "body": "?announce going live in 5", "timestamp": "2026-01-01T00:00:01Z" }
+      }
+    ],
+    "expect": { "chatSends": ["Announcement: going live in 5"] }
+  },
+  {
+    "name": "?announce is denied for non-moderators",
+    "events": [
+      {
+        "event": "chat.message.received",
+        "payload": { "id": "m3", "user": { "id": "u-viewer", "displayName": "viewer" }, "body": "?announce let me in", "timestamp": "2026-01-01T00:00:02Z" }
+      }
+    ],
+    "expect": { "chatSends": ["Only moderators can use ?announce."] }
+  },
+  {
+    "name": "an unknown ?command hits onUnknownCommand",
+    "events": [
+      {
+        "event": "chat.message.received",
+        "payload": { "id": "m4", "user": { "id": "u-viewer", "displayName": "viewer" }, "body": "?bogus", "timestamp": "2026-01-01T00:00:03Z" }
+      }
+    ],
+    "expect": { "chatSends": ["Unknown command \"?bogus\". Try ?ping."] }
+  },
+  {
+    "name": "the command router and onChatMessage both run on one message",
+    "events": [
+      {
+        "event": "chat.message.received",
+        "payload": { "id": "m4b", "user": { "id": "u-viewer", "displayName": "viewer" }, "body": "?ping", "timestamp": "2026-01-01T00:00:03Z" }
+      }
+    ],
+    "expect": { "chatSends": ["pong"], "chatSystems": ["(command: ?ping)"] }
+  },
+  {
+    "name": "commands are advertised for the unified !help",
+    "events": [
+      {
+        "event": "chat.message.received",
+        "payload": { "id": "m5", "user": { "id": "u-viewer", "displayName": "viewer" }, "body": "hello", "timestamp": "2026-01-01T00:00:04Z" }
+      }
+    ],
+    "expect": {
+      "chatSends": [],
+      "commands": [
+        { "name": "ping", "prefix": "?", "description": "Check the bot is alive", "aliases": ["p"] },
+        { "name": "announce", "prefix": "?", "usage": "?announce <message>", "modOnly": true }
+      ]
+    }
+  }
+]
