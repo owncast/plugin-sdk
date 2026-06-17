@@ -135,7 +135,7 @@ func runOne(ctx context.Context, wasmPath, manifestPath, file string, sc Scenari
 		}
 	}
 
-	checkExpectations(&res, &sc.Expect, mock, pluginSlug)
+	checkExpectations(&res, &sc.Expect, mock, pluginSlug, loaded.Manifest.Commands)
 
 	res.Pass = len(res.Errors) == 0
 	return res
@@ -267,7 +267,7 @@ func runHTTPStep(server *plugin.Server, pluginName string, h *HTTPStep) error {
 	return nil
 }
 
-func checkExpectations(res *Result, e *ScenarioExpect, mock *MockHost, pluginName string) {
+func checkExpectations(res *Result, e *ScenarioExpect, mock *MockHost, pluginName string, commands []plugin.CommandInfo) {
 	if e.ChatSends != nil {
 		got := mock.ChatSends()
 		// Treat nil and empty-slice as equivalent: scenarios commonly write
@@ -452,6 +452,43 @@ func checkExpectations(res *Result, e *ScenarioExpect, mock *MockHost, pluginNam
 			}
 		}
 	}
+	if e.Commands != nil {
+		byName := make(map[string]plugin.CommandInfo, len(commands))
+		for _, c := range commands {
+			byName[c.Name] = c
+		}
+		for _, want := range e.Commands {
+			got, ok := byName[want.Name]
+			if !ok {
+				res.Errors = append(res.Errors, fmt.Sprintf("commands: no registered command named %q (got %v)", want.Name, commandNames(commands)))
+				continue
+			}
+			if want.Prefix != "" && want.Prefix != got.Prefix {
+				res.Errors = append(res.Errors, fmt.Sprintf("commands[%q].prefix: want %q got %q", want.Name, want.Prefix, got.Prefix))
+			}
+			if want.Description != "" && want.Description != got.Description {
+				res.Errors = append(res.Errors, fmt.Sprintf("commands[%q].description: want %q got %q", want.Name, want.Description, got.Description))
+			}
+			if want.Usage != "" && want.Usage != got.Usage {
+				res.Errors = append(res.Errors, fmt.Sprintf("commands[%q].usage: want %q got %q", want.Name, want.Usage, got.Usage))
+			}
+			if want.Aliases != nil && !reflect.DeepEqual(want.Aliases, got.Aliases) {
+				res.Errors = append(res.Errors, fmt.Sprintf("commands[%q].aliases: want %v got %v", want.Name, want.Aliases, got.Aliases))
+			}
+			if want.ModOnly != got.ModOnly {
+				res.Errors = append(res.Errors, fmt.Sprintf("commands[%q].modOnly: want %v got %v", want.Name, want.ModOnly, got.ModOnly))
+			}
+		}
+	}
+}
+
+// commandNames lists registered command names for an assertion-failure message.
+func commandNames(commands []plugin.CommandInfo) []string {
+	names := make([]string, len(commands))
+	for i, c := range commands {
+		names[i] = c.Name
+	}
+	return names
 }
 
 // payloadMatches does a partial-deep-match: every field in `want` must be

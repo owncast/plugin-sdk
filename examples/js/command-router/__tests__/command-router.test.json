@@ -1,0 +1,89 @@
+[
+  {
+    "name": "!shout is handled and dropped from public chat",
+    "events": [
+      {
+        "filter": "chat.message.received",
+        "payload": { "id": "r1", "user": { "id": "u1", "displayName": "viewer" }, "body": "!shout hello there", "timestamp": "2026-01-01T00:00:00Z" },
+        "expect": { "action": "drop", "reason": "handled as a command" }
+      }
+    ],
+    "expect": { "chatSends": ["📢 HELLO THERE"] }
+  },
+  {
+    "name": "ordinary chat passes through untouched",
+    "events": [
+      {
+        "filter": "chat.message.received",
+        "payload": { "id": "r2", "user": { "id": "u1", "displayName": "viewer" }, "body": "just chatting", "timestamp": "2026-01-01T00:00:00Z" },
+        "expect": { "action": "pass" }
+      }
+    ],
+    "expect": { "chatSends": [] }
+  },
+  {
+    "name": "matching is case-sensitive: !SHOUT is not !shout",
+    "events": [
+      {
+        "filter": "chat.message.received",
+        "payload": { "id": "r3", "user": { "id": "u1", "displayName": "viewer" }, "body": "!SHOUT hello", "timestamp": "2026-01-01T00:00:00Z" },
+        "expect": { "action": "pass" }
+      }
+    ],
+    "expect": { "chatSends": [] }
+  },
+  {
+    "name": "a per-user cooldown blocks a rapid second !shout",
+    "events": [
+      {
+        "filter": "chat.message.received",
+        "payload": { "id": "c1", "user": { "id": "u1", "displayName": "viewer" }, "body": "!shout one", "timestamp": "2026-01-01T00:00:00Z" },
+        "expect": { "action": "drop" }
+      },
+      {
+        "filter": "chat.message.received",
+        "payload": { "id": "c2", "user": { "id": "u1", "displayName": "viewer" }, "body": "!shout two", "timestamp": "2026-01-01T00:00:05Z" },
+        "expect": { "action": "drop" }
+      }
+    ],
+    "expect": { "chatSends": ["📢 ONE", "Easy there — you can only shout every 30 seconds."] }
+  },
+  {
+    "name": "!secret whispers privately when the connection is known",
+    "events": [
+      {
+        "filter": "chat.message.received",
+        "payload": { "id": "s1", "clientId": 42, "user": { "id": "u1", "displayName": "viewer" }, "body": "!secret", "timestamp": "2026-01-01T00:00:00Z" },
+        "expect": { "action": "drop" }
+      }
+    ],
+    "expect": { "chatSends": [], "chatTo": [{ "clientId": 42, "text": "The cake is a lie." }] }
+  },
+  {
+    "name": "!secret falls back to a public reply when the connection is unknown",
+    "events": [
+      {
+        "filter": "chat.message.received",
+        "payload": { "id": "s2", "user": { "id": "u1", "displayName": "viewer" }, "body": "!secret", "timestamp": "2026-01-01T00:00:00Z" },
+        "expect": { "action": "drop" }
+      }
+    ],
+    "expect": { "chatSends": ["The cake is a lie."], "chatTo": [] }
+  },
+  {
+    "name": "commands are advertised for the unified !help",
+    "events": [
+      {
+        "filter": "chat.message.received",
+        "payload": { "id": "h1", "user": { "id": "u1", "displayName": "viewer" }, "body": "nothing to see", "timestamp": "2026-01-01T00:00:00Z" },
+        "expect": { "action": "pass" }
+      }
+    ],
+    "expect": {
+      "commands": [
+        { "name": "shout", "prefix": "!", "usage": "!shout <message>" },
+        { "name": "secret", "prefix": "!", "description": "Whisper a secret only the sender can see" }
+      ]
+    }
+  }
+]

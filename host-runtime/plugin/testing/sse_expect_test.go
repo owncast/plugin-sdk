@@ -27,7 +27,7 @@ func TestSSESendCaptureAndAssert(t *testing.T) {
 	checkExpectations(pass, &ScenarioExpect{SSESends: []ScenarioSSEExpect{
 		{Channel: "overlay", Event: "chat", Data: `{"body":"hi"}`},
 		{Channel: "overlay", Event: "poll"},
-	}}, mock, "demo")
+	}}, mock, "demo", nil)
 	if len(pass.Errors) != 0 {
 		t.Errorf("expected no errors, got %v", pass.Errors)
 	}
@@ -37,7 +37,7 @@ func TestSSESendCaptureAndAssert(t *testing.T) {
 	checkExpectations(fail, &ScenarioExpect{SSESends: []ScenarioSSEExpect{
 		{Channel: "overlay", Event: "chat"},
 		{Channel: "overlay", Event: "WRONG"},
-	}}, mock, "demo")
+	}}, mock, "demo", nil)
 	if len(fail.Errors) == 0 {
 		t.Error("expected a mismatch error for the wrong event, got none")
 	}

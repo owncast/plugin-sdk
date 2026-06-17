@@ -169,6 +169,22 @@ type ScenarioExpect struct {
 	KV                map[string]string              `json:"kv,omitempty"`
 	HTTPRequests      []ScenarioHTTPRequestExpect    `json:"httpRequests,omitempty"`
 	SSESends          []ScenarioSSEExpect            `json:"sseSends,omitempty"`
+	Commands          []ScenarioCommandExpect        `json:"commands,omitempty"`
+}
+
+// ScenarioCommandExpect asserts on one entry of the chat-command manifest the
+// plugin reports in register() — the metadata the host aggregates into the
+// unified `!help`. The plugin's own router does the matching; this only checks
+// what it advertises. Entries are matched by Name (in any order). Prefix,
+// Description, Usage, and Aliases are checked only when set; ModOnly is always
+// checked (so an omitted modOnly asserts a non-moderator command).
+type ScenarioCommandExpect struct {
+	Name        string   `json:"name"`
+	Prefix      string   `json:"prefix,omitempty"`
+	Description string   `json:"description,omitempty"`
+	Usage       string   `json:"usage,omitempty"`
+	Aliases     []string `json:"aliases,omitempty"`
+	ModOnly     bool     `json:"modOnly,omitempty"`
 }
 
 type ScenarioBrowserPushExpect struct {
