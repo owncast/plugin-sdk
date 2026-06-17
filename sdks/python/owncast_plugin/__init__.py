@@ -10,15 +10,16 @@ Author a plugin by importing this module, registering handlers with the
     def greet(msg):
         owncast.chat.send(f"hi {msg.user.display_name}")
 
-At build time the build tool inlines this runtime together with your code and
-the manifest's permitted host-function imports into a single module, then
-compiles it to WebAssembly with `extism-py` (which is single-file only, so the
-SDK can't be a separately-imported module inside the wasm). This file is also
-importable on your dev machine for editor support and unit tests.
+Plugins ship as source and run on a Python engine the Owncast host embeds and
+shares across every plugin, so there's no compile step: the build just emits
+your plugin source as `<slug>.py` and this runtime is already present as globals
+in the engine. This file is also importable on your dev machine for editor
+support and unit tests.
 """
 
-# `extism` only exists inside the compiled wasm. Guard the import so this
-# module is importable on a dev machine (editor support / unit tests) too.
+# `extism` is the host-call bridge, present inside the engine the host runs the
+# plugin on. Guard the import so this module stays importable on a dev machine
+# (editor support / unit tests) too.
 try:
     import extism  # type: ignore
 except ImportError:  # pragma: no cover - dev machine, not wasm

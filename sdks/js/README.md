@@ -43,7 +43,7 @@ Declare the permissions your plugin uses (`chat.send` for the example above) in 
 - `index.d.ts`, TypeScript declarations for editor autocomplete on every event payload and host API.
 - `testing.js`, JS test API (`runScenarios`) for writing `__tests__/*.test.js` with the full ergonomics of JavaScript instead of static JSON.
 - `bin/owncast-plugin`, CLI: `build`, `test`, `serve`, `package` subcommands.
-- `scripts/postinstall.js`, downloads the per-platform wasm toolchain (`extism-js`, `wasm-merge`, `wasm-opt`) and the Go test/serve runner on install.
+- `scripts/postinstall.js`, downloads the Go test/serve host binaries on install. Plugins ship as source and run on the engine the host embeds, so no wasm toolchain (`extism-js`, binaryen) is fetched (that's a maintainer-only dependency of the engine build).
 
 ## License
 

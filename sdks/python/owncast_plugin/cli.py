@@ -1,9 +1,11 @@
 """`owncast-plugin-py` — build, package, test, and serve Owncast Python plugins.
 
-Wraps the inlining build (build.py) with a managed toolchain (toolchain.py):
-the wasm compiler and host binaries are fetched and cached on first use, so a
-plugin author only needs `pip install owncast-plugin-sdk` (or `uv add` /
-`uvx owncast-plugin-py ...`) and this command.
+Plugins ship their source and run on the Python engine the host already embeds
+(the shared-engine model), so an author never compiles to wasm: `build` just
+emits the plugin source as <slug>.py. No PDK (extism-py / binaryen) is needed —
+only `pip install owncast-plugin-sdk` (or `uv add` / `uvx owncast-plugin-py ...`)
+and this command. The host binaries that back `test`/`serve` are fetched and
+cached on first use by toolchain.py.
 """
 import argparse
 import os
@@ -15,30 +17,27 @@ from . import scaffold as _scaffold
 from . import toolchain
 
 
-def _compile(project, do_package):
-    extism_py = toolchain.ensure_extism_py()
-    toolchain.ensure_binaryen()
-    env = toolchain.build_env()
+def _emit(project, do_package):
     fn = _build.package if do_package else _build.build
-    return fn(project, extism_py=extism_py, env=env)
+    return fn(project)
 
 
 def cmd_build(args):
-    _compile(args.dir, do_package=False)
+    _emit(args.dir, do_package=False)
 
 
 def cmd_package(args):
-    _compile(args.dir, do_package=True)
+    _emit(args.dir, do_package=True)
 
 
 def cmd_test(args):
-    _compile(args.dir, do_package=False)
+    _emit(args.dir, do_package=False)
     test_bin = toolchain.ensure_host_binary("owncast-plugin-test")
     sys.exit(subprocess.run([test_bin, args.dir]).returncode)
 
 
 def cmd_serve(args):
-    _compile(args.dir, do_package=False)
+    _emit(args.dir, do_package=False)
     serve_bin = toolchain.ensure_host_binary("owncast-plugin-serve")
     env = dict(os.environ)
     if args.port:
@@ -66,7 +65,7 @@ def main(argv=None):
     new_p.add_argument("slug", help="plugin slug / target directory (e.g. my-cool-bot)")
     new_p.set_defaults(func=cmd_new)
 
-    add("build", "compile src/plugin.py to <slug>.wasm").set_defaults(func=cmd_build)
+    add("build", "emit src/plugin.py as <slug>.py").set_defaults(func=cmd_build)
     add("package", "build + bundle into <slug>.ocpkg").set_defaults(func=cmd_package)
     add("test", "build, then run the __tests__ scenarios").set_defaults(func=cmd_test)
     serve_p = add("serve", "build, then run a local dev server")

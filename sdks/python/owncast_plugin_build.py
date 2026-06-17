@@ -3,8 +3,8 @@
 package (CI, `python3 sdks/python/owncast_plugin_build.py <dir> [--package]`).
 
 Prefer the installed CLI for real authoring: `owncast-plugin-py build|package|
-test|serve` (it also fetches the wasm toolchain for you). This wrapper assumes
-extism-py + binaryen are already on PATH.
+test|serve`. Plugins ship source and run on the host's embedded Python engine,
+so no wasm toolchain (extism-py / binaryen) is involved either way.
 """
 import os
 import sys

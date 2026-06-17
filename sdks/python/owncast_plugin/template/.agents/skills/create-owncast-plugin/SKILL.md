@@ -24,13 +24,13 @@ handler functions with `@plugin.*` decorators, and calls back into Owncast
 through the `owncast.*` API (send chat, store data, fetch URLs, serve web pages,
 etc.). A `plugin.manifest.json` declares the plugin's identity and the
 **permissions** it needs — every API call requires its matching permission, or
-the host refuses to load the plugin. The build toolchain compiles the Python to
-WebAssembly (via `extism-py`) and bundles everything into one `.ocpkg` file for
-distribution.
+the host refuses to load the plugin. The build step just emits the Python source
+as `<slug>.py` and bundles it with the manifest and assets into one `.ocpkg` file
+for distribution.
 
-> Python plugins embed the whole CPython interpreter, so the `.wasm` is ~11 MB
-> (vs ~2.4 MB for the JS SDK). That's fixed overhead — fine for most uses, but if
-> install size / cold-start matters, the JavaScript SDK is lighter.
+> Plugins ship as source, not a compiled binary. The Owncast host embeds one
+> Python engine and runs every Python plugin on it, so a package carries no
+> interpreter and an author never touches a wasm toolchain.
 
 ## The workflow (follow in order)
 
@@ -113,10 +113,11 @@ defaults:
 owncast-plugin-py test
 ```
 
-The first run downloads and caches the wasm toolchain (the `extism-py` compiler
-and host binaries). `test` compiles `src/plugin.py` to wasm and runs
-`__tests__/*.test.json` against the real plugin runtime with mocked side effects
-— a pass means the same behavior in production.
+The first run downloads and caches the host test/serve binaries (there's no wasm
+toolchain: plugins run on the engine the host embeds). `test` emits
+`src/plugin.py` as `<slug>.py` and runs `__tests__/*.test.json` against the real
+plugin runtime with mocked side effects, so a pass means the same behavior in
+production.
 
 **When the build or tests fail, first classify the failure — they need opposite
 responses:**
@@ -146,8 +147,8 @@ that's required once, and continue to write correct code so they can run
 owncast-plugin-py package
 ```
 
-This produces **`<slug>.ocpkg`** in the project directory — a single
-self-contained file bundling the manifest, the compiled wasm, and any
+This produces **`<slug>.ocpkg`** in the project directory, a single
+self-contained file bundling the manifest, the `plugin.py` source, and any
 `public/`/`assets/`/`icon.png`/`INSTRUCTIONS.md`. Give the user the path to that
 file and tell them how to install it:
 

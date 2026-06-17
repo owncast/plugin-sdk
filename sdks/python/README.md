@@ -1,26 +1,16 @@
 # owncast-plugin-sdk (Python)
 
-SDK for authoring [Owncast](https://owncast.online) plugins in **Python**. Plugins compile to WebAssembly and run sandboxed inside the Owncast server — the same runtime, wire protocol, and `.ocpkg` format as the [JavaScript SDK](../js), so a Python plugin is a first-class peer of a JS one.
+SDK for authoring [Owncast](https://owncast.online) plugins in **Python**. Plugins ship their Python source and run sandboxed inside the Owncast server on an embedded Python engine. They use the same runtime, wire protocol, and `.ocpkg` format as the [JavaScript SDK](../js), so a Python plugin is a first-class peer of a JS one.
 
-You write ordinary Python with decorators; a build step inlines this runtime plus your code and compiles it to wasm with [`extism-py`](https://github.com/extism/python-pdk).
+You write ordinary Python with decorators. There is no compile step and no PDK to install: the Owncast host embeds one Python engine and runs every Python plugin on it, so your plugin ships as plain source.
 
-> ### ⚠️ Python plugins are big: ~11 MB vs ~2.4 MB for JavaScript
+> ### Plugins are source, not a compiled binary
 >
-> A compiled Python plugin embeds the **entire CPython interpreter**, so the `.wasm` is about **11 MB** — versus **~2.4 MB** for the equivalent JavaScript plugin (which embeds the much smaller QuickJS engine). That's roughly **4.7× larger / ~8.5 MB more**, and it's **fixed overhead**: a one-line "hello world" Python plugin is already ~11 MB, because the size is dominated by the bundled runtime, not your code.
->
-> | | JavaScript | Python |
-> |---|---|---|
-> | embedded engine | QuickJS | CPython |
-> | typical plugin `.wasm` | ~2.4 MB | ~11 MB |
-> | minimal ("hello world") | ~2.4 MB | ~11 MB |
->
-> The shipped `.ocpkg` is smaller than the raw wasm — DEFLATE compresses the CPython runtime well, so a Python package downloads at roughly **~4 MB** (vs ~1 MB for a JS package). The full ~11 MB is what's decompressed and loaded at runtime.
->
-> This affects download/install size and cold-start (a Python plugin also takes meaningfully longer to instantiate than a JS one), not steady-state behavior (the host caps plugin memory at 64 MiB and reuses the instance across calls). If a few extra megabytes per plugin matter for your deployment, prefer the [JavaScript SDK](../js); otherwise write in whichever language you're happiest in.
+> Because the host supplies the Python engine, a plugin package contains only your `plugin.py`, its manifest, and any assets, with no bundled interpreter. That keeps packages small and means an author never installs or runs a wasm toolchain (`extism-py`, binaryen) at all. Those are a maintainer-only dependency of building the engine itself.
 
 ## Quick start
 
-Install the SDK to get the `owncast-plugin-py` CLI. It fetches and caches the wasm toolchain (the `extism-py` compiler, binaryen, and the host test/serve binaries) on first use, so there's nothing else to install by hand.
+Install the SDK to get the `owncast-plugin-py` CLI. It fetches and caches the host test/serve binaries on first use, so there's nothing else to install by hand. There's no wasm compiler to fetch, because plugins run on the engine the host embeds.
 
 ```sh
 pip install owncast-plugin-sdk          # or:  uv tool install owncast-plugin-sdk
@@ -47,7 +37,7 @@ my-plugin/
 Build, test, serve, and package it:
 
 ```sh
-owncast-plugin-py build my-plugin      # compile src/plugin.py -> <slug>.wasm
+owncast-plugin-py build my-plugin      # emit src/plugin.py -> <slug>.py
 owncast-plugin-py test my-plugin       # run the __tests__/ scenarios
 owncast-plugin-py serve my-plugin      # local dev server (POST /_dev/chat to drive it)
 owncast-plugin-py package my-plugin    # build + bundle -> <slug>.ocpkg (the only file you ship)
@@ -55,7 +45,7 @@ owncast-plugin-py package my-plugin    # build + bundle -> <slug>.ocpkg (the onl
 
 Install the `.ocpkg` in Owncast from the admin **Plugins** page (**Upload plugin**) or by copying it to the server's `data/plugins/` directory, then toggle **Enabled**.
 
-> **CI / no-install:** the build/package step is also runnable directly with `python3 sdks/python/owncast_plugin_build.py <dir> [--package]`, which expects `extism-py` + binaryen already on `PATH` (it skips the CLI's toolchain fetch). `OWNCAST_PLUGIN_HOST_BIN_DIR` points `test`/`serve` at locally-built host binaries; `OWNCAST_PLUGIN_HOST_BINARIES_VERSION` pins the release they're fetched from.
+> **CI / no-install:** the build/package step is also runnable directly with `python3 sdks/python/owncast_plugin_build.py <dir> [--package]`, with no toolchain on `PATH` (it just emits source). `OWNCAST_PLUGIN_HOST_BIN_DIR` points `test`/`serve` at locally-built host binaries, and `OWNCAST_PLUGIN_HOST_BINARIES_VERSION` pins the release they're fetched from.
 
 ## Writing a plugin
 
@@ -148,12 +138,12 @@ The concepts (events, permissions, the `.ocpkg` format, the manifest) are shared
 
 ## How it works (and how it differs from the JS SDK)
 
-`extism-py` compiles a **single** `.py` file and can't import a separate package inside the wasm. So `owncast_plugin_build.py` **inlines** this runtime, your `src/plugin.py`, and the host-function imports your permissions grant into one module, then runs `extism-py` on it. You still `from owncast_plugin import …` for editor support and unit tests; the build handles the inlining.
+Plugins run on a Python engine the Owncast host embeds and shares across every Python plugin, so there's no per-plugin compile. `build` writes your `src/plugin.py` out as `<slug>.py`, stripping the `from owncast_plugin import …` line because the SDK names are already globals in the engine, and `package` zips that with the manifest and assets into the `.ocpkg`. You still `from owncast_plugin import …` for editor support and unit tests.
 
 Consequences worth knowing:
 
-- **Pure-Python only.** Dependencies with C extensions (numpy, pandas, etc.) won't compile. Pure-Python packages work if you vendor them. For outbound HTTP use `owncast.http.fetch`, not `requests`.
-- **Don't shadow stdlib names at module top level.** Because your code is inlined alongside the runtime (which does `import json`), a top-level `def json(...)` in your plugin shadows it and breaks the build. Name helpers like `json_response` instead.
+- **Pure-Python only.** The embedded engine runs pure Python. Dependencies with C extensions (numpy, pandas, etc.) won't load. Pure-Python packages work if you vendor them. For outbound HTTP use `owncast.http.fetch`, not `requests`.
+- **Don't shadow stdlib names at module top level.** Your code runs in the same global scope as the runtime (which does `import json`), so a top-level `def json(...)` in your plugin shadows it and breaks things. Name helpers like `json_response` instead.
 - **`snake_case` everywhere**, vs the JS SDK's camelCase (`send_action`, `get_json`, `msg.user.display_name`, `filter.pass_()` — `pass` is a Python keyword).
 
 ## Testing
@@ -162,7 +152,7 @@ Consequences worth knowing:
 
 ## Status
 
-Working today: the runtime (`owncast_plugin/`), the `owncast-plugin-py` CLI (`new`/`build`/`test`/`serve`/`package`) with lazy toolchain download, the full host API, HTTP routing, `.ocpkg` packaging, a pip/uv-installable package (`pyproject.toml`), and CI that builds + tests every example. All 27 of the JS example plugins have Python counterparts under [`examples/python/`](../../examples/python).
+Working today: the runtime (`owncast_plugin/`), the `owncast-plugin-py` CLI (`new`/`build`/`test`/`serve`/`package`) with lazy host-binary download, the full host API, HTTP routing, `.ocpkg` packaging, a pip/uv-installable package (`pyproject.toml`), and CI that builds + tests every example. All 27 of the JS example plugins have Python counterparts under [`examples/python/`](../../examples/python).
 
 Not yet (roadmap): publishing to PyPI and type stubs.
 

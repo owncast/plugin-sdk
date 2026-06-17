@@ -17,7 +17,8 @@ An Owncast plugin: **Python** that runs sandboxed inside the Owncast server. It
 subscribes to events by registering handler functions in `src/plugin.py` with
 `@plugin.*` decorators, and calls back into Owncast through the `owncast.*` API.
 `plugin.manifest.json` declares the plugin's identity and the **permissions** it
-needs. The toolchain compiles the Python to WebAssembly and bundles it into one
+needs. Plugins ship as source and run on the Python engine the host embeds, so
+`package` just bundles your source, the manifest, and assets into one
 `__PLUGIN_SLUG__.ocpkg` file for distribution.
 
 ## Files you edit
@@ -39,9 +40,10 @@ owncast-plugin-py package      # builds, then bundles __PLUGIN_SLUG__.ocpkg for 
 owncast-plugin-py serve        # optional: host on http://localhost:8080 for manual testing
 ```
 
-The first run downloads and caches the wasm toolchain. Always run
+The first run downloads and caches the host test/serve binaries (there's no wasm
+toolchain: plugins run on the engine the host embeds). Always run
 `owncast-plugin-py test` after changing code, and don't package with failing
-tests — fix the code or correct the expectation (and say which).
+tests. Fix the code or correct the expectation (and say which).
 
 ## The golden rule
 
@@ -102,8 +104,8 @@ declared list, so don't over-declare.
 - **Any UI field** (`actions`, `styles`, `scripts`, `extraPageContent`, `tabs`)
   **requires `ui.modify`**.
 - **Pure-Python only.** Dependencies with C extensions (numpy, pandas, …) won't
-  compile. Don't shadow stdlib names (e.g. a top-level `def json(...)`) — your
-  code is inlined alongside the runtime.
+  load on the embedded engine. Don't shadow stdlib names (e.g. a top-level
+  `def json(...)`): your code runs in the same global scope as the runtime.
 - **Prefer `define_commands`** over hand-rolled prefix parsing for chat commands —
   it gives aliases, per-user cooldowns, and `mod_only` gating.
 

@@ -1,6 +1,6 @@
 #!/usr/bin/env node
-// `owncast-plugin build`  , bundle src/plugin.{js,ts} into <slug>.wasm
-// `owncast-plugin test`   , run scenarios in __tests__/ against the wasm
+// `owncast-plugin build`  , bundle src/plugin.{js,ts} into <slug>.js
+// `owncast-plugin test`   , run scenarios in __tests__/ against the plugin
 // `owncast-plugin serve`  , run a localhost dev HTTP server
 // `owncast-plugin package`, produce a single-file <slug>.ocpkg suitable
 //                            for distribution / installation
@@ -167,8 +167,8 @@ async function buildMain() {
 }
 
 // `owncast-plugin package`, bundle the project into a single .ocpkg file
-// (zip archive with plugin.manifest.json, plugin.wasm, and optional
-// public/ and assets/ directories). Builds the wasm first if it
+// (zip archive with plugin.manifest.json, plugin.js source, and optional
+// public/ and assets/ directories). Builds the source first if it
 // doesn't exist.
 async function packageMain() {
   const cwd = process.cwd();
