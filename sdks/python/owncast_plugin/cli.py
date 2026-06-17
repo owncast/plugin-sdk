@@ -11,6 +11,7 @@ import subprocess
 import sys
 
 from . import build as _build
+from . import scaffold as _scaffold
 from . import toolchain
 
 
@@ -45,6 +46,10 @@ def cmd_serve(args):
     sys.exit(subprocess.run([serve_bin, args.dir], env=env).returncode)
 
 
+def cmd_new(args):
+    _scaffold.create(args.slug)
+
+
 def main(argv=None):
     parser = argparse.ArgumentParser(
         prog="owncast-plugin-py",
@@ -56,6 +61,10 @@ def main(argv=None):
         p = sub.add_parser(name, help=help_text)
         p.add_argument("dir", nargs="?", default=".", help="plugin project dir (default: .)")
         return p
+
+    new_p = sub.add_parser("new", help="scaffold a new plugin project in ./<slug>")
+    new_p.add_argument("slug", help="plugin slug / target directory (e.g. my-cool-bot)")
+    new_p.set_defaults(func=cmd_new)
 
     add("build", "compile src/plugin.py to <slug>.wasm").set_defaults(func=cmd_build)
     add("package", "build + bundle into <slug>.ocpkg").set_defaults(func=cmd_package)

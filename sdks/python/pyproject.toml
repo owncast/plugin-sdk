@@ -23,3 +23,13 @@ owncast-plugin-py = "owncast_plugin.cli:main"
 
 [tool.setuptools]
 packages = ["owncast_plugin"]
+
+# Ship the scaffolder's template tree (consumed by `owncast-plugin-py new`).
+# Patterns are explicit so the dot-prefixed .agents/ tree is included too.
+[tool.setuptools.package-data]
+owncast_plugin = [
+    "template/*",
+    "template/src/*",
+    "template/__tests__/*",
+    "template/.agents/skills/create-owncast-plugin/*",
+]

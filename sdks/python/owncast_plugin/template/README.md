@@ -1,0 +1,34 @@
+# __PLUGIN_DISPLAY_NAME__
+
+An Owncast plugin scaffolded with `owncast-plugin-py new`. The slug is `__PLUGIN_SLUG__`; everything below uses it as the build artifact filename and the URL prefix Owncast routes through your plugin.
+
+## Develop
+
+```sh
+owncast-plugin-py build        # compile src/plugin.py into an intermediate build artifact
+owncast-plugin-py test         # build, then run scenarios from __tests__/
+owncast-plugin-py serve        # build, then host the plugin on http://localhost:8080
+owncast-plugin-py package      # build, then bundle into __PLUGIN_SLUG__.ocpkg for distribution
+```
+
+The first command downloads and caches the wasm toolchain (the `extism-py` compiler and the host test/serve binaries); there's nothing else to install by hand.
+
+## Ship
+
+`owncast-plugin-py package` produces `__PLUGIN_SLUG__.ocpkg`. Install it through the Owncast admin: open **Plugins**, click **Upload plugin**, and pick the file. (You can also copy it directly to the server's `data/plugins/` directory if the admin UI isn't an option.) Toggle **Enabled** to load it.
+
+## Files
+
+- `src/plugin.py`, your handler code; edit this
+- `plugin.manifest.json`, the manifest: display name, slug, version, permissions, and optional `bot.displayName` for the chat identity
+- `__tests__/plugin.test.json`, a sample scenario test; add more
+- `icon.png` (optional), drop a square PNG here and it bundles into the `.ocpkg` automatically. The admin uses it in the plugin list and sidebar; no permission required. Plugins without one fall back to a generic puzzle-piece glyph.
+- `INSTRUCTIONS.md` (optional), edit this and it bundles into the `.ocpkg` automatically. The admin renders it as markdown in an **Instructions** tab on the plugin's details page; no permission required.
+
+## Learn more
+
+The full author guide covers every event handler, host API, permission, and testing pattern (read the API names as their Pythonic `snake_case` forms):
+
+**[→ Owncast Plugin Author Guide](https://github.com/owncast/plugin-sdk/blob/main/docs/PLUGIN_AUTHOR_GUIDE.md)**
+
+`from owncast_plugin import plugin, owncast, filter` is importable on your dev machine for editor support and unit tests.

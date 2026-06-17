@@ -29,7 +29,13 @@ pip install owncast-plugin-sdk          # or:  uv tool install owncast-plugin-sd
 > Not on PyPI yet (publishing is the last roadmap item). Until then, install from this repo:
 > `pip install ./sdks/python` — or run it without installing: `uvx --from ./sdks/python owncast-plugin-py …`
 
-A plugin is a directory:
+Scaffold a new plugin project (the Python peer of `npm create owncast-plugin`):
+
+```sh
+owncast-plugin-py new my-plugin         # drops a working starter into ./my-plugin
+```
+
+This writes a `my-plugin/` directory with `plugin.manifest.json`, `src/plugin.py`, a sample `__tests__/plugin.test.json`, and docs (README, INSTRUCTIONS.md, AGENTS.md + a `create-owncast-plugin` skill) already wired up. A plugin is just a directory:
 
 ```
 my-plugin/
@@ -156,9 +162,9 @@ Consequences worth knowing:
 
 ## Status
 
-Working today: the runtime (`owncast_plugin/`), the `owncast-plugin-py` CLI (`build`/`test`/`serve`/`package`) with lazy toolchain download, the full host API, HTTP routing, `.ocpkg` packaging, a pip/uv-installable package (`pyproject.toml`), and CI that builds + tests every example. All 27 of the JS example plugins have Python counterparts under [`examples/python/`](../../examples/python).
+Working today: the runtime (`owncast_plugin/`), the `owncast-plugin-py` CLI (`new`/`build`/`test`/`serve`/`package`) with lazy toolchain download, the full host API, HTTP routing, `.ocpkg` packaging, a pip/uv-installable package (`pyproject.toml`), and CI that builds + tests every example. All 27 of the JS example plugins have Python counterparts under [`examples/python/`](../../examples/python).
 
-Not yet (roadmap): publishing to PyPI, a `create-owncast-plugin`-style scaffolder, and type stubs.
+Not yet (roadmap): publishing to PyPI and type stubs.
 
 ## License
 
