@@ -34,10 +34,10 @@ const { execFileSync } = require("child_process");
 // through to the dev tools/ dir when postinstall has only fetched part of the
 // toolchain (e.g., on a not-yet-released SDK version).
 // slugifyForTest mirrors the slugify in the build CLI + host SDKs so
-// this entrypoint can locate the .wasm file when a manifest omits
-// `slug`. ASCII letters and digits pass through lowercased;
-// everything else collapses to a single hyphen; trailing hyphens are
-// trimmed.
+// this entrypoint can locate the built `<slug>.js` artifact when a
+// manifest omits `slug`. ASCII letters and digits pass through
+// lowercased; everything else collapses to a single hyphen; trailing
+// hyphens are trimmed.
 function slugifyForTest(input) {
   let out = "";
   let prevHyphen = false;
@@ -113,9 +113,9 @@ function runScenarios(scenarios, opts = {}) {
     console.error("manifest.name is required");
     return fail(2);
   }
-  // wasm + symlink filenames key off slug (the identifier), not the
-  // display name. Derive the slug here the same way the build CLI
-  // does so this entrypoint works on manifests that omit `slug`.
+  // The built artifact + symlink filenames key off slug (the identifier), not
+  // the display name. Derive the slug here the same way the build CLI does so
+  // this entrypoint works on manifests that omit `slug`.
   const slug = manifest.slug || slugifyForTest(manifest.name);
   if (!slug) {
     console.error(
@@ -123,10 +123,12 @@ function runScenarios(scenarios, opts = {}) {
     );
     return fail(2);
   }
-  const wasmPath = path.join(cwd, `${slug}.wasm`);
-  if (!fs.existsSync(wasmPath)) {
+  // Plugins ship as source: `owncast-plugin build` bundles src/plugin.{js,ts}
+  // into <slug>.js, which is what the host loads. (`npm test` builds first.)
+  const scriptPath = path.join(cwd, `${slug}.js`);
+  if (!fs.existsSync(scriptPath)) {
     console.error(
-      `${slug}.wasm not found at ${wasmPath}, run \`owncast-plugin package\` first`,
+      `${slug}.js not found at ${scriptPath}, run \`owncast-plugin build\` first`,
     );
     return fail(2);
   }
@@ -141,32 +143,20 @@ function runScenarios(scenarios, opts = {}) {
     return fail(2);
   }
 
-  // Build a temp project dir that links to the wasm + manifest and contains
-  // only the scenarios we're running. The binary will auto-discover them.
+  // Build a temp project dir that links to the built script + manifest and
+  // contains only the scenarios we're running. The binary auto-discovers them.
   const tmp = fs.mkdtempSync(path.join(os.tmpdir(), "owncast-plugin-test-"));
   try {
     fs.symlinkSync(manifestPath, path.join(tmp, "plugin.manifest.json"));
-    fs.symlinkSync(wasmPath, path.join(tmp, `${slug}.wasm`));
+    fs.symlinkSync(scriptPath, path.join(tmp, `${slug}.js`));
     fs.mkdirSync(path.join(tmp, "__tests__"));
     fs.writeFileSync(
       path.join(tmp, "__tests__", "scenarios.test.json"),
       JSON.stringify(scenarios, null, 2),
     );
 
-    // Match the build CLI: extism-js (and its wasm-merge/wasm-opt
-    // children) needs LD_LIBRARY_PATH on Linux and DYLD_LIBRARY_PATH +
-    // DYLD_FALLBACK_LIBRARY_PATH on macOS to find libbinaryen via
-    // @rpath. Setting all three is safe on both OSes; the inactive
-    // ones are ignored.
-    const libDir = path.join(cache, "lib");
-    const env = {
-      ...process.env,
-      LD_LIBRARY_PATH: `${libDir}:${process.env.LD_LIBRARY_PATH || ""}`,
-      DYLD_LIBRARY_PATH: `${libDir}:${process.env.DYLD_LIBRARY_PATH || ""}`,
-      DYLD_FALLBACK_LIBRARY_PATH: `${libDir}:${process.env.DYLD_FALLBACK_LIBRARY_PATH || "/usr/local/lib:/usr/lib"}`,
-    };
     try {
-      execFileSync(bin, [tmp], { stdio: "inherit", env });
+      execFileSync(bin, [tmp], { stdio: "inherit" });
     } catch (e) {
       return fail(typeof e.status === "number" ? e.status : 1);
     }

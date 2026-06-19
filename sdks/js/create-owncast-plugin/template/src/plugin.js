@@ -1,6 +1,6 @@
 // `filter` is only needed if you define a `filterChatMessage` handler (see
 // the commented examples below). The unused require is intentional so the
-// example you uncomment compiles without extra plumbing.
+// example you uncomment works without extra plumbing.
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 const { definePlugin, owncast, filter } = require("@owncast/plugin-sdk");
 

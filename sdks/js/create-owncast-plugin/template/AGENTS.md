@@ -16,8 +16,9 @@ shell tool; follow these steps with whatever model/harness you are.
 An Owncast plugin: JavaScript that runs sandboxed inside the Owncast server. It
 subscribes to events by defining handler functions in `src/plugin.js`, and calls
 back into Owncast through the `owncast.*` API. `plugin.manifest.json` declares
-the plugin's identity and the **permissions** it needs. The toolchain compiles
-the JS to WebAssembly and bundles it into one `__PLUGIN_SLUG__.ocpkg` file for
+the plugin's identity and the **permissions** it needs. Plugins ship as source
+and run on the JavaScript engine the Owncast host embeds (no wasm compile step);
+`npm run package` bundles your code into one `__PLUGIN_SLUG__.ocpkg` file for
 distribution.
 
 ## Files you edit
@@ -34,7 +35,7 @@ distribution.
 ## Workflow
 
 ```sh
-npm install          # one-time, fetches the wasm toolchain
+npm install          # one-time, fetches the prebuilt test/serve host binaries
 npm test             # builds, then runs __tests__/*.test.js against the real runtime
 npm run package      # builds, then bundles __PLUGIN_SLUG__.ocpkg for distribution
 npm run serve        # optional: host on http://localhost:8080 for manual testing

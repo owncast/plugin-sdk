@@ -1,6 +1,6 @@
 # owncast-plugin-sdk (PoC)
 
-Standalone proof-of-concept exploring an in-process plugin system for [Owncast](https://owncast.online): JavaScript plugins compiled to WebAssembly, executed inside a Go host via [Extism](https://extism.org) (which uses [Wazero](https://wazero.io), pure Go, no CGo).
+Standalone proof-of-concept exploring an in-process plugin system for [Owncast](https://owncast.online): JavaScript and Python plugins that ship as source and run on language engines embedded inside a Go host via [Extism](https://extism.org) (which uses [Wazero](https://wazero.io), pure Go, no CGo).
 
 This isn't part of Owncast yet. It's a sandbox to validate the architecture.
 
@@ -63,8 +63,8 @@ Layout mirrors the planned future repo split: `sdks/<lang>/` for author-facing S
 # Build the Go-side binaries this repo owns (one-time, after cloning)
 tools/bootstrap.sh
 
-# Build each example into ./plugins/  (npm install fetches extism-js et al.
-# via the SDK's postinstall on first run)
+# Build each example into ./plugins/  (the build just bundles each plugin's
+# source; no wasm toolchain is needed)
 for ex in examples/js/*/; do tools/build-plugin.sh "$ex"; done
 
 # Run the simulated chat stream
@@ -88,18 +88,18 @@ Or `cd examples/js/<slug> && npm test` for a single plugin (which also rebuilds 
 ```sh
 npx create-owncast-plugin@latest my-plugin
 cd my-plugin
-npm install                       # postinstall fetches extism-js + binaryen
-npm run build                     # produces my-plugin.wasm
-npm test                          # runs scenario tests in __tests__/
+npm install                       # postinstall fetches the prebuilt test/serve host binaries
+npm run build                     # bundles src/plugin.{js,ts} into my-plugin.js
+npm test                          # builds, then runs scenario tests in __tests__/
 npm run serve                     # localhost dev server at http://localhost:8080/plugins/my-plugin/
 npm run package                   # produces my-plugin.ocpkg, single-file distributable
 ```
 
-Author code goes in `src/plugin.js`. Edit `plugin.manifest.json` to declare permissions (subscriptions are derived from your handler methods). The TypeScript declarations in `@owncast/plugin-sdk` give editor autocomplete. Static assets, HTML pages, images, JS, go in `assets/`; they're served at `/plugins/<slug>/...`.
+Plugins ship as source and run on a JavaScript engine the host embeds, so there's no wasm compile step or toolchain to install for authoring. Prefer Python? The peer **[Python SDK](./sdks/python)** scaffolds with `owncast-plugin-py new my-plugin` and produces the same `.ocpkg`. Author code goes in `src/plugin.js`. Edit `plugin.manifest.json` to declare permissions (subscriptions are derived from your handler methods). The TypeScript declarations in `@owncast/plugin-sdk` give editor autocomplete. Static assets, HTML pages, images, JS, go in `assets/`; they're served at `/plugins/<slug>/...`.
 
 ## Testing
 
-Plugins are tested against the actual built `.wasm` using the **same plugin runtime code that the production Owncast app uses**, so passing tests guarantee the same code path passes in production. No Owncast restart, no live stream needed.
+Plugins are tested against the actual built artifact using the **same plugin runtime code that the production Owncast app uses**, so passing tests guarantee the same code path passes in production. No Owncast restart, no live stream needed.
 
 Tests are JSON scenarios in `__tests__/*.test.json`:
 

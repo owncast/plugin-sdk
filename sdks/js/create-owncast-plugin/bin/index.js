@@ -70,4 +70,5 @@ console.log("");
 console.log("Next steps:");
 console.log(`  cd ${target}`);
 console.log("  npm install");
+console.log("  npm test");
 console.log("  npm run package");

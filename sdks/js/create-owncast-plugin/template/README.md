@@ -5,12 +5,16 @@ An Owncast plugin scaffolded with `create-owncast-plugin`. The slug is `__PLUGIN
 ## Develop
 
 ```sh
-npm install          # one-time, fetches the toolchain
-npm run build        # compile src/plugin.js into an intermediate build artifact
+npm install          # one-time, fetches the prebuilt test/serve host binaries
+npm run build        # bundle src/plugin.js into __PLUGIN_SLUG__.js
 npm test             # build, then run scenarios from __tests__/
 npm run serve        # build, then host the plugin on http://localhost:8080
 npm run package      # build, then bundle into __PLUGIN_SLUG__.ocpkg for distribution
 ```
+
+Plugins ship as source and run on the JavaScript engine the Owncast host embeds,
+so there's no wasm compile step and no toolchain to install. `npm install` only
+fetches the host binaries `test`/`serve` use, and caches them after the first run.
 
 ## Ship
 

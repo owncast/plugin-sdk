@@ -31,8 +31,9 @@ defining handler functions, and calls back into Owncast through the `owncast.*`
 API (send chat, store data, fetch URLs, serve web pages, etc.). A
 `plugin.manifest.json` declares the plugin's identity and the **permissions** it
 needs — every API call requires its matching permission, or the host refuses to
-load the plugin. The build toolchain compiles the JS to WebAssembly and bundles
-everything into one `.ocpkg` file for distribution.
+load the plugin. Plugins ship as source and run on the JavaScript engine the
+Owncast host embeds (no wasm compile step); `npm run package` bundles everything
+into one `.ocpkg` file for distribution.
 
 ## The workflow (follow in order)
 
@@ -110,11 +111,11 @@ defaults:
 ### Step 4 — Install, then test
 
 ```sh
-npm install      # one-time toolchain fetch (downloads the wasm compiler)
+npm install      # one-time, fetches the prebuilt test/serve host binaries
 npm test         # builds the plugin, then runs your scenario tests
 ```
 
-`npm test` compiles `src/plugin.js` to wasm and runs `__tests__/*.test.js`
+`npm test` bundles `src/plugin.js` into `<slug>.js` and runs `__tests__/*.test.js`
 against the real plugin runtime with mocked side effects — a pass means the same
 behavior in production.
 
@@ -148,8 +149,8 @@ npm run package
 ```
 
 This produces **`<slug>.ocpkg`** in the project directory — a single self-contained
-file bundling the manifest, the compiled wasm, and any `public/`/`assets/`/
-`icon.png`/`INSTRUCTIONS.md`. Give the user the path to that file and tell them
+file bundling the manifest, your plugin source (`<slug>.js`), and any `public/`/
+`assets/`/`icon.png`/`INSTRUCTIONS.md`. Give the user the path to that file and tell them
 how to install it:
 
 > Open **Plugins** in your Owncast admin → **Upload plugin** → select

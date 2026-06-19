@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "owncast-plugin-sdk"
-version = "0.5.0"
+version = "0.6.1"
 description = "SDK and CLI for authoring Owncast plugins in Python"
 readme = "README.md"
 requires-python = ">=3.8"

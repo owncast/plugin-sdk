@@ -899,7 +899,7 @@ runScenarios([
 ]);
 ```
 
-`npm test` builds your wasm, then runs `node __tests__/*.test.js`. Each scenario is a `{ name, given?, events, expect? }` object, the same data model as a JSON scenario file, but in JS you can build the array with loops, helpers, fixtures, or computed payloads.
+`npm test` builds your plugin (bundling `src/plugin.{js,ts}` into `<slug>.js`), then runs `node __tests__/*.test.js`. Each scenario is a `{ name, given?, events, expect? }` object, the same data model as a JSON scenario file, but in JS you can build the array with loops, helpers, fixtures, or computed payloads.
 
 If you prefer raw JSON, drop `__tests__/*.test.json` files in instead and invoke the runner with `owncast-plugin test`. The data model is identical; the host binary that runs them is the same. Pick whichever is easier to read for the scenarios you're writing.
 
@@ -1044,7 +1044,7 @@ Either way, the admin then reviews the **Permissions** tab on the plugin's detai
 
 To remove a plugin, an admin clicks the trash icon on the plugin's row in the **Plugins** page and confirms.
 
-`npm run build` produces only the intermediate compiled output and is faster, useful while iterating. `npm run package` is the step you run when you're ready to ship.
+`npm run build` produces only the bundled `<slug>.js` and is faster, useful while iterating. `npm run package` is the step you run when you're ready to ship.
 
 To make your plugin discoverable to other operators rather than handing the `.ocpkg` around yourself, **publish it to the plugin directory** at [owncast.directory](https://owncast.directory) — see the [Publishing your plugin](https://owncast.online/docs/plugins/publishing) guide for the submission process.
 
