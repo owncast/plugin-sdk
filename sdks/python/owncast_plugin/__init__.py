@@ -770,21 +770,26 @@ def _dispatch_http(request):
     return {"status": 404, "body": "not found"}
 
 
+# A handler returning None (a bare `return`) contributes nothing, the same
+# as returning "". `x or ""` maps None and other falsy values to "" before
+# str(), so a handler never has to return an explicit empty string and a
+# bare `return` can't inject the literal text "None" into the page. Mirrors
+# the JS SDK's `handler() || ""`.
 def _dispatch_tab_content(request):
     fn = _TAB.get((request or {}).get("slug"))
-    return str(fn(_Obj(request))) if fn else ""
+    return str(fn(_Obj(request)) or "") if fn else ""
 
 
 def _dispatch_page_content(request):
     fn = _PAGE.get((request or {}).get("slug"))
-    return str(fn(_Obj(request))) if fn else ""
+    return str(fn(_Obj(request)) or "") if fn else ""
 
 
 def _dispatch_page_styles():
     fn = _PAGE_STYLES[0]
-    return str(fn()) if fn else ""
+    return str(fn() or "") if fn else ""
 
 
 def _dispatch_page_scripts():
     fn = _PAGE_SCRIPTS[0]
-    return str(fn()) if fn else ""
+    return str(fn() or "") if fn else ""
