@@ -1295,7 +1295,7 @@ module.exports = definePlugin({
 ## Tips
 
 - **TypeScript works**, name your file `src/plugin.ts` instead of `.js`. The SDK ships TypeScript declarations; `import` instead of `require`.
-- **npm packages work** as long as they're pure JavaScript (no Node built-ins like `fs` or `http`).
+- **Third-party code is limited.** npm packages must be pure JavaScript (no Node built-ins like `fs` or `http`). Python has no `pip`: to use a library, copy its pure-Python source into your project. For outbound HTTP call `owncast.http.fetch`, not `requests` or Node's `http`.
 - **`console.log`** in plugin code surfaces in the host log with a `[your-plugin]` prefix. Use it freely for debugging.
 - **One handler = one subscription.** Define `onChatMessage` → subscribed. Delete it → unsubscribed. Don't think about it.
 - **Mocked tests are fast** (3-5 s including rebuild). Run them on every save.

@@ -140,11 +140,12 @@ The concepts (events, permissions, the `.ocpkg` format, the manifest) are shared
 
 ## How it works (and how it differs from the JS SDK)
 
-Plugins run on a Python engine the Owncast host embeds and shares across every Python plugin, so there's no per-plugin compile. `build` writes your `src/plugin.py` out as `<slug>.py`, stripping the `from owncast_plugin import …` line because the SDK names are already globals in the engine, and `package` zips that with the manifest and assets into the `.ocpkg`. You still `from owncast_plugin import …` for editor support and unit tests.
+Plugins run on a Python engine the Owncast host embeds and shares across every Python plugin, so there's no per-plugin compile. `build` writes your `src/plugin.py` out as `<slug>.py`, and `package` zips that with the manifest and assets into the `.ocpkg`. A single-file plugin is emitted with the `from owncast_plugin import …` line stripped (the SDK names are already globals in the engine). A plugin that imports other local modules has them inlined into the one shipped `plugin.py`. You still `from owncast_plugin import …` for editor support and unit tests.
 
 Consequences worth knowing:
 
-- **Pure-Python only.** The embedded engine runs pure Python. Dependencies with C extensions (numpy, pandas, etc.) won't load. Pure-Python packages work if you vendor them. For outbound HTTP use `owncast.http.fetch`, not `requests`.
+- **The entry can't use relative imports.** In `src/plugin.py` import your own modules absolutely (`from helpers import …`), not `from . import helpers`. Relative imports inside a package's own modules are fine.
+- **Pure-Python only, no `pip`.** The embedded engine runs pure Python with no filesystem, so there's no `pip install` and C extensions (numpy, pandas, etc.) won't load. You add a third-party library by copying its pure-Python source into `src/` and importing it like any local module. For outbound HTTP use `owncast.http.fetch`, not `requests`.
 - **Don't shadow stdlib names at module top level.** Your code runs in the same global scope as the runtime (which does `import json`), so a top-level `def json(...)` in your plugin shadows it and breaks things. Name helpers like `json_response` instead.
 - **`snake_case` everywhere**, vs the JS SDK's camelCase (`send_action`, `get_json`, `msg.user.display_name`, `filter.pass_()` — `pass` is a Python keyword).
 
