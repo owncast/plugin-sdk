@@ -2,7 +2,7 @@
   "api": "1",
   "name": "Example Stream Ops",
   "slug": "stream-ops",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "Reports broadcast telemetry (!broadcaster, server.read) and video config (!videoconfig, videoconfig.read), and tunes latency (!latency <n>, videoconfig.write). This example was written in JavaScript.",
   "permissions": [
     "chat.send",
