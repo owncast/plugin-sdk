@@ -188,7 +188,7 @@ combine for richer plugins.
 | Push realtime updates to a browser              | (any)                                        | `owncast.sse.send(channel, event, data)`  | `http.sse`                             |
 | Add an admin settings page in the Owncast UI    | `onHttpRequest` + `public/admin/...`         | —                                         | `http.serve` + `admin.pages` manifest  |
 | Add a button under the viewer's stream          | (manifest only, or `owncast.actions.add`)    | —                                         | `ui.modify` (+ `http.serve` if it opens your page) |
-| Inject CSS / JS / HTML into the viewer page     | (manifest `styles`/`scripts`/`extraPageContent`) | optional `onPageContent({slug,user})` | `ui.modify`                            |
+| Inject CSS / JS / HTML into the viewer page     | (manifest `styles`/`scripts`/`extraPageContent`) | dynamic `onPageStyles()` / `onPageScripts()` / `onPageContent({slug,user})` | `ui.modify`                            |
 | Add a tab to the viewer page                    | optional `onTabContent({slug,user})`         | —                                         | `ui.modify` (+ data perms used)        |
 | Upload a file and get a public URL              | (any)                                        | `owncast.storage.upload(name, bytes)`     | `storage.upload`                       |
 | Private server-side files                       | (any)                                        | `owncast.fs.*`                            | `storage.fs`                           |
@@ -230,7 +230,8 @@ which handlers exist. Full list of handlers: `onChatMessage`,
 `onChatUserRenamed`, `onMessageModerated`, `onStreamStarted`, `onStreamStopped`,
 `onStreamTitleChanged`, `onFediverseFollow/Like/Repost/Mention/Reply`,
 `onHttpRequest`, `onTick`, `onSseConnect/Disconnect`, `onTabContent`,
-`onPageContent`, and `on: { "namespace.event"() {} }` for custom events.
+`onPageContent`, `onPageStyles`, `onPageScripts`, and
+`on: { "namespace.event"() {} }` for custom events.
 
 Important shape/behavior notes:
 

@@ -756,7 +756,7 @@ Three manifest fields let a plugin contribute content directly to the viewer pag
 | `scripts`          | `/customjavascript`                   | `ui.modify`         | must end `.js`     |
 | `extraPageContent` | `/api/config` → `extraPageContent`    | `ui.modify`         | static or dynamic  |
 
-Each also has a **dynamic** form computed at request time by a handler instead of a static file. `extraPageContent` uses `onPageContent` (below); CSS and JavaScript use the `onPageStyles` and `onPageScripts` handlers, which — unlike the manifest fields — need no manifest entry at all. The host calls them once per `/api/config` for any plugin holding `ui.modify`, and a plugin opts in simply by exporting the handler. Their output lands in the same `customStyles` / `/customjavascript` slots, appended after any static `styles` / `scripts` contributions.
+Each also has a **dynamic** form computed at request time by a handler instead of a static file. `extraPageContent` uses `onPageContent` (below). CSS and JavaScript use the `onPageStyles` and `onPageScripts` handlers, which need no manifest entry at all. The host calls them once per `/api/config` for any plugin holding `ui.modify`, and a plugin opts in simply by exporting the handler. Their output lands in the same `customStyles` / `/customjavascript` slots, appended after any static `styles` / `scripts` contributions.
 
 ### Stylesheets
 
@@ -779,7 +779,7 @@ Relative `url(...)` references inside the CSS resolve against the viewer page, n
 
 ### Dynamic stylesheets
 
-When the CSS depends on plugin state — a theme the admin selected, a value in the KV store, anything decided at runtime — return it from `onPageStyles` instead of (or in addition to) shipping a static file. No manifest field is involved; just export the handler and declare `ui.modify`.
+When the CSS depends on plugin state, like a theme the admin selected or a value in the KV store, return it from `onPageStyles` instead of (or in addition to) shipping a static file. No manifest field is involved. Just export the handler and declare `ui.modify`.
 
 ```js
 module.exports = definePlugin({
@@ -791,7 +791,7 @@ module.exports = definePlugin({
 });
 ```
 
-The returned string is appended to `customStyles` after any static `styles` files (so a later rule wins the cascade), preceded by a `/* plugin: <slug> — dynamic */` delimiter. The call is global — it takes no per-viewer argument — which keeps `/api/config` cacheable. Return `""` to contribute nothing on this request. Python exposes the same hook as the bare decorator `@plugin.on_page_styles`.
+The returned string is appended to `customStyles` after any static `styles` files (so a later rule wins the cascade), preceded by a `/* plugin: <slug> — dynamic */` delimiter. The call is global. It takes no per-viewer argument, which keeps `/api/config` cacheable. Return `""` to contribute nothing on this request. Python exposes the same hook as the bare decorator `@plugin.on_page_styles`.
 
 ### Scripts
 
@@ -807,11 +807,11 @@ Same path and permission rules as `styles`, applied to `.js` files. The host pre
 Two things to keep in mind about execution:
 
 * Every plugin's script runs in the viewer page's window, sharing the global scope with the admin's customJavascript and every other plugin. Wrap your script in an IIFE so top-level declarations don't collide.
-* The host wraps each plugin's contribution in its own `try`/`catch`, so a **runtime** error throws to the browser console (`owncast plugin <slug> script error:`) without aborting other plugins' scripts. A **syntax** error is not isolated — it fails to parse the shared bundle before any `try` runs — so still ship valid JS.
+* The host wraps each plugin's contribution in its own `try`/`catch`, so a **runtime** error throws to the browser console (`owncast plugin <slug> script error:`) without aborting other plugins' scripts. A **syntax** error is not isolated. It fails to parse the shared bundle before any `try` runs, so still ship valid JS.
 
 ### Dynamic scripts
 
-The script counterpart to `onPageStyles`: return JavaScript computed at request time from `onPageScripts`. No manifest field; export the handler and declare `ui.modify`.
+The script counterpart to `onPageStyles`: return JavaScript computed at request time from `onPageScripts`. No manifest field is involved. Export the handler and declare `ui.modify`.
 
 ```js
 module.exports = definePlugin({
@@ -823,7 +823,7 @@ module.exports = definePlugin({
 });
 ```
 
-The return is appended to `/customjavascript` after any static `scripts`, wrapped in the same per-plugin `try`/`catch`, and runs in the shared viewer `window` — so the IIFE and escaping advice above applies. The call is global (no per-viewer argument). Python exposes it as `@plugin.on_page_scripts`.
+The return is appended to `/customjavascript` after any static `scripts`, wrapped in the same per-plugin `try`/`catch`, and runs in the shared viewer `window`, so the IIFE and escaping advice above applies. The call is global (no per-viewer argument). Python exposes it as `@plugin.on_page_scripts`.
 
 ### Extra page content
 
@@ -954,6 +954,8 @@ Point your `test` script at that one entry (`node __tests__/index.test.js`) inst
 - `http: { method, path, headers?, body?, user?, authenticated?, expect: {status, headers?, body?, bodyContains?} }`, sends an HTTP request through your plugin server
 - `tabContent: { slug, user?, expect: {body?, bodyContains?} }`, calls `onTabContent` directly and asserts on the returned HTML
 - `pageContent: { slug, user?, expect: {body?, bodyContains?} }`, calls `onPageContent` directly and asserts on the returned HTML
+- `pageStyles: { expect: {body?, bodyContains?} }`, calls `onPageStyles` directly and asserts on the returned CSS
+- `pageScripts: { expect: {body?, bodyContains?} }`, calls `onPageScripts` directly and asserts on the returned JavaScript
 
 ```json
 [

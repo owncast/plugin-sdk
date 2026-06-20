@@ -18,8 +18,12 @@ Every plugin must export these functions:
 | `on_http_request` | JSON `IncomingHttpRequest` | JSON `OutgoingHttpResponse` | HTTP request handler for `/plugins/<name>/*`.                                                         |
 | `on_tab_content`  | JSON `ContentRequest`      | raw HTML string             | Render HTML for a dynamic tab (one without a static `content` file in the manifest).                 |
 | `on_page_content` | JSON `ContentRequest`      | raw HTML string             | Render HTML for a dynamic `extraPageContent` slot (one without a static `content` file).             |
+| `on_page_styles`  | none                       | raw CSS string              | Optional. Return CSS to append to `customStyles` on `/api/config`. Called only when the plugin holds `ui.modify`. |
+| `on_page_scripts` | none                       | raw JavaScript string       | Optional. Return JavaScript to append to `/customjavascript`. Same gating as `on_page_styles`.        |
 
 `ContentRequest` shape: `{ "slug": "<tab-or-slot-slug>", "user"?: ChatUser }`. The host calls the appropriate export when building the `/api/config` response; the returned string is inlined directly as the body. An empty string is valid (renders nothing). Each entry point has a per-call timeout enforced by the host. See the host's `dispatcher.go` and `server.go` for current values.
+
+`on_page_styles` and `on_page_scripts` take no input and return no per-viewer content, so the `/api/config` response stays cacheable. They are the dynamic counterparts to the static `manifest.styles` and `manifest.scripts` files: the host appends their output after the static files in the same `customStyles` / `/customjavascript` slots. The host calls them once per `/api/config` for any plugin that exports them and holds `ui.modify`, and wraps each script contribution (static and dynamic) in a try/catch so one plugin's runtime error can't break the shared bundle. A plugin opts in purely by exporting the function, with no manifest field.
 
 ### `register` output
 
@@ -298,7 +302,7 @@ Each language SDK is responsible for:
 
 - Declaring the imports listed above (gated by manifest permissions) so the plugin author's call into `owncast.chat.send(...)` resolves to the right wasm import.
 - Encoding/decoding payloads as JSON or text per the table above.
-- Implementing the exports' dispatch loop: parse the envelope, route to the right handler, serialize the response. This covers all six exports: `register`, `on_event`, `on_filter`, `on_http_request`, `on_tab_content`, and `on_page_content`.
+- Implementing the exports' dispatch loop: parse the envelope, route to the right handler, serialize the response. This covers all eight exports: `register`, `on_event`, `on_filter`, `on_http_request`, `on_tab_content`, `on_page_content`, `on_page_styles`, and `on_page_scripts`.
 
 The Owncast server repo's plugin runtime is responsible for:
 

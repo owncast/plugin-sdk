@@ -194,7 +194,7 @@ Several rows combine for richer plugins.
 | Push realtime updates to a browser              | (any)                                               | `owncast.sse.send(channel, event, data)`       | `http.sse`                             |
 | Add an admin settings page in the Owncast UI    | `@plugin.on_http_request` + `public/admin/...`      | —                                              | `http.serve` + `admin.pages` manifest  |
 | Add a button under the viewer's stream          | (manifest only, or `owncast.actions.add`)           | —                                              | `ui.modify` (+ `http.serve` if it opens your page) |
-| Inject CSS / JS / HTML into the viewer page     | (manifest `styles`/`scripts`/`extraPageContent`)    | optional `@plugin.on_page_content`             | `ui.modify`                            |
+| Inject CSS / JS / HTML into the viewer page     | (manifest `styles`/`scripts`/`extraPageContent`)    | dynamic `@plugin.on_page_styles` / `on_page_scripts` / `on_page_content` | `ui.modify`                            |
 | Add a tab to the viewer page                    | optional `@plugin.on_tab_content`                   | —                                              | `ui.modify` (+ data perms used)        |
 | Upload a file and get a public URL              | (any)                                               | `owncast.storage.upload(name, bytes)`          | `storage.upload`                       |
 | Private server-side files                       | (any)                                               | `owncast.fs.*`                                 | `storage.fs`                           |
@@ -235,6 +235,7 @@ from which handlers exist. Decorators: `@plugin.on_chat_message`,
 `_stopped` / `_title_changed`, `@plugin.on_fediverse_follow` / `_like` /
 `_repost` / `_mention` / `_reply`, `@plugin.on_tick`, `@plugin.on_sse_connect` /
 `_disconnect`, `@plugin.on_tab_content("slug")`, `@plugin.on_page_content("slug")`,
+`@plugin.on_page_styles`, `@plugin.on_page_scripts`,
 HTTP routes (`@plugin.get/post/put/delete/patch(path)`, `@plugin.route`,
 `@plugin.on_http_request`), and `@plugin.on("namespace.event")` for custom events.
 

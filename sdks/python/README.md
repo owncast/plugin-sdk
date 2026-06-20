@@ -84,6 +84,7 @@ Each decorator subscribes to one event; the SDK derives the manifest subscriptio
 | `@plugin.on_fediverse_follow` / `_like` / `_repost` / `_mention` / `_reply` | fediverse activity |
 | `@plugin.on("custom.event")` | a plugin-emitted custom event |
 | `@plugin.on_tab_content("slug")` / `@plugin.on_page_content("slug")` | render dynamic viewer-page HTML |
+| `@plugin.on_page_styles` / `@plugin.on_page_scripts` | inject viewer-page CSS / JS computed at request time |
 
 Payloads are attribute objects with `snake_case` accessors over the wire JSON (`msg.body`, `msg.user.display_name`, `msg.client_id`). Use `msg.raw` for the underlying dict.
 

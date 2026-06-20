@@ -73,7 +73,7 @@ declared list, so don't over-declare.
 | Push realtime updates to a browser              | (any)                                               | `owncast.sse.send(channel, event, data)`       | `http.sse`                             |
 | Admin settings page in the Owncast UI           | `@plugin.on_http_request` + `public/admin/...`      | —                                              | `http.serve` + `admin.pages`           |
 | Button under the viewer's stream                | manifest `actions` / `owncast.actions.add`          | —                                              | `ui.modify` (+ `http.serve` if it opens your page) |
-| Inject CSS / JS / HTML into the viewer page     | manifest `styles`/`scripts`/`extraPageContent`      | optional `@plugin.on_page_content`             | `ui.modify`                            |
+| Inject CSS / JS / HTML into the viewer page     | manifest `styles`/`scripts`/`extraPageContent`      | dynamic: `@plugin.on_page_styles` / `on_page_scripts` / `on_page_content` | `ui.modify`                            |
 | Add a tab to the viewer page                    | optional `@plugin.on_tab_content`                   | —                                              | `ui.modify` (+ data perms used)        |
 | Upload a file, get a public URL                 | (any)                                               | `owncast.storage.upload(name, bytes)`          | `storage.upload`                       |
 | Private server-side files                       | (any)                                               | `owncast.fs.*`                                 | `storage.fs`                           |
