@@ -1,0 +1,112 @@
+[
+  {
+    "name": "no theme selected contributes no styles or scripts",
+    "events": [
+      { "pageStyles": { "expect": { "body": "" } } },
+      { "pageScripts": { "expect": { "body": "" } } }
+    ]
+  },
+  {
+    "name": "selected theme's CSS is injected into the page styles",
+    "given": { "kv": { "selected": "midnight" } },
+    "events": [
+      {
+        "pageStyles": {
+          "expect": { "bodyContains": "--theme-color-action: #5b8cff" }
+        }
+      },
+      {
+        "pageStyles": {
+          "expect": { "bodyContains": "theme-hub: midnight" }
+        }
+      }
+    ]
+  },
+  {
+    "name": "selected theme is announced by the page script",
+    "given": { "kv": { "selected": "sunset" } },
+    "events": [
+      {
+        "pageScripts": {
+          "expect": { "bodyContains": "document.documentElement.dataset.themeHub = \"sunset\"" }
+        }
+      }
+    ]
+  },
+  {
+    "name": "admin API lists the catalog and current selection",
+    "given": { "kv": { "selected": "forest" } },
+    "events": [
+      {
+        "http": {
+          "method": "GET",
+          "path": "/admin/api/state",
+          "authenticated": true,
+          "expect": { "status": 200, "bodyContains": "\"selected\":\"forest\"" }
+        }
+      },
+      {
+        "http": {
+          "method": "GET",
+          "path": "/admin/api/state",
+          "authenticated": true,
+          "expect": { "status": 200, "bodyContains": "\"id\":\"midnight\"" }
+        }
+      }
+    ]
+  },
+  {
+    "name": "admin API rejects unauthenticated reads",
+    "events": [
+      { "http": { "method": "GET", "path": "/admin/api/state", "expect": { "status": 401 } } }
+    ]
+  },
+  {
+    "name": "selecting a theme persists it",
+    "events": [
+      {
+        "http": {
+          "method": "POST",
+          "path": "/admin/api/state",
+          "headers": { "Content-Type": "application/json" },
+          "body": "{\"selected\":\"midnight\"}",
+          "authenticated": true,
+          "expect": { "status": 200, "bodyContains": "\"selected\":\"midnight\"" }
+        }
+      }
+    ],
+    "expect": { "kv": { "selected": "midnight" } }
+  },
+  {
+    "name": "an unknown theme id is rejected and not persisted",
+    "events": [
+      {
+        "http": {
+          "method": "POST",
+          "path": "/admin/api/state",
+          "body": "{\"selected\":\"neon\"}",
+          "authenticated": true,
+          "expect": { "status": 400 }
+        }
+      }
+    ],
+    "expect": { "kv": {} }
+  },
+  {
+    "name": "an empty selection clears the active theme",
+    "given": { "kv": { "selected": "midnight" } },
+    "events": [
+      {
+        "http": {
+          "method": "POST",
+          "path": "/admin/api/state",
+          "body": "{\"selected\":\"\"}",
+          "authenticated": true,
+          "expect": { "status": 200 }
+        }
+      },
+      { "pageStyles": { "expect": { "body": "" } } }
+    ],
+    "expect": { "kv": { "selected": "" } }
+  }
+]

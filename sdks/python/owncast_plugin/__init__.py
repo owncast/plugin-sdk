@@ -123,6 +123,8 @@ _HTTP = [None]  # catch-all on_http_request handler (no path/method given)
 _ROUTES = []    # list of (method_or_"*", path, fn) for path/method routing
 _TAB = {}       # slug -> fn
 _PAGE = {}      # slug -> fn
+_PAGE_STYLES = [None]   # on_page_styles handler (global, no slug)
+_PAGE_SCRIPTS = [None]  # on_page_scripts handler (global, no slug)
 
 # A plugin may use plugin.commands(...) AND @plugin.on_chat_message together; on
 # each chat message the command router runs first, then the on_chat_message
@@ -231,6 +233,25 @@ class _Plugin:
             _PAGE[slug] = fn
             return fn
         return deco
+
+    def on_page_styles(self, fn):
+        """Return CSS to inline into the viewer page's customStyles at request
+        time — the same whole-UI core-theming slot as manifest `styles`. The
+        host calls this for any plugin holding `ui.modify`; just define the
+        handler (no manifest field, no slug). Return "" to contribute nothing.
+        Output is appended after any static `styles` files. Used bare:
+        `@plugin.on_page_styles`."""
+        _PAGE_STYLES[0] = fn
+        return fn
+
+    def on_page_scripts(self, fn):
+        """Return JavaScript to append to the viewer page's customJavascript —
+        the dynamic counterpart to manifest `scripts`. The host wraps each
+        plugin's script in a try/catch, but it runs in the shared viewer
+        `window`: wrap your code in an IIFE and escape untrusted strings.
+        Requires `ui.modify`. Used bare: `@plugin.on_page_scripts`."""
+        _PAGE_SCRIPTS[0] = fn
+        return fn
 
     def commands(self, table, *, prefix="!", case_sensitive=False, on_unknown=None):
         """Declare a chat-command table. The SDK wires the chat subscription for
@@ -757,3 +778,13 @@ def _dispatch_tab_content(request):
 def _dispatch_page_content(request):
     fn = _PAGE.get((request or {}).get("slug"))
     return str(fn(_Obj(request))) if fn else ""
+
+
+def _dispatch_page_styles():
+    fn = _PAGE_STYLES[0]
+    return str(fn()) if fn else ""
+
+
+def _dispatch_page_scripts():
+    fn = _PAGE_SCRIPTS[0]
+    return str(fn()) if fn else ""

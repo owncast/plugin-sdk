@@ -1,0 +1,22 @@
+{
+  "themes": [
+    {
+      "id": "midnight",
+      "name": "Midnight",
+      "description": "A deep indigo dark theme with cool blue accents.",
+      "css": ":root {\n  --theme-color-background-main: #0b1020;\n  --theme-color-background-header: #070b16;\n  --theme-color-components-content-background: #131a30;\n  --theme-color-components-chat-background: #0e1426;\n  --theme-color-components-chat-text: #d6e0ff;\n  --theme-color-components-text-on-dark: #eef2ff;\n  --theme-color-components-text-on-light: #0b1020;\n  --theme-color-action: #5b8cff;\n  --theme-color-action-hover: #80a6ff;\n  --theme-color-components-primary-button-border: #5b8cff;\n  --theme-color-components-primary-button-text: #ffffff;\n  --theme-rounded-corners: 8px;\n}"
+    },
+    {
+      "id": "sunset",
+      "name": "Sunset",
+      "description": "A warm dark theme with orange and magenta highlights.",
+      "css": ":root {\n  --theme-color-background-main: #1c1116;\n  --theme-color-background-header: #140b10;\n  --theme-color-components-content-background: #2a161d;\n  --theme-color-components-chat-background: #20121a;\n  --theme-color-components-chat-text: #ffe3d0;\n  --theme-color-components-text-on-dark: #fff1e6;\n  --theme-color-components-text-on-light: #1c1116;\n  --theme-color-action: #ff7a59;\n  --theme-color-action-hover: #ff9b80;\n  --theme-color-components-primary-button-border: #ff4d8d;\n  --theme-color-components-primary-button-text: #ffffff;\n  --theme-rounded-corners: 14px;\n}"
+    },
+    {
+      "id": "forest",
+      "name": "Forest",
+      "description": "An earthy green theme with a light parchment content area.",
+      "css": ":root {\n  --theme-color-background-main: #10241a;\n  --theme-color-background-header: #0a1812;\n  --theme-color-components-content-background: #f3efe0;\n  --theme-color-components-chat-background: #16301f;\n  --theme-color-components-chat-text: #e4f5e7;\n  --theme-color-components-text-on-dark: #eaf6ec;\n  --theme-color-components-text-on-light: #1c2a1f;\n  --theme-color-action: #3fa66a;\n  --theme-color-action-hover: #58c184;\n  --theme-color-components-primary-button-border: #2f7d4f;\n  --theme-color-components-primary-button-text: #ffffff;\n  --theme-rounded-corners: 4px;\n}"
+    }
+  ]
+}

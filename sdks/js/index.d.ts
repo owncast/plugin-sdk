@@ -390,6 +390,26 @@ export interface PluginDef {
    *  `req.user` is the viewer's chat identity when available. */
   onPageContent?(req: ContentRequest): string;
 
+  /** Return CSS to inline into the viewer page's customStyles at request
+   *  time — the same core-theming slot used by `manifest.styles`, applied to
+   *  the whole UI. Called once per `/api/config` for any plugin holding
+   *  `ui.modify`; no manifest field is needed, just export this handler.
+   *  Return "" to contribute nothing. The output is appended after any static
+   *  `manifest.styles` files, so returning only the active override wins the
+   *  cascade. Global (no per-viewer argument) so `/api/config` stays
+   *  cacheable. Requires `ui.modify`. */
+  onPageStyles?(): string;
+
+  /** Return JavaScript to append to the viewer page's customJavascript at
+   *  request time — the dynamic counterpart to `manifest.scripts`. Called once
+   *  per `/api/config` for any plugin holding `ui.modify`. The host wraps each
+   *  plugin's script (static and dynamic) in a try/catch so a runtime error
+   *  can't break other plugins, but it runs in the shared viewer `window`:
+   *  wrap your code in an IIFE to avoid global collisions, and escape any
+   *  untrusted strings you embed. Return "" to contribute nothing. Requires
+   *  `ui.modify`. */
+  onPageScripts?(): string;
+
   /** Handlers for plugin-emitted custom events. The key is the event type
    *  string (e.g. "announcement.broadcast"). Notifications only, to filter
    *  custom events, additional API will be needed. */

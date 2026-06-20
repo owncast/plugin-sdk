@@ -10,6 +10,8 @@ declare module 'main' {
   export function on_http_request(): I32;
   export function on_tab_content(): I32;
   export function on_page_content(): I32;
+  export function on_page_styles(): I32;
+  export function on_page_scripts(): I32;
 }
 
 declare module 'extism:host' {

@@ -1,0 +1,71 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <title>Theme Hub</title>
+    <style>
+      body { font-family: system-ui, sans-serif; line-height: 1.5; }
+      fieldset { border: 1px solid currentColor; border-radius: 8px; margin: 0 0 1rem; padding: 0.5rem 1rem; }
+      .theme { display: block; padding: 0.5rem 0; }
+      .theme strong { display: block; }
+      .theme small { opacity: 0.8; }
+      #status { min-height: 1.4em; opacity: 0.85; }
+    </style>
+  </head>
+  <body>
+    <h1>Theme Hub</h1>
+    <p>Pick a theme to apply to the viewer page. The change takes effect on the next page load.</p>
+
+    <form id="f">
+      <fieldset id="themes"></fieldset>
+      <p id="status"></p>
+    </form>
+
+    <script>
+      const themesEl = document.getElementById("themes");
+      const statusEl = document.getElementById("status");
+
+      function render(state) {
+        const options = [
+          { id: "", name: "None", description: "Use Owncast's default theme." },
+          ...state.themes,
+        ];
+        themesEl.innerHTML = options
+          .map(
+            (t) => `
+              <label class="theme">
+                <input type="radio" name="theme" value="${t.id}" ${
+              t.id === state.selected ? "checked" : ""
+            } />
+                <strong>${t.name}</strong>
+                <small>${t.description}</small>
+              </label>`
+          )
+          .join("");
+      }
+
+      async function save(selected) {
+        statusEl.textContent = "Saving…";
+        const res = await fetch("./api/state", {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({ selected }),
+        });
+        if (!res.ok) {
+          statusEl.textContent = "Failed to save: " + (await res.text());
+          return;
+        }
+        render(await res.json());
+        statusEl.textContent = selected ? "Theme applied." : "Theme cleared.";
+      }
+
+      themesEl.addEventListener("change", (e) => {
+        if (e.target.name === "theme") save(e.target.value);
+      });
+
+      (async () => {
+        render(await (await fetch("./api/state")).json());
+      })();
+    </script>
+  </body>
+</html>

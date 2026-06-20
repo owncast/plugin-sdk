@@ -59,19 +59,25 @@ type ScenarioHTTPFixture struct {
 }
 
 type ScenarioStep struct {
-	// Exactly one of Event, Filter, HTTP, TabContent, or PageContent must be set.
+	// Exactly one of Event, Filter, HTTP, TabContent, PageContent, PageStyles,
+	// or PageScripts must be set.
 	// - Event:       notification dispatch
 	// - Filter:      filter chain, Expect asserts on the FilterResult
 	// - HTTP:        sends an HTTP request through plugin.Server, HTTPExpect
 	//                asserts on the response
 	// - TabContent:  invokes the plugin's on_tab_content export
 	// - PageContent: invokes the plugin's on_page_content export
+	// - PageStyles:  invokes the plugin's on_page_styles export (CSS); slug and
+	//                user are ignored — the hook is global
+	// - PageScripts: invokes the plugin's on_page_scripts export (JavaScript)
 	Event       string        `json:"event,omitempty"`
 	Filter      string        `json:"filter,omitempty"`
 	Payload     any           `json:"payload,omitempty"`
 	HTTP        *HTTPStep     `json:"http,omitempty"`
 	TabContent  *ContentStep  `json:"tabContent,omitempty"`
 	PageContent *ContentStep  `json:"pageContent,omitempty"`
+	PageStyles  *ContentStep  `json:"pageStyles,omitempty"`
+	PageScripts *ContentStep  `json:"pageScripts,omitempty"`
 	Expect      *FilterExpect `json:"expect,omitempty"`
 }
 
@@ -130,8 +136,14 @@ func (s *ScenarioStep) Validate() error {
 	if s.PageContent != nil {
 		count++
 	}
+	if s.PageStyles != nil {
+		count++
+	}
+	if s.PageScripts != nil {
+		count++
+	}
 	if count != 1 {
-		return fmt.Errorf("step must set exactly one of `event`, `filter`, `http`, `tabContent`, or `pageContent`")
+		return fmt.Errorf("step must set exactly one of `event`, `filter`, `http`, `tabContent`, `pageContent`, `pageStyles`, or `pageScripts`")
 	}
 	if s.Filter == "" && s.Expect != nil {
 		return fmt.Errorf("step.expect is only valid on filter steps (use http.expect for http steps)")

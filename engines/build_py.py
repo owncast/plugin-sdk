@@ -18,8 +18,114 @@ import sys
 HERE = os.path.dirname(os.path.abspath(__file__))
 REPO = os.path.dirname(HERE)
 SDKDIR = os.path.join(REPO, "sdks/python")
-sys.path.insert(0, SDKDIR)
-from owncast_plugin import build as B  # reuse host_import_block, SDK_RUNTIME, HOST_FNS
+
+# The runtime that gets inlined into the engine: this package's __init__.py.
+SDK_RUNTIME = os.path.join(SDKDIR, "owncast_plugin", "__init__.py")
+
+# Host functions grouped by the permission that grants them. The shared engine
+# declares the FULL union (the host registers all of them and gates each by the
+# calling plugin's permissions at call time). Each entry:
+# (wasm import name, python signature, [return annotation]). All host fns use
+# i64 (not i32) so they match extism-py, which maps every Python `int` to i64.
+# Keep in sync with Owncast's BuildHostFunctions (services/plugins/hostfns.go)
+# and the JS engine's host union (engines/javascript/engine.d.ts).
+HOST_FNS = {
+    "chat.send": [
+        ("owncast_send_chat", "text: str"),
+        ("owncast_send_chat_action", "text: str"),
+        ("owncast_send_chat_system", "body: str"),
+        ("owncast_send_chat_to", "client_id: int, text: str"),
+    ],
+    "chat.history": [
+        ("owncast_chat_history", "limit: int", "str"),
+        ("owncast_chat_clients", "", "str"),
+    ],
+    "chat.moderate": [
+        ("owncast_delete_message", "message_id: str"),
+        ("owncast_kick_client", "client_id: int"),
+    ],
+    "storage.kv": [
+        ("owncast_kv_get", "key: str", "str"),
+        ("owncast_kv_set", "key: str, value: str"),
+    ],
+    "storage.upload": [
+        ("owncast_storage_upload", "name: str, data: str", "str"),
+    ],
+    "storage.fs": [
+        ("owncast_fs_read", "path: str", "str"),
+        ("owncast_fs_write", "path: str, data: str", "str"),
+        ("owncast_fs_list", "directory: str", "str"),
+        ("owncast_fs_delete", "path: str", "str"),
+        ("owncast_fs_exists", "path: str", "int"),
+    ],
+    "events.emit": [
+        ("owncast_emit_event", "event_type: str, payload: str"),
+    ],
+    "server.read": [
+        ("owncast_stream_current", "", "str"),
+        ("owncast_stream_broadcaster", "", "str"),
+        ("owncast_server_info", "", "str"),
+        ("owncast_server_socials", "", "str"),
+        ("owncast_server_emotes", "", "str"),
+        ("owncast_server_federation", "", "str"),
+        ("owncast_server_tags", "", "str"),
+    ],
+    "videoconfig.read": [
+        ("owncast_video_config_read", "", "str"),
+    ],
+    "videoconfig.write": [
+        ("owncast_video_config_write", "config: str", "str"),
+    ],
+    "notifications.send": [
+        ("owncast_notify_discord", "text: str"),
+        ("owncast_notify_browser_push", "payload: str"),
+        ("owncast_notify_fediverse", "payload: str"),
+    ],
+    "users.read": [
+        ("owncast_users_list", "", "str"),
+        ("owncast_user_get", "user_id: str", "str"),
+    ],
+    "users.moderate": [
+        ("owncast_user_set_enabled", "user_id: str, enabled: int, reason: str"),
+        ("owncast_ban_ip", "ip: str"),
+    ],
+    "fediverse.post": [
+        ("owncast_fediverse_post", "text: str", "str"),
+    ],
+    "http.sse": [
+        ("owncast_sse_send", "channel: str, event: str, data: str"),
+    ],
+    "ui.modify": [
+        ("owncast_add_actions", "payload: str"),
+        ("owncast_clear_actions", ""),
+    ],
+}
+
+# Granted to every plugin without a declared permission (see WIRE_PROTOCOL.md).
+AMBIENT_FNS = [
+    ("owncast_timer_set", "timer_id: int, delay_ms: int, repeat: int", "int"),
+    ("owncast_timer_clear", "timer_id: int"),
+    ("owncast_config_get", "key: str", "str"),
+    ("owncast_asset_read", "path: str", "str"),
+]
+
+
+def host_import_block(permissions):
+    """Emit the @extism.import_fn declarations for the ambient host functions
+    plus those granted by `permissions`, registering each into the SDK
+    runtime's `_HOST` dispatch table."""
+    specs = list(AMBIENT_FNS)
+    for perm in permissions:
+        specs.extend(HOST_FNS.get(perm, []))
+    lines = []
+    for spec in specs:
+        name, sig = spec[0], spec[1]
+        ret = (" -> " + spec[2]) if len(spec) > 2 else ""
+        lines.append('@extism.import_fn("extism:host/user", "%s")' % name)
+        lines.append("def _imp_%s(%s)%s: ..." % (name, sig, ret))
+        lines.append('_HOST["%s"] = _imp_%s' % (name, name))
+    return "\n".join(lines)
+
 
 CACHE = os.path.expanduser("~/.cache/owncast-plugin-sdk")
 EXTISM_PY = os.environ.get("EXTISM_PY") or os.path.join(CACHE, "bin/extism-py")
@@ -31,7 +137,7 @@ ENV = dict(
 
 # Full permission union so the engine declares every host function; the host
 # registers all of them and gates each by the calling plugin's permissions.
-ALL_PERMS = list(B.HOST_FNS.keys())
+ALL_PERMS = list(HOST_FNS.keys())
 
 PRE_IMPORTS = "import datetime, re, math, random, time, base64, hashlib, itertools, collections, functools"
 
@@ -96,6 +202,18 @@ def on_tab_content():
 def on_page_content():
     _ensure_loaded()
     extism.output_str(_dispatch_page_content(extism.input_json()))
+
+
+@extism.plugin_fn
+def on_page_styles():
+    _ensure_loaded()
+    extism.output_str(_dispatch_page_styles())
+
+
+@extism.plugin_fn
+def on_page_scripts():
+    _ensure_loaded()
+    extism.output_str(_dispatch_page_scripts())
 '''
 
 
@@ -105,11 +223,11 @@ def main():
         or os.environ.get("OWNCAST_ENGINE_DIR")
         or os.path.abspath(os.path.join(REPO, "../owncast/services/plugins/engines/python"))
     )
-    sdk_src = open(B.SDK_RUNTIME).read()
+    sdk_src = open(SDK_RUNTIME).read()
     combined = "\n\n".join([
         sdk_src,
         "# --- host imports (full union) ---",
-        B.host_import_block(ALL_PERMS),
+        host_import_block(ALL_PERMS),
         BOOTSTRAP,
         "# --- generated exports ---",
         EXPORTS,

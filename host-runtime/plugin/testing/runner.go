@@ -151,6 +151,12 @@ func runStep(ctx context.Context, d *plugin.Dispatcher, server *plugin.Server, l
 	if step.PageContent != nil {
 		return runContentStep(ctx, loaded, "page", step.PageContent)
 	}
+	if step.PageStyles != nil {
+		return runContentStep(ctx, loaded, "styles", step.PageStyles)
+	}
+	if step.PageScripts != nil {
+		return runContentStep(ctx, loaded, "scripts", step.PageScripts)
+	}
 	if step.Filter != "" {
 		final, allowed, reason := d.Filter(ctx, step.Filter, step.Payload)
 		if step.Expect == nil {
@@ -197,6 +203,10 @@ func runContentStep(ctx context.Context, loaded *plugin.Loaded, kind string, s *
 		html, err = loaded.CallTabContent(ctx, s.Slug, s.User)
 	case "page":
 		html, err = loaded.CallPageContent(ctx, s.Slug, s.User)
+	case "styles":
+		html, err = loaded.CallPageStyles(ctx)
+	case "scripts":
+		html, err = loaded.CallPageScripts(ctx)
 	}
 	if err != nil {
 		return fmt.Errorf("%sContent slug=%q: %w", kind, s.Slug, err)

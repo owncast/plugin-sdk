@@ -64,6 +64,19 @@ function on_page_content() {
   Host.outputString(sdk.dispatchPageContent(JSON.parse(Host.inputString())));
   return 0;
 }
+// on_page_styles / on_page_scripts take no input — the host calls them once
+// per /api/config for any plugin holding ui.modify, and the returned CSS/JS is
+// appended to the viewer page's customStyles / customJavascript.
+function on_page_styles() {
+  ensureLoaded();
+  Host.outputString(sdk.dispatchPageStyles());
+  return 0;
+}
+function on_page_scripts() {
+  ensureLoaded();
+  Host.outputString(sdk.dispatchPageScripts());
+  return 0;
+}
 module.exports = {
   register,
   on_event,
@@ -71,4 +84,6 @@ module.exports = {
   on_http_request,
   on_tab_content,
   on_page_content,
+  on_page_styles,
+  on_page_scripts,
 };

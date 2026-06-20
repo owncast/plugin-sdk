@@ -29,6 +29,7 @@ One self-contained npm project per directory. Each has its own `README.md` with 
 | [styles-demo](./styles-demo/)                     | `manifest.styles[]`, CSS inlined into the viewer page's customStyles.                                   |
 | [scripts-demo](./scripts-demo/)                   | `manifest.scripts[]`, JS inlined into the viewer page's customJavascript.                               |
 | [page-content-demo](./page-content-demo/)         | `manifest.extraPageContent`, HTML prepended to the viewer's extra-content block.                        |
+| [theme-hub](./theme-hub/)                         | Dynamic `onPageStyles` + `onPageScripts`: an admin-selectable theme catalog applied to the whole viewer UI via `customStyles`. |
 | [viewer-gate](./viewer-gate/)                     | `manifest.styles` + `manifest.scripts` together: a confirmation modal on page load.                     |
 | [tabs-demo](./tabs-demo/)                         | `manifest.tabs[]`, two tabs added to the viewer page's tab row alongside Followers and About.           |
 

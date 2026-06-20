@@ -945,6 +945,16 @@ function dispatchPageContent(req) {
   return registered.onPageContent(req) || "";
 }
 
+function dispatchPageStyles() {
+  if (!registered || !isFn(registered.onPageStyles)) return "";
+  return registered.onPageStyles() || "";
+}
+
+function dispatchPageScripts() {
+  if (!registered || !isFn(registered.onPageScripts)) return "";
+  return registered.onPageScripts() || "";
+}
+
 module.exports = {
   definePlugin,
   defineCommands,
@@ -960,4 +970,6 @@ module.exports = {
   dispatchHttp,
   dispatchTabContent,
   dispatchPageContent,
+  dispatchPageStyles,
+  dispatchPageScripts,
 };
