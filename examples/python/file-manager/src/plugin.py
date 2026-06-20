@@ -13,49 +13,10 @@
 #   POST /admin/api/files           , upload  { name, dataBase64 }
 #   POST /admin/api/files/delete    , delete  { name }
 #   GET  /admin/api/files/download  , download ?name=<n> -> { name, dataBase64 }
-import base64
-import binascii
 import json
 
 from owncast_plugin import plugin, owncast
-
-
-def b64decode(value):
-    s = "" if value is None else str(value)
-    # Tolerate missing padding, mirroring the JS codec's leniency.
-    s += "=" * (-len(s) % 4)
-    try:
-        return base64.b64decode(s)
-    except (binascii.Error, ValueError):
-        return b""
-
-
-def b64encode(data):
-    if isinstance(data, str):
-        data = data.encode("utf-8")
-    return base64.b64encode(data).decode("ascii")
-
-
-# The UI uses flat file names; the host would sandbox a path either way, but
-# keeping names flat avoids surprising the listing. Reject anything with a
-# path separator or a bare dot.
-def bad_name(name):
-    return (
-        not name
-        or not isinstance(name, str)
-        or "/" in name
-        or "\\" in name
-        or name == "."
-        or name == ".."
-    )
-
-
-def json_resp(status, obj):
-    return {
-        "status": status,
-        "headers": {"content-type": "application/json"},
-        "body": json.dumps(obj, separators=(",", ":")),
-    }
+from util import b64decode, b64encode, bad_name, json_resp
 
 
 def list_files():

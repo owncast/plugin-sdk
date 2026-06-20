@@ -20,7 +20,7 @@ When `content` is omitted from a tab or `extraPageContent` entry, the host calls
 
 **`on_tab_content`** — called for the `"stream-info"` tab. Renders `assets/info.mustache` with live data from `owncast.stream.current()`, `owncast.server.info()`, and related read APIs.
 
-Both handlers read their template from `assets/` at first call using `owncast.assets.read_text(name)`. The JS version uses the `mustache` npm package; `extism-py` can't pull that in, so this example ships a small dependency-free Mustache-subset renderer that produces the same HTML for the features the two templates use (`{{var}}`, `{{{var}}}`, dotted paths, `{{#section}}` / `{{^inverted}}`, `{{.}}`).
+Both handlers read their template from `assets/` at first call using `owncast.assets.read_text(name)`. The JS version uses the `mustache` npm package; a Python plugin can't pull in a PyPI package, so this example keeps a small dependency-free Mustache-subset renderer in `src/mini_mustache.py` and imports it from `plugin.py`. It produces the same HTML the JS `Mustache.render()` does for the features the two templates use (`{{var}}`, `{{{var}}}`, dotted paths, `{{#section}}` / `{{^inverted}}`, `{{.}}`).
 
 ## Permissions
 
