@@ -89,6 +89,13 @@ HOST_FNS = {
         ("owncast_user_set_enabled", "user_id: str, enabled: int, reason: str"),
         ("owncast_ban_ip", "ip: str"),
     ],
+    "users.register": [
+        ("owncast_users_register", "request: str", "str"),
+    ],
+    "auth.gate": [
+        ("owncast_auth_grant_session", "request: str", "str"),
+        ("owncast_auth_end_session", ""),
+    ],
     "fediverse.post": [
         ("owncast_fediverse_post", "text: str", "str"),
     ],
@@ -190,6 +197,12 @@ def on_filter():
 def on_http_request():
     _ensure_loaded()
     extism.output_json(_dispatch_http(extism.input_json()))
+
+
+@extism.plugin_fn
+def on_auth_check():
+    _ensure_loaded()
+    extism.output_json(_dispatch_auth_check(extism.input_json()))
 
 
 @extism.plugin_fn

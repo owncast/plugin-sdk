@@ -1,0 +1,15 @@
+{
+  "api": "1",
+  "name": "Basic Auth",
+  "slug": "basic-auth",
+  "version": "0.1.0",
+  "description": "Password gate: viewers must enter a shared password before they can access the site. The simplest possible auth.gate plugin — no external provider, no network calls. This example was written in Python.",
+  "permissions": ["auth.gate", "users.register", "http.serve", "storage.kv"],
+  "config": {
+    "password": {
+      "type": "string",
+      "default": "letmein",
+      "description": "Shared password viewers must enter to watch"
+    }
+  }
+}

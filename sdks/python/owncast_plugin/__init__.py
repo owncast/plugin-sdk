@@ -27,7 +27,7 @@ except ImportError:  # pragma: no cover - dev machine, not wasm
 
 import json
 
-__all__ = ["plugin", "owncast", "filter", "define_commands", "CommandContext"]
+__all__ = ["plugin", "owncast", "filter", "auth_check", "define_commands", "CommandContext"]
 
 # Host function table, populated by the build-injected import block (only the
 # host functions the manifest's permissions grant, plus the ambient ones).
@@ -120,6 +120,7 @@ _NOTIFY = {}    # event -> (fn, wrap)
 _FILTER = {}    # event -> (fn, wrap)
 _CUSTOM = {}    # custom event -> fn
 _HTTP = [None]  # catch-all on_http_request handler (no path/method given)
+_AUTH_CHECK = [None]  # on_auth_check handler (auth.gate session re-validation)
 _ROUTES = []    # list of (method_or_"*", path, fn) for path/method routing
 _TAB = {}       # slug -> fn
 _PAGE = {}      # slug -> fn
@@ -199,6 +200,15 @@ class _Plugin:
             return fn
 
         return deco
+
+    def on_auth_check(self, fn):
+        """Re-validate a viewer's gate session on page load (auth.gate plugins).
+        The host calls it on the viewer's `/` request with the resolved
+        `req.user`; return auth_check.ok() / refresh() / deny(). Optional —
+        without it a granted session lasts until its cookie expires (no
+        mid-session revocation). Used bare: `@plugin.on_auth_check`."""
+        _AUTH_CHECK[0] = fn
+        return fn
 
     def route(self, path, methods=None):
         """Register an HTTP handler for `path` (and optionally specific methods)."""
@@ -303,6 +313,26 @@ class _Filter:
 
 
 filter = _Filter()
+
+
+# ---------------------------------------------------------------------------
+# onAuthCheck verdicts (auth.gate session re-validation on page load).
+# ---------------------------------------------------------------------------
+class _AuthCheck:
+    def ok(self):
+        return {"action": "ok"}
+
+    def refresh(self, ttl=0):
+        v = {"action": "refresh"}
+        if ttl:
+            v["ttl"] = int(ttl)
+        return v
+
+    def deny(self, reason=""):
+        return {"action": "deny", "reason": reason}
+
+
+auth_check = _AuthCheck()
 
 
 # ---------------------------------------------------------------------------
@@ -599,6 +629,46 @@ class _Users:
     def ban_ip(self, ip):
         _host("owncast_ban_ip")(str(ip))
 
+    def register(self, auth_id, display_name=None, scopes=None):
+        """Find-or-create an authenticated user for an external identity.
+
+        auth_id is the stable, provider-scoped id (e.g. "github:583231"); the
+        host namespaces it by this plugin's slug so plugins can't collide on or
+        spoof each other's users. Returns an object with .user_id. Raises on
+        host error. Requires the 'users.register' permission.
+        """
+        req = {"authId": str(auth_id)}
+        if display_name is not None:
+            req["displayName"] = str(display_name)
+        if scopes is not None:
+            req["scopes"] = list(scopes)
+        result = _call_json("owncast_users_register", json.dumps(req)) or {}
+        if isinstance(result, dict) and result.get("error"):
+            raise RuntimeError(result["error"])
+        return _Obj(result)
+
+
+class _Auth:
+    """Viewer-authentication gate. Only a plugin holding 'auth.gate' (and enabled
+    by an admin) can issue sessions, and only inside on_http_request, where the
+    host attaches/clears the signed session cookie on the response."""
+
+    def grant_session(self, user_id, ttl=0):
+        """Issue a gate session for an already-registered user (see
+        users.register). ttl is optional seconds (0 = host default). Raises on
+        host error. Requires 'auth.gate'."""
+        req = {"userId": str(user_id)}
+        if ttl:
+            req["ttl"] = int(ttl)
+        result = _call_json("owncast_auth_grant_session", json.dumps(req)) or {}
+        if isinstance(result, dict) and result.get("error"):
+            raise RuntimeError(result["error"])
+
+    def end_session(self):
+        """Clear the current viewer's gate session (logout). The plugin still
+        owns the response/redirect. Requires 'auth.gate'."""
+        _host("owncast_auth_end_session")()
+
 
 class _Fediverse:
     def post(self, text):
@@ -682,6 +752,7 @@ class _Owncast:
     video_config = _VideoConfig()
     notifications = _Notifications()
     users = _Users()
+    auth = _Auth()
     fediverse = _Fediverse()
     sse = _SSE()
     actions = _Actions()
@@ -768,6 +839,14 @@ def _dispatch_http(request):
     if _HTTP[0] is not None:
         return _http_response(_HTTP[0](req))
     return {"status": 404, "body": "not found"}
+
+
+def _dispatch_auth_check(request):
+    # No handler → always ok (the hook is optional; a plugin that doesn't
+    # implement it simply never revokes a session mid-stream).
+    if _AUTH_CHECK[0] is None:
+        return {"action": "ok"}
+    return _AUTH_CHECK[0](_Obj(request)) or {"action": "ok"}
 
 
 # A handler returning None (a bare `return`) contributes nothing, the same

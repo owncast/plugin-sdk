@@ -11,8 +11,8 @@ import (
 	"sync"
 
 	"github.com/gobwas/glob"
-	"github.com/owncast/owncast/services/plugins/kv"
 	plugin "github.com/owncast/owncast/services/plugins"
+	"github.com/owncast/owncast/services/plugins/kv"
 )
 
 // EmittedEvent records a single owncast.events.emit() call.
@@ -55,6 +55,19 @@ type RecordedUserModeration struct {
 	UserID  string
 	Enabled bool
 	Reason  string
+}
+
+// RecordedUserRegistration captures an owncast.users.register call.
+type RecordedUserRegistration struct {
+	AuthID      string
+	DisplayName string
+	Scopes      []string
+}
+
+// RecordedSessionGrant captures an owncast.auth.grantSession call.
+type RecordedSessionGrant struct {
+	UserID string
+	TTL    int64
 }
 
 // RecordedUpload captures an owncast.storage.upload call. The mock returns
@@ -101,6 +114,9 @@ type MockHost struct {
 	browserPushes     []RecordedBrowserPush
 	userMods          []RecordedUserModeration
 	bannedIPs         []string
+	userRegistrations []RecordedUserRegistration
+	sessionGrants     []RecordedSessionGrant
+	sessionClears     int
 	uploads           []RecordedUpload
 	// fsFiles is the in-memory backing store for storage.fs, keyed by
 	// plugin slug then by cleaned relative path. Lets scenario tests
@@ -277,6 +293,29 @@ func (m *MockHost) HostEnv() *plugin.HostEnv {
 			defer m.mu.Unlock()
 			m.bannedIPs = append(m.bannedIPs, ip)
 		},
+		RegisterUser: func(_, authID, displayName string, scopes []string) (string, error) {
+			m.mu.Lock()
+			defer m.mu.Unlock()
+			m.userRegistrations = append(m.userRegistrations, RecordedUserRegistration{
+				AuthID: authID, DisplayName: displayName, Scopes: scopes,
+			})
+			// Deterministic synthetic user id so scenarios can predict what the
+			// plugin will hand to grantSession.
+			return "u-" + authID, nil
+		},
+		GrantSession: func(_, userID string, ttlSeconds int64) (string, error) {
+			m.mu.Lock()
+			defer m.mu.Unlock()
+			m.sessionGrants = append(m.sessionGrants, RecordedSessionGrant{
+				UserID: userID, TTL: ttlSeconds,
+			})
+			return "mock-session:" + userID, nil
+		},
+		EndSession: func(_ string) {
+			m.mu.Lock()
+			defer m.mu.Unlock()
+			m.sessionClears++
+		},
 		Socials: func() []plugin.SocialHandle {
 			m.mu.Lock()
 			defer m.mu.Unlock()
@@ -419,6 +458,24 @@ func (m *MockHost) BannedIPs() []string {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	return append([]string(nil), m.bannedIPs...)
+}
+
+func (m *MockHost) UserRegistrations() []RecordedUserRegistration {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	return append([]RecordedUserRegistration(nil), m.userRegistrations...)
+}
+
+func (m *MockHost) SessionGrants() []RecordedSessionGrant {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	return append([]RecordedSessionGrant(nil), m.sessionGrants...)
+}
+
+func (m *MockHost) SessionClears() int {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	return m.sessionClears
 }
 
 func (m *MockHost) Uploads() []RecordedUpload {

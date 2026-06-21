@@ -183,12 +183,38 @@ export const Permissions: {
   readonly NotificationsSend: "notifications.send";
   readonly UsersRead: "users.read";
   readonly UsersModerate: "users.moderate";
+  readonly UsersRegister: "users.register";
+  readonly AuthGate: "auth.gate";
   readonly FediversePost: "fediverse.post";
   readonly HttpSSE: "http.sse";
   readonly VideoConfigRead: "videoconfig.read";
   readonly VideoConfigWrite: "videoconfig.write";
   readonly UIModify: "ui.modify";
 };
+
+/** Request for `owncast.users.register`. */
+export interface UserRegisterRequest {
+  /** Stable, provider-scoped external identity (e.g. `"github:583231"`). The
+   *  host namespaces it by the calling plugin's slug. */
+  authId: string;
+  /** Optional display name to seed on the user. */
+  displayName?: string;
+  /** Optional scopes to grant the user (e.g. `["MODERATOR"]`). */
+  scopes?: string[];
+}
+
+/** Result of `owncast.users.register`: the resolved Owncast user ID. */
+export interface UserRegisterResult {
+  userId: string;
+}
+
+/** Request for `owncast.auth.grantSession`. */
+export interface GrantSessionRequest {
+  /** The Owncast user ID returned by `owncast.users.register`. */
+  userId: string;
+  /** Optional session lifetime in seconds; 0/omitted uses the host default. */
+  ttl?: number;
+}
 
 export interface BrowserPushPayload {
   title: string;
@@ -260,6 +286,30 @@ export const filter: {
   pass(): FilterResult;
   modify(payload: any): FilterResult;
   drop(reason?: string): FilterResult;
+};
+
+/** Request passed to `onAuthCheck`: the host-resolved identity of the viewer
+ *  whose session is being re-validated (same `user` shape `onHttpRequest`
+ *  receives — the plugin never re-resolves it). */
+export interface AuthCheckRequest {
+  user: User;
+}
+
+/** Verdict returned from `onAuthCheck`:
+ *  - `ok`      keep the session as-is
+ *  - `refresh` keep it and re-issue the cookie (optionally with a new `ttl`
+ *              in seconds) — use for sliding-expiry
+ *  - `deny`    end the session and bounce the viewer back to the login screen */
+export type AuthCheckResult =
+  | { action: "ok" }
+  | { action: "refresh"; ttl?: number }
+  | { action: "deny"; reason?: string };
+
+/** Verdict helpers for `onAuthCheck`. */
+export const authCheck: {
+  ok(): AuthCheckResult;
+  refresh(opts?: { ttl?: number }): AuthCheckResult;
+  deny(reason?: string): AuthCheckResult;
 };
 
 /** Incoming HTTP request, paths are relative to the plugin's namespace
@@ -377,6 +427,15 @@ export interface PluginDef {
    *  isn't served as a static asset. Default-public, gate admin features
    *  on `req.authenticated` yourself. Requires `http.serve` permission. */
   onHttpRequest?(req: IncomingHttpRequest): OutgoingHttpResponse;
+
+  /** Re-validate a viewer's gate session on page load. Only meaningful for the
+   *  active `auth.gate` plugin: the host calls it on the viewer's `/` request
+   *  with the resolved `req.user`, and acts on the verdict — `ok` to continue,
+   *  `refresh` to extend the session, `deny` to revoke it and force re-login.
+   *  Optional; without it a granted session simply lasts until its cookie
+   *  expires (no mid-session revocation). This is the revocation hook: return
+   *  `deny` for users your provider has banned/deleted. Requires `auth.gate`. */
+  onAuthCheck?(req: AuthCheckRequest): AuthCheckResult;
 
   /** Render HTML for a dynamic tab. Called by the host when the tab was
    *  declared in the manifest without a static `content` file. Return the
@@ -526,6 +585,24 @@ export const owncast: {
     setEnabled(id: string, enabled: boolean, reason?: string): void;
     /** Ban an IP address. Requires `users.moderate`. */
     banIP(ip: string): void;
+    /** Find-or-create an authenticated user for an external identity. `authId`
+     *  is the stable provider-scoped id (e.g. `"github:583231"`); the host
+     *  namespaces it by this plugin's slug so plugins can't collide on or spoof
+     *  each other's users. Returns `{ userId }`. Throws on host error.
+     *  Requires `users.register`. */
+    register(opts: UserRegisterRequest | string): UserRegisterResult;
+  };
+  /** Viewer-authentication gate. Only a plugin holding `auth.gate` (and enabled
+   *  by an admin) can issue sessions, and only inside `onHttpRequest`, where the
+   *  host attaches or clears the signed session cookie on the response. */
+  auth: {
+    /** Issue a gate session for an already-registered user (see
+     *  `users.register`). `ttl` is optional seconds (0/omitted = host default).
+     *  Throws on host error. Requires `auth.gate`. */
+    grantSession(opts: GrantSessionRequest | string): void;
+    /** Clear the current viewer's gate session (logout). The plugin still owns
+     *  the response/redirect. Requires `auth.gate`. */
+    endSession(): void;
   };
   /** Upload bytes to Owncast's storage backend (local or S3); returns a
    *  public URL. Requires `storage.upload`. */

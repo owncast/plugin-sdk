@@ -54,6 +54,14 @@ function on_http_request() {
   Host.outputString(JSON.stringify(sdk.dispatchHttp(JSON.parse(Host.inputString()))));
   return 0;
 }
+// on_auth_check re-validates a viewer's session on page load (the host calls it
+// only for the active auth.gate plugin, only on /). Input is { user }; output
+// is a verdict { action: "ok" | "refresh" | "deny", ttl?, reason? }.
+function on_auth_check() {
+  ensureLoaded();
+  Host.outputString(JSON.stringify(sdk.dispatchAuthCheck(JSON.parse(Host.inputString()))));
+  return 0;
+}
 function on_tab_content() {
   ensureLoaded();
   Host.outputString(sdk.dispatchTabContent(JSON.parse(Host.inputString())));
@@ -82,6 +90,7 @@ module.exports = {
   on_event,
   on_filter,
   on_http_request,
+  on_auth_check,
   on_tab_content,
   on_page_content,
   on_page_styles,

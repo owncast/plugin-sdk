@@ -1,0 +1,29 @@
+{
+  "api": "1",
+  "name": "GitHub Auth",
+  "slug": "github-auth",
+  "version": "0.1.0",
+  "description": "Viewer authentication gate: requires visitors to sign in with GitHub before they can access the site. Demonstrates the auth.gate + users.register host functions. This example was written in JavaScript.",
+  "permissions": [
+    "auth.gate",
+    "users.register",
+    "http.serve",
+    "network.fetch",
+    "storage.kv"
+  ],
+  "network": {
+    "allowedHosts": ["github.com", "api.github.com"]
+  },
+  "config": {
+    "clientId": {
+      "type": "string",
+      "default": "",
+      "description": "GitHub OAuth app client ID"
+    },
+    "clientSecret": {
+      "type": "string",
+      "default": "",
+      "description": "GitHub OAuth app client secret"
+    }
+  }
+}

@@ -1,0 +1,75 @@
+[
+  {
+    "name": "login screen offers GitHub sign-in",
+    "events": [
+      {
+        "http": {
+          "method": "GET",
+          "path": "/?return_to=%2F",
+          "expect": { "status": 200, "bodyContains": "Sign in with GitHub" }
+        }
+      }
+    ]
+  },
+  {
+    "name": "callback registers the GitHub user and grants a session",
+    "given": {
+      "kv": { "oauth_state:demo-state": "/" },
+      "httpResponses": [
+        {
+          "url": "https://github.com/login/oauth/access_token",
+          "method": "POST",
+          "status": 200,
+          "body": "{\"access_token\":\"gho_test\"}"
+        },
+        {
+          "url": "https://api.github.com/user",
+          "method": "GET",
+          "status": 200,
+          "body": "{\"id\":583231,\"login\":\"octocat\",\"name\":\"octocat\"}"
+        }
+      ]
+    },
+    "events": [
+      {
+        "http": {
+          "method": "GET",
+          "path": "/callback?code=abc123&state=demo-state",
+          "expect": { "status": 302 }
+        }
+      }
+    ],
+    "expect": {
+      "userRegistrations": [
+        { "authId": "github:583231", "displayName": "octocat" }
+      ],
+      "sessionGrants": [{ "userId": "u-github:583231" }]
+    }
+  },
+  {
+    "name": "callback with an unknown state is rejected",
+    "events": [
+      {
+        "http": {
+          "method": "GET",
+          "path": "/callback?code=abc123&state=forged",
+          "expect": { "status": 400 }
+        }
+      }
+    ],
+    "expect": { "userRegistrations": [], "sessionGrants": [] }
+  },
+  {
+    "name": "logout clears the session",
+    "events": [
+      {
+        "http": {
+          "method": "GET",
+          "path": "/logout",
+          "expect": { "status": 302 }
+        }
+      }
+    ],
+    "expect": { "sessionClears": 1 }
+  }
+]

@@ -1,0 +1,52 @@
+[
+  {
+    "name": "shows the password form",
+    "events": [
+      { "http": { "method": "GET", "path": "/", "expect": { "status": 200, "bodyContains": "password" } } }
+    ]
+  },
+  {
+    "name": "correct password registers a guest and grants a session",
+    "events": [
+      { "http": { "method": "GET", "path": "/login?password=letmein&return_to=%2F", "expect": { "status": 302 } } }
+    ],
+    "expect": {
+      "userRegistrations": [{ "authId": "shared", "displayName": "Guest" }],
+      "sessionGrants": [{ "userId": "u-shared" }]
+    }
+  },
+  {
+    "name": "wrong password grants nothing",
+    "events": [
+      { "http": { "method": "GET", "path": "/login?password=nope", "expect": { "status": 200, "bodyContains": "Incorrect" } } }
+    ],
+    "expect": { "userRegistrations": [], "sessionGrants": [] }
+  },
+  {
+    "name": "logout clears the session",
+    "events": [
+      { "http": { "method": "GET", "path": "/logout", "expect": { "status": 302 } } }
+    ],
+    "expect": { "sessionClears": 1 }
+  },
+  {
+    "name": "auth check passes a live session when not revoked",
+    "events": [
+      { "authCheck": { "user": { "id": "u-shared", "displayName": "Guest" }, "expect": { "action": "ok" } } }
+    ]
+  },
+  {
+    "name": "auth check denies a session once revoked",
+    "given": { "kv": { "revoked": "1" } },
+    "events": [
+      { "authCheck": { "user": { "id": "u-shared", "displayName": "Guest" }, "expect": { "action": "deny", "reason": "access has been revoked" } } }
+    ]
+  },
+  {
+    "name": "an admin can revoke; a viewer cannot",
+    "events": [
+      { "http": { "method": "GET", "path": "/revoke", "authenticated": true, "expect": { "status": 200 } } },
+      { "http": { "method": "GET", "path": "/revoke", "expect": { "status": 403 } } }
+    ]
+  }
+]

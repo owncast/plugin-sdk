@@ -65,6 +65,8 @@ const Permissions = Object.freeze({
   NotificationsSend: "notifications.send",
   UsersRead: "users.read",
   UsersModerate: "users.moderate",
+  UsersRegister: "users.register",
+  AuthGate: "auth.gate",
   FediversePost: "fediverse.post",
   HttpSSE: "http.sse",
   VideoConfigRead: "videoconfig.read",
@@ -83,6 +85,30 @@ const filter = Object.freeze({
     return { action: FilterAction.Drop, reason: reason || "" };
   },
 });
+
+// Verdict helpers for onAuthCheck (the optional re-validation hook the host runs
+// on a viewer's page load). `ok` keeps the session; `refresh` keeps it and
+// extends the cookie (optional `ttl` seconds); `deny` ends it and bounces the
+// viewer back to the login screen.
+const authCheck = Object.freeze({
+  ok() {
+    return { action: "ok" };
+  },
+  refresh(opts) {
+    return { action: "refresh", ...(opts || {}) };
+  },
+  deny(reason) {
+    return { action: "deny", reason: reason || "" };
+  },
+});
+
+// dispatchAuthCheck routes the host's re-validation call to the author's
+// onAuthCheck handler. No handler → always "ok" (the hook is optional; a plugin
+// that doesn't implement it simply never revokes mid-session).
+function dispatchAuthCheck(req) {
+  if (!registered || !isFn(registered.onAuthCheck)) return { action: "ok" };
+  return registered.onAuthCheck(req) || { action: "ok" };
+}
 
 // Distinguishes notification handlers from filter handlers in the HANDLERS
 // map below. Internal, not part of the public API.
@@ -532,6 +558,55 @@ const owncast = {
         );
       fns.owncast_ban_ip(Memory.fromString(ip).offset);
     },
+    // Find-or-create an authenticated Owncast user for an external identity
+    // (e.g. a provider account). `authId` is the stable provider-scoped id; the
+    // host namespaces it by this plugin's slug so it can't collide with or spoof
+    // another plugin's users. Optionally seeds displayName and scopes. Returns
+    // { userId }. Throws on host error. Requires `users.register`.
+    register(opts) {
+      const fns = Host.getFunctions();
+      if (!fns.owncast_users_register)
+        throw new Error(
+          `permission '${Permissions.UsersRegister}' not granted`,
+        );
+      const req =
+        typeof opts === "string" ? { authId: opts } : opts || {};
+      const offset = fns.owncast_users_register(
+        Memory.fromString(JSON.stringify(req)).offset,
+      );
+      if (offset == 0) throw new Error("users.register failed");
+      const result = JSON.parse(Memory.find(offset).readString());
+      if (result.error) throw new Error(result.error);
+      return result; // { userId }
+    },
+  },
+  // Viewer-authentication gate. Only a plugin holding `auth.gate` (and enabled by
+  // an admin) can issue sessions; these are valid only inside onHttpRequest,
+  // where the host attaches/clears the signed session cookie on the response.
+  auth: {
+    // Issue a gate session for an already-registered user (see users.register).
+    // `ttl` is optional seconds; 0/omitted uses the host default. Throws on
+    // host error. Requires `auth.gate`.
+    grantSession(opts) {
+      const fns = Host.getFunctions();
+      if (!fns.owncast_auth_grant_session)
+        throw new Error(`permission '${Permissions.AuthGate}' not granted`);
+      const req = typeof opts === "string" ? { userId: opts } : opts || {};
+      const offset = fns.owncast_auth_grant_session(
+        Memory.fromString(JSON.stringify(req)).offset,
+      );
+      if (offset == 0) throw new Error("auth.grantSession failed");
+      const result = JSON.parse(Memory.find(offset).readString());
+      if (result.error) throw new Error(result.error);
+    },
+    // Clear the current viewer's gate session (logout). The plugin still owns the
+    // response/redirect. Requires `auth.gate`.
+    endSession() {
+      const fns = Host.getFunctions();
+      if (!fns.owncast_auth_end_session)
+        throw new Error(`permission '${Permissions.AuthGate}' not granted`);
+      fns.owncast_auth_end_session();
+    },
   },
   storage: {
     upload(name, data) {
@@ -960,6 +1035,7 @@ module.exports = {
   defineCommands,
   owncast,
   filter,
+  authCheck,
   FilterAction,
   Events,
   Permissions,
@@ -968,6 +1044,7 @@ module.exports = {
   dispatchEvent,
   dispatchFilter,
   dispatchHttp,
+  dispatchAuthCheck,
   dispatchTabContent,
   dispatchPageContent,
   dispatchPageStyles,

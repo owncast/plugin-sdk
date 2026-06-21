@@ -8,6 +8,7 @@ declare module 'main' {
   export function on_event(): I32;
   export function on_filter(): I32;
   export function on_http_request(): I32;
+  export function on_auth_check(): I32;
   export function on_tab_content(): I32;
   export function on_page_content(): I32;
   export function on_page_styles(): I32;
@@ -33,6 +34,9 @@ declare module 'extism:host' {
     owncast_notify_fediverse(payloadPtr: PTR): void;
     owncast_users_list(): PTR;
     owncast_user_get(idPtr: PTR): PTR;
+    owncast_users_register(reqPtr: PTR): PTR;
+    owncast_auth_grant_session(reqPtr: PTR): PTR;
+    owncast_auth_end_session(): void;
     owncast_user_set_enabled(idPtr: PTR, enabled: I64, reasonPtr: PTR): void;
     owncast_ban_ip(ipPtr: PTR): void;
     owncast_storage_upload(namePtr: PTR, dataPtr: PTR): PTR;

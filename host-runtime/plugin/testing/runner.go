@@ -157,6 +157,9 @@ func runStep(ctx context.Context, d *plugin.Dispatcher, server *plugin.Server, l
 	if step.PageScripts != nil {
 		return runContentStep(ctx, loaded, "scripts", step.PageScripts)
 	}
+	if step.AuthCheck != nil {
+		return runAuthCheckStep(ctx, server, loaded.Manifest.Slug, step.AuthCheck)
+	}
 	if step.Filter != "" {
 		final, allowed, reason := d.Filter(ctx, step.Filter, step.Payload)
 		if step.Expect == nil {
@@ -190,6 +193,36 @@ func runStep(ctx context.Context, d *plugin.Dispatcher, server *plugin.Server, l
 		return nil
 	}
 	d.Notify(ctx, step.Event, step.Payload)
+	return nil
+}
+
+// runAuthCheckStep invokes the plugin's on_auth_check export with a resolved
+// user identity and asserts the verdict — the same call path the production
+// gate uses (Server.CallAuthCheck).
+func runAuthCheckStep(ctx context.Context, server *plugin.Server, slug string, step *AuthCheckStep) error {
+	input, err := json.Marshal(map[string]any{"user": step.User})
+	if err != nil {
+		return err
+	}
+	out, err := server.CallAuthCheck(ctx, slug, input)
+	if err != nil {
+		return fmt.Errorf("auth check call: %w", err)
+	}
+	var v struct {
+		Action string `json:"action"`
+		Reason string `json:"reason"`
+	}
+	if err := json.Unmarshal(out, &v); err != nil {
+		return fmt.Errorf("auth check returned invalid verdict %q: %w", string(out), err)
+	}
+	if step.Expect != nil {
+		if step.Expect.Action != "" && v.Action != step.Expect.Action {
+			return fmt.Errorf("authCheck action: want %q got %q", step.Expect.Action, v.Action)
+		}
+		if step.Expect.Reason != "" && v.Reason != step.Expect.Reason {
+			return fmt.Errorf("authCheck reason: want %q got %q", step.Expect.Reason, v.Reason)
+		}
+	}
 	return nil
 }
 
@@ -346,6 +379,46 @@ func checkExpectations(res *Result, e *ScenarioExpect, mock *MockHost, pluginNam
 		got := mock.BannedIPs()
 		if !(len(e.BannedIPs) == 0 && len(got) == 0) && !reflect.DeepEqual(e.BannedIPs, got) {
 			res.Errors = append(res.Errors, fmt.Sprintf("bannedIPs mismatch:\n  want %v\n  got  %v", e.BannedIPs, got))
+		}
+	}
+	if e.UserRegistrations != nil {
+		got := mock.UserRegistrations()
+		if len(e.UserRegistrations) != len(got) {
+			res.Errors = append(res.Errors, fmt.Sprintf("userRegistrations count: want %d got %d", len(e.UserRegistrations), len(got)))
+		} else {
+			for i, want := range e.UserRegistrations {
+				g := got[i]
+				if want.AuthID != g.AuthID {
+					res.Errors = append(res.Errors, fmt.Sprintf("userRegistrations[%d].authId: want %q got %q", i, want.AuthID, g.AuthID))
+				}
+				if want.DisplayName != "" && want.DisplayName != g.DisplayName {
+					res.Errors = append(res.Errors, fmt.Sprintf("userRegistrations[%d].displayName: want %q got %q", i, want.DisplayName, g.DisplayName))
+				}
+				if want.Scopes != nil && !reflect.DeepEqual(want.Scopes, g.Scopes) {
+					res.Errors = append(res.Errors, fmt.Sprintf("userRegistrations[%d].scopes: want %v got %v", i, want.Scopes, g.Scopes))
+				}
+			}
+		}
+	}
+	if e.SessionGrants != nil {
+		got := mock.SessionGrants()
+		if len(e.SessionGrants) != len(got) {
+			res.Errors = append(res.Errors, fmt.Sprintf("sessionGrants count: want %d got %d", len(e.SessionGrants), len(got)))
+		} else {
+			for i, want := range e.SessionGrants {
+				g := got[i]
+				if want.UserID != g.UserID {
+					res.Errors = append(res.Errors, fmt.Sprintf("sessionGrants[%d].userId: want %q got %q", i, want.UserID, g.UserID))
+				}
+				if want.TTL != 0 && want.TTL != g.TTL {
+					res.Errors = append(res.Errors, fmt.Sprintf("sessionGrants[%d].ttl: want %d got %d", i, want.TTL, g.TTL))
+				}
+			}
+		}
+	}
+	if e.SessionClears != 0 {
+		if got := mock.SessionClears(); got != e.SessionClears {
+			res.Errors = append(res.Errors, fmt.Sprintf("sessionClears: want %d got %d", e.SessionClears, got))
 		}
 	}
 	if e.Uploads != nil {

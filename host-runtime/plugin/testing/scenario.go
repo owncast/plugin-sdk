@@ -70,15 +70,30 @@ type ScenarioStep struct {
 	// - PageStyles:  invokes the plugin's on_page_styles export (CSS); slug and
 	//                user are ignored — the hook is global
 	// - PageScripts: invokes the plugin's on_page_scripts export (JavaScript)
-	Event       string        `json:"event,omitempty"`
-	Filter      string        `json:"filter,omitempty"`
-	Payload     any           `json:"payload,omitempty"`
-	HTTP        *HTTPStep     `json:"http,omitempty"`
-	TabContent  *ContentStep  `json:"tabContent,omitempty"`
-	PageContent *ContentStep  `json:"pageContent,omitempty"`
-	PageStyles  *ContentStep  `json:"pageStyles,omitempty"`
-	PageScripts *ContentStep  `json:"pageScripts,omitempty"`
-	Expect      *FilterExpect `json:"expect,omitempty"`
+	Event       string         `json:"event,omitempty"`
+	Filter      string         `json:"filter,omitempty"`
+	Payload     any            `json:"payload,omitempty"`
+	HTTP        *HTTPStep      `json:"http,omitempty"`
+	TabContent  *ContentStep   `json:"tabContent,omitempty"`
+	PageContent *ContentStep   `json:"pageContent,omitempty"`
+	PageStyles  *ContentStep   `json:"pageStyles,omitempty"`
+	PageScripts *ContentStep   `json:"pageScripts,omitempty"`
+	AuthCheck   *AuthCheckStep `json:"authCheck,omitempty"`
+	Expect      *FilterExpect  `json:"expect,omitempty"`
+}
+
+// AuthCheckStep invokes the plugin's on_auth_check export with a resolved user
+// identity and asserts the verdict (auth.gate session re-validation).
+type AuthCheckStep struct {
+	User   *plugin.HostUser `json:"user,omitempty"`
+	Expect *AuthCheckExpect `json:"expect,omitempty"`
+}
+
+// AuthCheckExpect asserts on an onAuthCheck verdict. Action is always checked;
+// Reason only when set.
+type AuthCheckExpect struct {
+	Action string `json:"action"`
+	Reason string `json:"reason,omitempty"`
 }
 
 // HTTPStep is an inbound request sent at the plugin via plugin.Server.
@@ -142,8 +157,11 @@ func (s *ScenarioStep) Validate() error {
 	if s.PageScripts != nil {
 		count++
 	}
+	if s.AuthCheck != nil {
+		count++
+	}
 	if count != 1 {
-		return fmt.Errorf("step must set exactly one of `event`, `filter`, `http`, `tabContent`, `pageContent`, `pageStyles`, or `pageScripts`")
+		return fmt.Errorf("step must set exactly one of `event`, `filter`, `http`, `tabContent`, `pageContent`, `pageStyles`, `pageScripts`, or `authCheck`")
 	}
 	if s.Filter == "" && s.Expect != nil {
 		return fmt.Errorf("step.expect is only valid on filter steps (use http.expect for http steps)")
@@ -163,25 +181,28 @@ type FilterExpect struct {
 
 // ScenarioExpect asserts on side effects accumulated across all steps.
 type ScenarioExpect struct {
-	ChatSends         []string                       `json:"chatSends,omitempty"`
-	ChatActions       []string                       `json:"chatActions,omitempty"`
-	ChatSystems       []string                       `json:"chatSystems,omitempty"`
-	DeletedMessages   []string                       `json:"deletedMessages,omitempty"`
-	KickedClients     []uint64                       `json:"kickedClients,omitempty"`
-	DiscordPosts      []string                       `json:"discordPosts,omitempty"`
-	BrowserPushes     []ScenarioBrowserPushExpect    `json:"browserPushes,omitempty"`
-	UserModerations   []ScenarioUserModerationExpect `json:"userModerations,omitempty"`
-	BannedIPs         []string                       `json:"bannedIPs,omitempty"`
-	Uploads           []ScenarioUploadExpect         `json:"uploads,omitempty"`
-	FediversePosts    []ScenarioFediverseExpect      `json:"fediversePosts,omitempty"`
-	FediverseOutbox   []string                       `json:"fediverseOutbox,omitempty"`
-	ChatTo            []ScenarioChatToExpect         `json:"chatTo,omitempty"`
-	VideoConfigWrites []plugin.VideoConfigUpdate     `json:"videoConfigWrites,omitempty"`
-	Emits             []EmitExpect                   `json:"emits,omitempty"`
-	KV                map[string]string              `json:"kv,omitempty"`
-	HTTPRequests      []ScenarioHTTPRequestExpect    `json:"httpRequests,omitempty"`
-	SSESends          []ScenarioSSEExpect            `json:"sseSends,omitempty"`
-	Commands          []ScenarioCommandExpect        `json:"commands,omitempty"`
+	ChatSends         []string                         `json:"chatSends,omitempty"`
+	ChatActions       []string                         `json:"chatActions,omitempty"`
+	ChatSystems       []string                         `json:"chatSystems,omitempty"`
+	DeletedMessages   []string                         `json:"deletedMessages,omitempty"`
+	KickedClients     []uint64                         `json:"kickedClients,omitempty"`
+	DiscordPosts      []string                         `json:"discordPosts,omitempty"`
+	BrowserPushes     []ScenarioBrowserPushExpect      `json:"browserPushes,omitempty"`
+	UserModerations   []ScenarioUserModerationExpect   `json:"userModerations,omitempty"`
+	BannedIPs         []string                         `json:"bannedIPs,omitempty"`
+	UserRegistrations []ScenarioUserRegistrationExpect `json:"userRegistrations,omitempty"`
+	SessionGrants     []ScenarioSessionGrantExpect     `json:"sessionGrants,omitempty"`
+	SessionClears     int                              `json:"sessionClears,omitempty"`
+	Uploads           []ScenarioUploadExpect           `json:"uploads,omitempty"`
+	FediversePosts    []ScenarioFediverseExpect        `json:"fediversePosts,omitempty"`
+	FediverseOutbox   []string                         `json:"fediverseOutbox,omitempty"`
+	ChatTo            []ScenarioChatToExpect           `json:"chatTo,omitempty"`
+	VideoConfigWrites []plugin.VideoConfigUpdate       `json:"videoConfigWrites,omitempty"`
+	Emits             []EmitExpect                     `json:"emits,omitempty"`
+	KV                map[string]string                `json:"kv,omitempty"`
+	HTTPRequests      []ScenarioHTTPRequestExpect      `json:"httpRequests,omitempty"`
+	SSESends          []ScenarioSSEExpect              `json:"sseSends,omitempty"`
+	Commands          []ScenarioCommandExpect          `json:"commands,omitempty"`
 }
 
 // ScenarioCommandExpect asserts on one entry of the chat-command manifest the
@@ -209,6 +230,21 @@ type ScenarioUserModerationExpect struct {
 	UserID  string `json:"userId"`
 	Enabled bool   `json:"enabled"`
 	Reason  string `json:"reason,omitempty"`
+}
+
+// ScenarioUserRegistrationExpect asserts on one owncast.users.register call.
+// DisplayName and Scopes are checked only when set; AuthID is always checked.
+type ScenarioUserRegistrationExpect struct {
+	AuthID      string   `json:"authId"`
+	DisplayName string   `json:"displayName,omitempty"`
+	Scopes      []string `json:"scopes,omitempty"`
+}
+
+// ScenarioSessionGrantExpect asserts on one owncast.auth.grantSession call.
+// TTL is checked only when non-zero; UserID is always checked.
+type ScenarioSessionGrantExpect struct {
+	UserID string `json:"userId"`
+	TTL    int64  `json:"ttl,omitempty"`
 }
 
 type ScenarioUploadExpect struct {
