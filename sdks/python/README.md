@@ -70,12 +70,12 @@ Declare the permissions you use (`chat.send` above) in `plugin.manifest.json`. T
 
 ### Event handlers
 
-Each decorator subscribes to one event; the SDK derives the manifest subscriptions from which handlers you define.
+Each decorator subscribes to one event, and the SDK derives the manifest subscriptions from which handlers you define.
 
 | Decorator | Fires on |
 |---|---|
 | `@plugin.on_chat_message` | a chat message (notify) |
-| `@plugin.filter_chat_message` | a chat message, **before broadcast** — return a `filter` result (requires `chat.filter`) |
+| `@plugin.filter_chat_message` | a chat message, **before broadcast** (return a `filter` result, requires `chat.filter`) |
 | `@plugin.on_chat_user_joined` / `_parted` / `_renamed` | chat presence |
 | `@plugin.on_message_moderated` | a message hidden/restored |
 | `@plugin.on_stream_started` / `_stopped` / `_title_changed` | stream lifecycle |
@@ -111,32 +111,32 @@ def fallback(req):
     return {"status": 404}
 ```
 
-- `@plugin.get/post/put/delete/patch(path)` and `@plugin.route(path, methods=[...])` for method-specific routes; `@plugin.on_http_request(path)` for any method.
-- Paths are exact and **plugin-relative** (e.g. `/api/messages`), excluding the query string — read query params from `req.query`.
-- A request whose path matches a route but not its method gets an automatic **405**; an unmatched path falls through to the bare catch-all, else **404**.
+- `@plugin.get/post/put/delete/patch(path)` and `@plugin.route(path, methods=[...])` for method-specific routes, and `@plugin.on_http_request(path)` for any method.
+- Paths are exact and **plugin-relative** (e.g. `/api/messages`), excluding the query string. Read query params from `req.query`.
+- A request whose path matches a route but not its method gets an automatic **405**. An unmatched path falls through to the bare catch-all, else **404**.
 - A handler returns a `dict` (`{status, body, headers}`), a `str` (→ 200), or `None` (→ 204).
 
 ### The `owncast` host API
 
-`owncast.<group>.<method>(...)`; each group is gated by the matching manifest permission.
+`owncast.<group>.<method>(...)`, and each group is gated by the matching manifest permission.
 
 | Group | Methods |
 |---|---|
 | `chat` | `send`, `send_action`, `system`, `send_to`, `reply_to`, `history`, `clients`, `delete_message`, `kick` |
 | `kv` | `get`, `set`, `get_json`, `set_json`, `delete` |
-| `storage` / `fs` | `storage.upload`; `fs.read_text`, `fs.write`, `fs.list`, `fs.delete`, `fs.exists` |
-| `server` / `stream` | `server.info/socials/emotes/federation/tags`; `stream.current/broadcaster` |
+| `storage` / `fs` | `storage.upload`, `fs.read_text`, `fs.write`, `fs.list`, `fs.delete`, `fs.exists` |
+| `server` / `stream` | `server.info/socials/emotes/federation/tags`, `stream.current/broadcaster` |
 | `video_config` | `read`, `write` |
 | `notifications` | `discord`, `browser_push`, `fediverse` |
 | `users` | `list`, `get`, `set_enabled`, `ban_ip` |
-| `events` / `fediverse` / `sse` | `events.emit`; `fediverse.post`; `sse.send` |
+| `events` / `fediverse` / `sse` | `events.emit`, `fediverse.post`, `sse.send` |
 | `actions` | `add`, `clear` |
 | `timer` | `set_timeout`, `set_interval`, `clear` |
-| `config` / `assets` / `http` | `config.get`; `assets.read_text`; `http.fetch` (needs `network.fetch` + `network.allowedHosts`) |
+| `config` / `assets` / `http` | `config.get`, `assets.read_text`, `http.fetch` (needs `network.fetch` + `network.allowedHosts`) |
 
-Return values that are JSON objects come back as the same attribute objects (`owncast.server.info().name`); lists come back as Python lists.
+Return values that are JSON objects come back as the same attribute objects (`owncast.server.info().name`), and lists come back as Python lists.
 
-The concepts (events, permissions, the `.ocpkg` format, the manifest) are shared with the JS SDK, so the **[Owncast Plugin Author Guide](https://github.com/owncast/plugin-sdk/blob/main/docs/PLUGIN_AUTHOR_GUIDE.md)** applies — just read the API names as their Pythonic `snake_case` forms.
+The concepts (events, permissions, the `.ocpkg` format, the manifest) are shared with the JS SDK, so the **[Owncast Plugin Author Guide](https://github.com/owncast/plugin-sdk/blob/main/docs/PLUGIN_AUTHOR_GUIDE.md)** applies. Just read the API names as their Pythonic `snake_case` forms.
 
 ## How it works (and how it differs from the JS SDK)
 
@@ -147,11 +147,11 @@ Consequences worth knowing:
 - **The entry can't use relative imports.** In `src/plugin.py` import your own modules absolutely (`from helpers import …`), not `from . import helpers`. Relative imports inside a package's own modules are fine.
 - **Pure-Python only, no `pip`.** The embedded engine runs pure Python with no filesystem, so there's no `pip install` and C extensions (numpy, pandas, etc.) won't load. You add a third-party library by copying its pure-Python source into `src/` and importing it like any local module. For outbound HTTP use `owncast.http.fetch`, not `requests`.
 - **Don't shadow stdlib names at module top level.** Your code runs in the same global scope as the runtime (which does `import json`), so a top-level `def json(...)` in your plugin shadows it and breaks things. Name helpers like `json_response` instead.
-- **`snake_case` everywhere**, vs the JS SDK's camelCase (`send_action`, `get_json`, `msg.user.display_name`, `filter.pass_()` — `pass` is a Python keyword).
+- **`snake_case` everywhere**, vs the JS SDK's camelCase (`send_action`, `get_json`, `msg.user.display_name`, `filter.pass_()`, where the trailing underscore avoids the Python keyword `pass`).
 
 ## Testing
 
-`__tests__/*.test.json` scenario files are **identical in format to the JS SDK's** and run through the same `owncast-plugin-test` binary — so a Python port of a plugin can reuse the JS version's test scenarios verbatim. Each scenario dispatches events / HTTP requests and asserts on observed side effects (`chatSends`, kv writes, HTTP responses, …).
+`__tests__/*.test.json` scenario files are **identical in format to the JS SDK's** and run through the same `owncast-plugin-test` binary, so a Python port of a plugin can reuse the JS version's test scenarios verbatim. Each scenario dispatches events / HTTP requests and asserts on observed side effects (`chatSends`, kv writes, HTTP responses, …).
 
 ## Status
 

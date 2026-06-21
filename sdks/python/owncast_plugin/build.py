@@ -13,7 +13,7 @@ carries each module's source in memory, the same way the JS SDK's esbuild step
 bundles local `require`s. This needs no engine change.
 
 The embedded CPython can't read new files at plugin-exec time (no filesystem, and
-its stdlib zip is only readable during engine init — a fresh `import importlib.util`
+its stdlib zip is only readable during engine init, so a fresh `import importlib.util`
 fails with a bad file descriptor). So the bundle can't install an import hook. It
 instead pre-populates `sys.modules` directly, using only `sys` and `types` (both
 already cached): it creates a module object per bundled file, links each into its
@@ -152,8 +152,8 @@ def _collect_modules(entry_src, src_dir):
                 if node.level:
                     if not importer:
                         sys.exit(
-                            "relative import in plugin entry is not supported; "
-                            "use an absolute import like `from helpers import ...`"
+                            "relative import in plugin entry is not supported. "
+                            "Use an absolute import like `from helpers import ...`"
                         )
                     base = _resolve_relative(importer, importer_is_pkg, node.level, node.module)
                     if base:
@@ -242,7 +242,7 @@ def _render_bundle(entry_src, modules, order):
 
 def build(project):
     """Emit the author's plugin as <slug>.py. A single-file plugin is emitted with
-    the SDK import line stripped; a plugin that imports local modules is bundled
+    the SDK import line stripped. A plugin that imports local modules is bundled
     into one self-contained <slug>.py. Either way the host runs the result on the
     embedded Python engine."""
     _manifest, slug = _read_manifest(project)
@@ -267,9 +267,9 @@ def build(project):
 
 def package(project):
     """Build, then zip the manifest + plugin.py + public/ + assets/ (+ icon.png,
-    INSTRUCTIONS.md) into <slug>.ocpkg — the single distributable file. The code
+    INSTRUCTIONS.md) into <slug>.ocpkg, the single distributable file. The code
     entry's name (plugin.py) is what tells the host this is a Python plugin, so
-    no "type" field is needed in the manifest; it ships verbatim. Matches the JS
+    no "type" field is needed in the manifest, and it ships verbatim. Matches the JS
     SDK's `owncast-plugin package` layout so the host loads both identically."""
     slug = build(project)
     script = os.path.join(project, slug + ".py")

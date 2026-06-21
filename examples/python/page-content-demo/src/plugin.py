@@ -1,13 +1,13 @@
 # page-content-demo: demonstrates dynamic extraPageContent and viewer tabs.
 #
-# on_page_content — called by the host to render the "banner" slot.
+# on_page_content: called by the host to render the "banner" slot.
 #   Renders greeting.mustache, personalised with the viewer's display name.
 #
-# on_tab_content — called by the host to render the "stream-info" tab.
+# on_tab_content: called by the host to render the "stream-info" tab.
 #   Renders info.mustache with live stream, server, tags, socials, and
 #   federation data read via server.read.
 #
-# The JS version uses the `mustache` npm package; this Python port keeps a small
+# The JS version uses the `mustache` npm package. This Python port keeps a small
 # Mustache-subset renderer in mini_mustache.py and imports it.
 from owncast_plugin import plugin, owncast
 from mini_mustache import render

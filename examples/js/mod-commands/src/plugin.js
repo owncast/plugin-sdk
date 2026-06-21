@@ -5,7 +5,7 @@ const { definePlugin, owncast } = require("@owncast/plugin-sdk");
 //     commandPrefix,
 //   - aliases (an alternate name that invokes the same command),
 //   - a moderator-only command (the host checks the sender's scopes before
-//     running a modOnly command; everyone else is routed to onDenied), and
+//     running a modOnly command, and everyone else is routed to onDenied), and
 //   - onUnknownCommand, the fallback for a prefixed message that matches no
 //     command in the table.
 //

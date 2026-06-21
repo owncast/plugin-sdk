@@ -36,7 +36,7 @@ const { execFileSync } = require("child_process");
 // slugifyForTest mirrors the slugify in the build CLI + host SDKs so
 // this entrypoint can locate the built `<slug>.js` artifact when a
 // manifest omits `slug`. ASCII letters and digits pass through
-// lowercased; everything else collapses to a single hyphen; trailing
+// lowercased, everything else collapses to a single hyphen, and trailing
 // hyphens are trimmed.
 function slugifyForTest(input) {
   let out = "";
@@ -81,7 +81,7 @@ function findCacheDir() {
  * Sets `process.exitCode` to non-zero if any scenario failed (never resets a
  * previously-failed code), and returns true on success / false on failure
  * WITHOUT exiting the process. That lets one node process run several test
- * files in a row (see runScenarioFiles); the process ends with the right code
+ * files in a row (see runScenarioFiles). The process ends with the right code
  * once the event loop drains.
  *
  * @param {Array<object>} scenarios, scenario objects: { name, given?, events, expect? }

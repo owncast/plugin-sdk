@@ -4,8 +4,8 @@ How to write, test, and ship a plugin. Aimed at JavaScript developers. Write som
 
 > There's also a **Python SDK** (`owncast-plugin-py`) with the same capabilities
 > and a parallel API (snake_case fields, `@plugin` decorators / `plugin.commands`).
-> This guide's examples are JavaScript; the `examples/python/` directory mirrors
-> every example shown here. Either way you ship source — the host runs it on a
+> This guide's examples are JavaScript. The `examples/python/` directory mirrors
+> every example shown here. Either way you ship source, and the host runs it on a
 > shared, embedded interpreter engine, so plugins don't bundle a runtime and
 > packages are a few KB.
 
@@ -85,17 +85,17 @@ my-plugin/
 The two directories serve different purposes:
 
 - `public/` is the web-served root. Files under it are reachable at `/plugins/<your-slug>/<path>` while the plugin is enabled (and the manifest declares `http.serve`).
-- `assets/` is the internal-only root. Files under it are read by the host for manifest fields that inline content (`styles`, `scripts`, `extraPageContent`); they are not reachable through the plugin's URL space.
+- `assets/` is the internal-only root. Files under it are read by the host for manifest fields that inline content (`styles`, `scripts`, `extraPageContent`). They are not reachable through the plugin's URL space.
 
 ### Plugin icon
 
 Drop an `icon.png` at the root of your project (alongside `plugin.manifest.json`) and the packager will bundle it into the `.ocpkg`. The admin UI fetches it from `/api/plugins/<slug>/icon` and renders it in the plugin list and in the sidebar entry for any plugin that ships an admin page. No `http.serve` permission required: the host serves this path directly. There's no enforced size, but square images at 128×128 or so look clean at the rendered list (32×32) and sidebar (16×16) sizes. Plugins without an icon fall back to a generic puzzle-piece glyph.
 
-Per-button icons on action buttons are separate; bundle the image under `public/` so the host serves it at the icon URL, then reference it from the `icon` field of an `actions[]` entry. See the [Action buttons](#action-buttons) section.
+Per-button icons on action buttons are separate. Bundle the image under `public/` so the host serves it at the icon URL, then reference it from the `icon` field of an `actions[]` entry. See the [Action buttons](#action-buttons) section.
 
 ### Instructions
 
-Drop an `INSTRUCTIONS.md` at the root of your project (alongside `plugin.manifest.json`) and the packager bundles it into the `.ocpkg`. The admin UI renders it as markdown in an **Instructions** tab on the plugin's details page — every plugin gets a details page, so this is the place for setup steps, configuration notes, or an explanation of why each permission is requested. The filename is fixed (`INSTRUCTIONS.md`) and the file is optional; no `http.serve` permission is required, since the host serves the content to the admin directly. Plugins without one simply show no Instructions tab.
+Drop an `INSTRUCTIONS.md` at the root of your project (alongside `plugin.manifest.json`) and the packager bundles it into the `.ocpkg`. The admin UI renders it as markdown in an **Instructions** tab on the plugin's details page. Every plugin gets a details page, so this is the place for setup steps, configuration notes, or an explanation of why each permission is requested. The filename is fixed (`INSTRUCTIONS.md`) and the file is optional. No `http.serve` permission is required, since the host serves the content to the admin directly. Plugins without one show no Instructions tab.
 
 ## The manifest
 
@@ -111,12 +111,12 @@ Drop an `INSTRUCTIONS.md` at the root of your project (alongside `plugin.manifes
 ```
 
 - `name` is the human-readable display name (admin lists, registry cards, default chat-bot identity). Any characters allowed.
-- `slug` is the canonical identifier: URL prefix (`/plugins/<slug>/`), plugin-config namespace, on-disk filename, registry primary key. Lowercase letters, digits, and hyphens; starts with a letter; max 64 chars. Optional, the SDK auto-derives one from `name` when you omit it.
+- `slug` is the canonical identifier: URL prefix (`/plugins/<slug>/`), plugin-config namespace, on-disk filename, registry primary key. Lowercase letters, digits, and hyphens, starting with a letter, max 64 chars. Optional, the SDK auto-derives one from `name` when you omit it.
 - `bot.displayName` (optional) overrides the chat-bot name when the plugin posts to chat. Defaults to `name`.
 - `permissions` is the list of capabilities your plugin needs (see below)
-- `actions` (optional) declares action buttons that appear under the viewer's stream; requires `ui.modify`. See [Action buttons](#action-buttons).
+- `actions` (optional) declares action buttons that appear under the viewer's stream. Requires `ui.modify`. See [Action buttons](#action-buttons).
 - `admin.pages` (optional) declares admin-only routes the host auth-gates. See [Admin pages](#admin-pages).
-- `styles`, `scripts`, `extraPageContent` (optional) inline plugin CSS, JavaScript, and HTML into the viewer page. All three require `ui.modify` (no `http.serve` needed; the host reads from `assets/` and inlines into existing responses). See [Viewer-page injection](#viewer-page-injection).
+- `styles`, `scripts`, `extraPageContent` (optional) inline plugin CSS, JavaScript, and HTML into the viewer page. All three require `ui.modify` (no `http.serve` needed, the host reads from `assets/` and inlines into existing responses). See [Viewer-page injection](#viewer-page-injection).
 - `tabs` (optional) adds tabs to the viewer page's tab row, each with its own HTML body. Requires `ui.modify`. See [Viewer-page tabs](#viewer-page-tabs).
 
 ## Writing handlers
@@ -215,12 +215,12 @@ interface ChatUser {
 ```
 
 `user` carries the **full sender identity**, so do per-user state off the stable
-`user.id` and gate moderator-only commands on `user.scopes.includes("MODERATOR")`
-— don't match on the display name, which isn't unique or stable. To reply
+`user.id` and gate moderator-only commands on `user.scopes.includes("MODERATOR")`.
+Don't match on the display name, which isn't unique or stable. To reply
 privately to whoever sent a message, pass `msg` (or `msg.clientId`) to
 [`owncast.chat.replyTo`](#replying-to-the-sender).
 
-> `user` is always a `ChatUser` object — the same shape on the
+> `user` is always a `ChatUser` object, the same shape on the
 > `onChatMessage` event, on the messages returned by
 > [`owncast.chat.history()`](#chat-history), and in the dev server. It is
 > `undefined` only for the rare message with no associated account.
@@ -242,7 +242,7 @@ interface FediverseInboundPost {
 }
 ```
 
-`actor.handle` is the fully-qualified fediverse address (e.g. `@alice@fediverse.example`). Use `contentText` for analysis or display; use `content` if you need to render the original HTML formatting.
+`actor.handle` is the fully-qualified fediverse address (e.g. `@alice@fediverse.example`). Use `contentText` for analysis or display. Use `content` if you need to render the original HTML formatting.
 
 ### Filter handlers
 
@@ -250,7 +250,7 @@ interface FediverseInboundPost {
 
 - `filter.pass()`, let the message through unchanged
 - `filter.modify(payload)`, replace the message (subsequent filters see your version)
-- `filter.drop(reason)`, drop the message; no later filters or notifications see it
+- `filter.drop(reason)`, drop the message, no later filters or notifications see it
 
 The manifest must declare the `chat.filter` permission, otherwise the host refuses to load the plugin at register time. Reading or rewriting every chat message is a meaningful side-effect, so the admin has to see the permission to grant it.
 
@@ -337,7 +337,7 @@ Calling an API without its permission throws a clear error.
 
 Every plugin has **exactly one chat identity**, the auto-bot Owncast provisions when your plugin is installed. The display name is your plugin's `name` (e.g. `echo-bot`), with `IsBot: true`. `owncast.chat.send(text)` and `owncast.chat.sendAction(text)` both post as this identity, through Owncast's normal chat pipeline (filters, rate limits, persistence, moderation, same as any user).
 
-> **Text is HTML-escaped on display.** `owncast.chat.send`/`sendAction` take plain text; the chat client renders it as HTML, so characters like `"`, `<`, and `&` come back entity-encoded (`"Live"` displays via `&#34;Live&#34;`). That's expected — just don't pass markup expecting it to render. `owncast.chat.system(body)` is the exception: its body **is** rendered as HTML, so you must escape any untrusted content you put in it yourself.
+> **Text is HTML-escaped on display.** `owncast.chat.send`/`sendAction` take plain text, and the chat client renders it as HTML, so characters like `"`, `<`, and `&` come back entity-encoded (`"Live"` displays via `&#34;Live&#34;`). That's expected, so don't pass markup expecting it to render. `owncast.chat.system(body)` is the exception: its body **is** rendered as HTML, so you must escape any untrusted content you put in it yourself.
 
 If you need multiple chat personas, **ship multiple plugins.** One identity per plugin keeps the trust boundary clear: admins see one chat user per granted plugin, and there's no allowlist machinery to forget or bypass. Plugins cannot post under arbitrary names or impersonate real users.
 
@@ -351,8 +351,8 @@ message straight to `owncast.chat.replyTo`:
 filterChatMessage(msg) {
   if (onCooldown(msg.user?.id)) {
     // replyTo returns false if the sender's connection is gone; fall back to public.
-    if (!owncast.chat.replyTo(msg, "slow down — try again in a few seconds")) {
-      owncast.chat.send("slow down — try again in a few seconds");
+    if (!owncast.chat.replyTo(msg, "slow down, try again in a few seconds")) {
+      owncast.chat.send("slow down, try again in a few seconds");
     }
     return filter.drop("cooldown");
   }
@@ -360,14 +360,14 @@ filterChatMessage(msg) {
 }
 ```
 
-`replyTo(msg, text)` is sugar over `sendTo(msg.clientId, text)`; pass a bare
+`replyTo(msg, text)` is sugar over `sendTo(msg.clientId, text)`. Pass a bare
 `clientId` if that's all you have.
 
 ### Commands and `!help`
 
 Rather than hand-rolling prefix parsing, aliases, cooldowns, and moderator
 gating, declare a **command table** and the SDK wires the chat subscription and
-prefix parsing for you — there's no `onChatMessage` to write. Give each command
+prefix parsing for you, so there's no `onChatMessage` to write. Give each command
 a `description` so it appears in the built-in `!help`:
 
 ```js
@@ -398,8 +398,8 @@ module.exports = definePlugin({
 });
 ```
 
-Each `run(ctx)` gets `{ msg, user, command, args, argString, reply, replyPrivately }`
-— `reply` posts publicly, `replyPrivately` whispers to the sender. Gating uses
+Each `run(ctx)` gets `{ msg, user, command, args, argString, reply, replyPrivately }`.
+`reply` posts publicly, `replyPrivately` whispers to the sender. Gating uses
 the sender identity on the message (`user.scopes`, `user.id`), so it's reliable,
 not a display-name guess.
 
@@ -416,7 +416,7 @@ plugin.commands({
 
 #### `!help` is automatic
 
-The **host** owns `!help` — type it in chat and the host lists every command's
+The **host** owns `!help`. Type it in chat and the host lists every command's
 `description` across all enabled plugins, posted as a system message. You don't
 implement it, and it works even if your plugin holds no `chat.send` permission.
 `modOnly` commands are hidden from non-moderators. The only thing you do to take
@@ -425,13 +425,13 @@ part is declare a command table with descriptions.
 #### Hand-rolling is fine too
 
 For a single fixed command you can just check `msg.body` in `onChatMessage` (see
-the `ip-bot` and `relay` examples) — you simply won't show up in `!help` unless
+the `ip-bot` and `relay` examples), but you won't show up in `!help` unless
 you declare a command table.
 
 #### Low-level router (`defineCommands`)
 
 The `commands` field is sugar over `defineCommands`, which returns a router you
-feed messages yourself. Reach for it when you want to compose — e.g. drop
+feed messages yourself. Reach for it when you want to compose, for example to drop
 command messages from chat via a filter:
 
 ```js
@@ -445,7 +445,7 @@ module.exports = definePlugin({
 `commands(msg)` returns `true` when the message was a command (even if gated by
 `modOnly`/cooldown), `false` otherwise (Python: `define_commands(...)`). You can
 also combine the `commands` field with your own `onChatMessage`: both run on
-every chat message — the router first, then your handler.
+every chat message, the router first, then your handler.
 
 ## Permissions
 
@@ -466,9 +466,9 @@ every chat message — the router first, then your handler.
 | `http.sse`           | Push realtime events to browsers via `owncast.sse.send` + the `/_sse/` endpoint                                                                   |
 | `server.read`        | Read stream state, server config, and read-only broadcast telemetry (`stream.broadcaster`)                                                        |
 | `videoconfig.read`   | `owncast.videoConfig.read()`, read the output/transcoding config                                                                                  |
-| `videoconfig.write`  | `owncast.videoConfig.write()`, change video config; high-trust. Changes apply on the next stream start (the host does not restart a live stream). |
+| `videoconfig.write`  | `owncast.videoConfig.write()`, change video config, high-trust. Changes apply on the next stream start (the host does not restart a live stream). |
 | `notifications.send` | `owncast.notifications.discord`, `.browserPush`                                                                                                   |
-| `fediverse.post`     | `owncast.fediverse.post(text)`, high-trust (posts under the streamer's handle); admin should grant sparingly.                                       |
+| `fediverse.post`     | `owncast.fediverse.post(text)`, high-trust (posts under the streamer's handle), admin should grant sparingly.                                       |
 | `ui.modify`          | Place UI inside Owncast's own chrome. Required for `manifest.actions`, `manifest.styles`, `manifest.scripts`, and `manifest.extraPageContent`.    |
 
 Declare only what you need. Admins reviewing your manifest before install make trust decisions based on declared permissions.
@@ -486,11 +486,11 @@ Declare only what you need. Admins reviewing your manifest before install make t
 }
 ```
 
-Entries are hostname globs, bare hostnames match exactly; `*` is a wildcard segment. The wildcard `"*"` matches any host but **must be written explicitly** (`"network": { "allowedHosts": ["*"] }`) so admins reviewing the manifest see the scope they're granting. Most plugins should list the specific hosts they actually call.
+Entries are hostname globs, bare hostnames match exactly. `*` is a wildcard segment. The wildcard `"*"` matches any host but **must be written explicitly** (`"network": { "allowedHosts": ["*"] }`) so admins reviewing the manifest see the scope they're granting. Most plugins should list the specific hosts they actually call.
 
 ## Limits
 
-The host enforces these caps per plugin. They're generous for normal use; size pages, APIs, and JSON payloads against them so you don't get truncated or timed out.
+The host enforces these caps per plugin. They're generous for normal use. Size pages, APIs, and JSON payloads against them so you don't get truncated or timed out.
 
 | Limit | Value | Applies to |
 | --- | --- | --- |
@@ -505,16 +505,16 @@ The host enforces these caps per plugin. They're generous for normal use; size p
 | HTTP response body | 10 MB | what `onHttpRequest` returns |
 | `on_http_request` envelope output | 12 MiB | the full encoded response envelope |
 | Pending timers | 64 | `owncast.timer.setTimeout`/`setInterval` outstanding at once |
-| Timer delay | 100 ms – 24 h | clamped into this range |
+| Timer delay | 100 ms to 24 h | clamped into this range |
 | SSE connections | 64 | concurrent browser clients on your event stream |
 
-`owncast.kv` values have no hard size cap, but it's a config/state store, not a blob store — keep values small (use `storage.upload` or `storage.fs` for large data). Timeouts mean a handler that blocks (a slow `owncast.http.fetch`, a tight loop) is cancelled, so keep event/filter work quick and push slow work elsewhere.
+`owncast.kv` values have no hard size cap, but it's a config/state store, not a blob store, so keep values small (use `storage.upload` or `storage.fs` for large data). Timeouts mean a handler that blocks (a slow `owncast.http.fetch`, a tight loop) is cancelled, so keep event/filter work quick and push slow work elsewhere.
 
 ## Serving HTTP
 
 Anything in your `public/` directory is served at `/plugins/<your-name>/...`. Requests that don't match a file fall through to your `onHttpRequest` handler. The separate `assets/` directory holds files the host reads internally for manifest-inlined content (`styles`, `scripts`, `extraPageContent`) and is never reachable through the plugin's URL space.
 
-> **Host-version note.** `public/`-as-web-root is the current convention and what every Owncast host from the 0.4.x line onward serves. The standalone `owncast-plugin-serve` **v0.4.0** release binary predates it and serves static files from `assets/` instead — so a plugin authored per these docs (pages in `public/`) shows 404s for its pages on that one older binary. If you must support it, bundle the same files under both directories (e.g. an `assets/` → `public/` symlink). Newer hosts and the bundled dev server (`owncast-plugin serve`) serve `public/` directly, so this only affects that specific downloadable binary.
+> **Host-version note.** `public/`-as-web-root is the current convention and what every Owncast host from the 0.4.x line onward serves. The standalone `owncast-plugin-serve` **v0.4.0** release binary predates it and serves static files from `assets/` instead, so a plugin authored per these docs (pages in `public/`) shows 404s for its pages on that one older binary. If you must support it, bundle the same files under both directories (for example an `assets/` to `public/` symlink). Newer hosts and the bundled dev server (`owncast-plugin serve`) serve `public/` directly, so this only affects that specific downloadable binary.
 
 ```
 my-plugin/
@@ -525,13 +525,13 @@ my-plugin/
 
 A request to `/plugins/my-plugin/` serves `public/index.html` automatically.
 
-For dynamic endpoints (JSON APIs, webhooks, etc.) write an `onHttpRequest`. Path traversal is blocked, response headers are filtered through an allowlist (allowed: `Content-Type`, `Cache-Control`, `Set-Cookie`, `Location`, `ETag`, `Last-Modified`, `Vary`, `Link`, and CORS headers; blocked: host-owned things like `Server`, CSP, HSTS), and body sizes are capped at 1 MB request / 10 MB response. Cookies you set default to a `Path` scoped to your plugin's namespace.
+For dynamic endpoints (JSON APIs, webhooks, etc.) write an `onHttpRequest`. Path traversal is blocked, response headers are filtered through an allowlist (allowed: `Content-Type`, `Cache-Control`, `Set-Cookie`, `Location`, `ETag`, `Last-Modified`, `Vary`, `Link`, and CORS headers, with host-owned things like `Server`, CSP, and HSTS blocked), and body sizes are capped at 1 MB request / 10 MB response. Cookies you set default to a `Path` scoped to your plugin's namespace.
 
 ## Realtime updates (Server-Sent Events)
 
 For pushing live updates to a browser, an overlay that reacts to chat, a dashboard that ticks viewer counts, an alert widget, declare `http.sse` and use `owncast.sse.send`.
 
-You do **not** open or hold the connection yourself. Your `onHttpRequest` handler can't stream: each call is a single buffered request/response. Instead, the host owns the long-lived connection and exposes a ready-made endpoint at `/plugins/<your-slug>/_sse/<channel>`. Your plugin just pushes; the host fans each message out to every connected browser.
+You do **not** open or hold the connection yourself. Your `onHttpRequest` handler can't stream: each call is a single buffered request/response. Instead, the host owns the long-lived connection and exposes a ready-made endpoint at `/plugins/<your-slug>/_sse/<channel>`. Your plugin just pushes. The host fans each message out to every connected browser.
 
 **Plugin side**, push whenever you have something to send (from an event handler, an HTTP handler, anywhere):
 
@@ -550,7 +550,7 @@ export function onChatMessage(msg) {
 
 - `channel`, which stream to push to. Browsers subscribe per channel, so you can run several independent streams (`"overlay"`, `"admin-stats"`) from one plugin. Use `""` for a single default channel.
 - `event`, the event name the browser listens for (`addEventListener("chat", …)`). Pass `""` for the browser's default `message` event.
-- `data`, the payload. Strings are sent as-is; anything else is JSON-encoded for you.
+- `data`, the payload. Strings are sent as-is, anything else is JSON-encoded for you.
 
 Sends are fire-and-forget: the call returns immediately and never blocks, even if no one is connected or a client is slow (slow clients drop frames rather than stall your plugin).
 
@@ -569,7 +569,7 @@ Sends are fire-and-forget: the call returns immediately and never blocks, even i
 
 Notes:
 
-- Up to 64 simultaneous connections per plugin; over that the endpoint returns 503. `EventSource` reconnects automatically.
+- Up to 64 simultaneous connections per plugin. Over that the endpoint returns 503. `EventSource` reconnects automatically.
 - If the channel matches one of your `admin.pages[]` globs it's auth-gated like any admin route, handy for an admin-only stats stream.
 - The endpoint is host-owned and reserved: your `onHttpRequest` never sees `/_sse/...` requests, and you can't serve your own route there.
 
@@ -590,7 +590,7 @@ definePlugin({
 });
 ```
 
-The host resolves the connecting chat user from their identity cookie, the same `user` shape your HTTP handlers get on `req.user`, and it's omitted when the viewer hasn't joined chat. `connectionId` is unique per connection, so a disconnect pairs with its connect and one user open in several tabs counts as several connections. These arrive on the normal event path (no extra permission beyond `http.sse`), and a connect/disconnect you don't handle is simply ignored.
+The host resolves the connecting chat user from their identity cookie, the same `user` shape your HTTP handlers get on `req.user`, and it's omitted when the viewer hasn't joined chat. `connectionId` is unique per connection, so a disconnect pairs with its connect and one user open in several tabs counts as several connections. These arrive on the normal event path (no extra permission beyond `http.sse`), and a connect/disconnect you don't handle is ignored.
 
 ## Timers and the tick
 
@@ -610,7 +610,7 @@ owncast.timer.clear(id); // cancel either kind
 
 `setTimeout`/`setInterval` return an id for `clear()`. Very small delays are clamped up by the host, there's a per-plugin cap on pending timers (scheduling past it throws), and an interval's next run is scheduled only after the previous one returns, so a slow callback can't pile up. **Timers are in-memory: they do not survive a plugin reload or a host restart.** For "remind me even if Owncast restarts" you'd persist the target time yourself (e.g. in `storage.kv`) and re-arm on load.
 
-`onTick({ now })` fires once a second for open-ended periodic work. Define it to opt in; `now` is the host wall-clock time in unix milliseconds.
+`onTick({ now })` fires once a second for open-ended periodic work. Define it to opt in. `now` is the host wall-clock time in unix milliseconds.
 
 ```js
 definePlugin({
@@ -649,8 +649,8 @@ const greeting = owncast.config.get("greeting", "hi"); // 2nd arg is a fallback 
 ```
 
 `config.get` is ambient (no permission). Reading an undeclared key returns the
-`fallback` (or `undefined`). This is the recommended way to expose simple knobs
-— prefer it over building a bespoke settings page and KV plumbing.
+`fallback` (or `undefined`). This is the recommended way to expose simple knobs.
+Prefer it over building a bespoke settings page and KV plumbing.
 
 ## Admin pages
 
@@ -670,7 +670,7 @@ Plugins can register pages that appear in the Owncast admin UI for configuration
 
 - `path` is a glob (e.g. `"/admin"`, `"/admin/*"`). Requests under `/plugins/<your-slug>/<path>` that match any declared glob are **auth-gated by the host**, unauthenticated requests get `401` before your plugin code ever runs.
 - Owncast's admin renders each declared page as a tab inside `/admin/plugins/configure?id=<your-slug>`, embedded as an iframe pointed at `/plugins/<your-slug>/<path>`. Each plugin gets its own bookmarkable URL plus a sidebar entry under **Plugins** in the admin nav.
-- Both static assets and dynamic endpoints under matched paths are auth-gated; you don't have to check `req.authenticated` yourself.
+- Both static assets and dynamic endpoints under matched paths are auth-gated. You don't have to check `req.authenticated` yourself.
 - The host auto-injects an admin-themed stylesheet (`/styles/admin/plugin-iframe.css`) into HTML responses on admin paths so plain `<input>`/`<button>` controls match Owncast's look without you needing to ship CSS. Plugins that prefer their own styling can layer on top.
 - The iframe is sandboxed but permits what an admin page normally needs: your scripts, form submits, same-origin `fetch` to your own endpoints, popups, **file downloads** (a blob/data-URL `<a download>` clicked from script), and **`confirm()`/`alert()`/`prompt()`** dialogs. If a browser feature seems silently blocked, suspect the iframe sandbox first.
 
@@ -679,11 +679,11 @@ Author flow:
 1. Put admin HTML/CSS/JS in `public/admin/index.html` (and friends)
 2. Expose admin APIs via `onHttpRequest` at `/admin/api/...`
 3. Declare both globs (or just `"/admin/*"`) in `manifest.admin.pages[].path`
-4. Visit `/admin/plugins/configure?id=<your-slug>` in the admin UI (or `/plugins/<your-slug>/admin/` directly). Owncast uses your existing admin login to gate the page; no extra prompt.
+4. Visit `/admin/plugins/configure?id=<your-slug>` in the admin UI (or `/plugins/<your-slug>/admin/` directly). Owncast uses your existing admin login to gate the page. No extra prompt.
 
 ## Action buttons
 
-Owncast surfaces a row of "external action" buttons in its UI, clickable entries that either open a URL (in a modal or new tab) or render raw HTML. Plugins can contribute their own. While the plugin is enabled, the host merges its action entries into the list Owncast already shows; when disabled, they disappear.
+Owncast surfaces a row of "external action" buttons in its UI, clickable entries that either open a URL (in a modal or new tab) or render raw HTML. Plugins can contribute their own. While the plugin is enabled, the host merges its action entries into the list Owncast already shows. When disabled, they disappear.
 
 Declare them in the manifest:
 
@@ -744,7 +744,7 @@ owncast.actions.clear();
 
 The host validates each entry with the same rules as `manifest.actions` (title required, exactly one of `url` / `html`, relative URLs and icons auto-prefixed, cross-plugin URLs/icons rejected) and persists the result in the plugin's config so the additions survive a reload. The next viewer `/api/config` request returns `manifest.actions` ++ the runtime list. Requires `ui.modify`.
 
-A common pattern is an admin page that lets the streamer add a custom button (label + URL) on top of the plugin's defaults; the `action-buttons` example in the SDK ships a working version.
+A common pattern is an admin page that lets the streamer add a custom button (label + URL) on top of the plugin's defaults. The `action-buttons` example in the SDK ships a working version.
 
 ## Viewer-page injection
 
@@ -756,7 +756,7 @@ Three manifest fields let a plugin contribute content directly to the viewer pag
 | `scripts`          | `/customjavascript`                   | `ui.modify`         | must end `.js`     |
 | `extraPageContent` | `/api/config` → `extraPageContent`    | `ui.modify`         | static or dynamic  |
 
-Each also has a **dynamic** form computed at request time by a handler instead of a static file. `extraPageContent` uses `onPageContent` (below). CSS and JavaScript use the `onPageStyles` and `onPageScripts` handlers, which need no manifest entry at all. The host calls them once per `/api/config` for any plugin holding `ui.modify`, and a plugin opts in simply by exporting the handler. Their output lands in the same `customStyles` / `/customjavascript` slots, appended after any static `styles` / `scripts` contributions.
+Each also has a **dynamic** form computed at request time by a handler instead of a static file. `extraPageContent` uses `onPageContent` (below). CSS and JavaScript use the `onPageStyles` and `onPageScripts` handlers, which need no manifest entry at all. The host calls them once per `/api/config` for any plugin holding `ui.modify`, and a plugin opts in by exporting the handler. Their output lands in the same `customStyles` / `/customjavascript` slots, appended after any static `styles` / `scripts` contributions.
 
 ### Stylesheets
 
@@ -779,7 +779,7 @@ Relative `url(...)` references inside the CSS resolve against the viewer page, n
 
 ### Dynamic stylesheets
 
-When the CSS depends on plugin state, like a theme the admin selected or a value in the KV store, return it from `onPageStyles` instead of (or in addition to) shipping a static file. No manifest field is involved. Just export the handler and declare `ui.modify`.
+When the CSS depends on plugin state, like a theme the admin selected or a value in the KV store, return it from `onPageStyles` instead of (or in addition to) shipping a static file. No manifest field is involved. Export the handler and declare `ui.modify`.
 
 ```js
 module.exports = definePlugin({
@@ -852,11 +852,11 @@ module.exports = definePlugin({
 });
 ```
 
-The admin's extra page content goes through the markdown processor; plugin HTML does not. Tags and attributes pass through as written — escape any untrusted strings you embed.
+The admin's extra page content goes through the markdown processor, but plugin HTML does not. Tags and attributes pass through as written, so escape any untrusted strings you embed.
 
 ## Viewer-page tabs
 
-Plugins can add tabs to the viewer page's tab row (alongside the built-in **About** and **Followers** tabs) with `manifest.tabs[]`. Each entry requires a `title` and a `slug`; `content` is optional:
+Plugins can add tabs to the viewer page's tab row (alongside the built-in **About** and **Followers** tabs) with `manifest.tabs[]`. Each entry requires a `title` and a `slug`, and `content` is optional:
 
 ```json
 {
@@ -868,9 +868,9 @@ Plugins can add tabs to the viewer page's tab row (alongside the built-in **Abou
 }
 ```
 
-- `slug` — required. Stable identifier, unique within the plugin's tabs. Passed to `onTabContent` so the handler knows which tab to render. Lowercase letters, digits, hyphens.
-- `title` — required. The label shown on the tab. Keep it short (~16 characters max for mobile).
-- `content` — optional. Relative path to a static HTML file in `assets/`. When omitted, the host calls `onTabContent`.
+- `slug`: required. Stable identifier, unique within the plugin's tabs. Passed to `onTabContent` so the handler knows which tab to render. Lowercase letters, digits, hyphens.
+- `title`: required. The label shown on the tab. Keep it short (~16 characters max for mobile).
+- `content`: optional. Relative path to a static HTML file in `assets/`. When omitted, the host calls `onTabContent`.
 
 **Static** (`content` present): the host reads the file from `assets/` and inlines it as the tab body. Path rules match `extraPageContent.content`.
 
@@ -882,7 +882,7 @@ module.exports = definePlugin({
     if (slug === "stream-info") {
       const stream = owncast.stream.current();
       return stream.online
-        ? `<p>Live: ${stream.title} — ${stream.viewers} viewers</p>`
+        ? `<p>Live: ${stream.title} (${stream.viewers} viewers)</p>`
         : `<p>Offline</p>`;
     }
     return "";
@@ -890,9 +890,9 @@ module.exports = definePlugin({
 });
 ```
 
-Requires `ui.modify`. `http.serve` is not required — the host inlines the result, nothing is served at a URL. Add whatever data permissions (`server.read`, `chat.history`, etc.) your handler actually calls.
+Requires `ui.modify`. `http.serve` is not required, because the host inlines the result and nothing is served at a URL. Add whatever data permissions (`server.read`, `chat.history`, etc.) your handler actually calls.
 
-The `tabs-demo` example ships two static tabs; `page-content-demo` demonstrates dynamic rendering with Mustache templates and `server.read` data.
+The `tabs-demo` example ships two static tabs. `page-content-demo` demonstrates dynamic rendering with Mustache templates and `server.read` data.
 
 ## Plugin-to-plugin events
 
@@ -935,9 +935,9 @@ runScenarios([
 
 `npm test` builds your plugin (bundling `src/plugin.{js,ts}` into `<slug>.js`), then runs `node __tests__/*.test.js`. Each scenario is a `{ name, given?, events, expect? }` object, the same data model as a JSON scenario file, but in JS you can build the array with loops, helpers, fixtures, or computed payloads.
 
-If you prefer raw JSON, drop `__tests__/*.test.json` files in instead and invoke the runner with `owncast-plugin test`. The data model is identical; the host binary that runs them is the same. Pick whichever is easier to read for the scenarios you're writing.
+If you prefer raw JSON, drop `__tests__/*.test.json` files in instead and invoke the runner with `owncast-plugin test`. The data model is identical, and the host binary that runs them is the same. Pick whichever is easier to read for the scenarios you're writing.
 
-`runScenarios` no longer exits the process — it sets `process.exitCode` on failure and returns a boolean — so you can split scenarios across several `__tests__/*.test.js` files (by module or feature) and run them all in one node process with `runScenarioFiles()`:
+`runScenarios` no longer exits the process. It sets `process.exitCode` on failure and returns a boolean, so you can split scenarios across several `__tests__/*.test.js` files (by module or feature) and run them all in one node process with `runScenarioFiles()`:
 
 ```js
 // __tests__/index.test.js
@@ -950,7 +950,7 @@ Point your `test` script at that one entry (`node __tests__/index.test.js`) inst
 ### Step types
 
 - `event: "<type>"`, fire-and-forget notification dispatch
-- `filter: "<type>"`, filter chain; inline `expect: {action, payload?, reason?}` checks the FilterResult
+- `filter: "<type>"`, filter chain. Inline `expect: {action, payload?, reason?}` checks the FilterResult
 - `http: { method, path, headers?, body?, user?, authenticated?, expect: {status, headers?, body?, bodyContains?} }`, sends an HTTP request through your plugin server
 - `tabContent: { slug, user?, expect: {body?, bodyContains?} }`, calls `onTabContent` directly and asserts on the returned HTML
 - `pageContent: { slug, user?, expect: {body?, bodyContains?} }`, calls `onPageContent` directly and asserts on the returned HTML
@@ -1043,7 +1043,7 @@ For testing user-token endpoints, set `user` instead, the user identity is forwa
 }
 ```
 
-Without either flag, requests are treated as unauthenticated; requests to manifest-declared admin paths return 401.
+Without either flag, requests are treated as unauthenticated. Requests to manifest-declared admin paths return 401.
 
 ## Local dev server
 
@@ -1059,11 +1059,11 @@ It also exposes dev-only endpoints to drive your event and filter handlers (whic
 - `GET /_dev/chat`, the chat log so far, including anything your plugin posted.
 - `POST /_dev/event` with `{"type":"stream.started","payload":{}}`, dispatch an arbitrary event to your `onEvent` handlers.
 
-For repeatable assertions use `npm test` (scenario tests); the dev server is for interactive iteration. Many authors run both: dev server in one terminal, test watcher in another.
+For repeatable assertions use `npm test` (scenario tests). The dev server is for interactive iteration. Many authors run both: dev server in one terminal, test watcher in another.
 
 ## Deployment
 
-A `.ocpkg` is the distribution format: a single file containing your `plugin.manifest.json`, your plugin **source** (`plugin.js` for JavaScript or `plugin.py` for Python — the interpreter lives in the Owncast host, so you ship source, not a compiled module), your `public/` and `assets/` directories if you have them, and the optional `icon.png` and `INSTRUCTIONS.md`. The host infers the runtime from that filename, so the manifest needs no `type` field. It's what a server admin installs into Owncast; they don't see your `package.json`, `node_modules`, or anything else.
+A `.ocpkg` is the distribution format: a single file containing your `plugin.manifest.json`, your plugin **source** (`plugin.js` for JavaScript or `plugin.py` for Python, since the interpreter lives in the Owncast host, so you ship source, not a compiled module), your `public/` and `assets/` directories if you have them, and the optional `icon.png` and `INSTRUCTIONS.md`. The host infers the runtime from that filename, so the manifest needs no `type` field. It's what a server admin installs into Owncast, and they don't see your `package.json`, `node_modules`, or anything else.
 
 Bundle the `.ocpkg`:
 
@@ -1074,7 +1074,7 @@ npm run package
 The file is self-contained. Share it however you like (release on GitHub, hand it to an admin over chat, host it somewhere). The admin has two ways to install it:
 
 1. **Upload from the admin UI.** Open **Plugins** in the Owncast admin and click **Upload plugin**. The new entry appears in the list immediately.
-2. **Drop it into `data/plugins/`** on the server. The directory is scanned periodically; the plugin appears in the admin within a couple of seconds.
+2. **Drop it into `data/plugins/`** on the server. The directory is scanned periodically. The plugin appears in the admin within a couple of seconds.
 
 Either way, the admin then reviews the **Permissions** tab on the plugin's detail page and toggles **Enabled** to load it. Subsequent updates (uploading a new `.ocpkg` with the same `name`) replace the existing entry and trigger the re-approval flow if the new manifest declares additional permissions.
 
@@ -1082,7 +1082,7 @@ To remove a plugin, an admin clicks the trash icon on the plugin's row in the **
 
 `npm run build` produces only the bundled `<slug>.js` and is faster, useful while iterating. `npm run package` is the step you run when you're ready to ship.
 
-To make your plugin discoverable to other operators rather than handing the `.ocpkg` around yourself, **publish it to the plugin directory** at [owncast.directory](https://owncast.directory) — see the [Publishing your plugin](https://owncast.online/docs/plugins/publishing) guide for the submission process.
+To make your plugin discoverable to other operators rather than handing the `.ocpkg` around yourself, **publish it to the plugin directory** at [owncast.directory](https://owncast.directory). See the [Publishing your plugin](https://owncast.online/docs/plugins/publishing) guide for the submission process.
 
 ## Recipes
 
@@ -1137,7 +1137,7 @@ module.exports = definePlugin({
 
 ### Slow mode
 
-Drops rapid follow-ups; uses plugin config for per-user state.
+Drops rapid follow-ups. Uses plugin config for per-user state.
 
 ```js
 const { definePlugin, filter, owncast } = require("@owncast/plugin-sdk");
@@ -1224,7 +1224,7 @@ module.exports = definePlugin({
 </body>
 ```
 
-Visit `/plugins/overlay/` to render. Owncast owns the chat history; your plugin just exposes a view of it.
+Visit `/plugins/overlay/` to render. Owncast owns the chat history. Your plugin just exposes a view of it.
 
 ### Stream tracker (lifecycle events, read APIs)
 
@@ -1266,7 +1266,7 @@ Messages from this plugin appear in chat from the `stream-tracker` bot account, 
 
 ### Plugin composition
 
-`relay` watches for `/announce` in chat and emits a custom event; `announcer` subscribes.
+`relay` watches for `/announce` in chat and emits a custom event. `announcer` subscribes.
 
 ```js
 // relay/src/plugin.js, needs events.emit
@@ -1294,7 +1294,7 @@ module.exports = definePlugin({
 
 ## Tips
 
-- **TypeScript works**, name your file `src/plugin.ts` instead of `.js`. The SDK ships TypeScript declarations; `import` instead of `require`.
+- **TypeScript works**, name your file `src/plugin.ts` instead of `.js`. The SDK ships TypeScript declarations. Use `import` instead of `require`.
 - **Third-party code is limited.** npm packages must be pure JavaScript (no Node built-ins like `fs` or `http`). Python has no `pip`: to use a library, copy its pure-Python source into your project. For outbound HTTP call `owncast.http.fetch`, not `requests` or Node's `http`.
 - **`console.log`** in plugin code surfaces in the host log with a `[your-plugin]` prefix. Use it freely for debugging.
 - **One handler = one subscription.** Define `onChatMessage` → subscribed. Delete it → unsubscribed. Don't think about it.

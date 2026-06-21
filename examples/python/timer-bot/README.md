@@ -3,7 +3,7 @@
 Demonstrates the two ways an Owncast plugin does time-based work, driven from
 chat. There is no `setTimeout` in the plugin sandbox, so:
 
-- **`owncast.timer`** asks the host to run a callback later — `set_timeout` (once),
+- **`owncast.timer`** asks the host to run a callback later: `set_timeout` (once),
   `set_interval` (repeating), and `clear(id)` to cancel. Active only while
   scheduled.
 - **`on_tick`** fires once a second, for open-ended periodic work.

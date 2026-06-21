@@ -7,7 +7,7 @@ import re
 from owncast_plugin import plugin, owncast
 
 
-# Anything coming from a remote fediverse server is untrusted text; the
+# Anything coming from a remote fediverse server is untrusted text. The
 # system-message body is rendered as HTML, so escape everything that lands
 # in attribute values or text nodes before inserting it.
 def escape_html(s):

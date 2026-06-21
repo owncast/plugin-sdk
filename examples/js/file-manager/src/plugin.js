@@ -50,7 +50,7 @@ function b64encode(bytes) {
   return out;
 }
 
-// The UI uses flat file names; the host would sandbox a path either way, but
+// The UI uses flat file names. The host would sandbox a path either way, but
 // keeping names flat avoids surprising the listing. Reject anything with a
 // path separator or a bare dot.
 function badName(name) {

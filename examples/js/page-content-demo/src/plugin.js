@@ -1,9 +1,9 @@
 // page-content-demo: demonstrates dynamic extraPageContent and viewer tabs.
 //
-// onPageContent — called by the host to render the "banner" slot.
+// onPageContent: called by the host to render the "banner" slot.
 //   Renders greeting.mustache, personalised with the viewer's display name.
 //
-// onTabContent — called by the host to render the "stream-info" tab.
+// onTabContent: called by the host to render the "stream-info" tab.
 //   Renders info.mustache with live stream, server, tags, socials, and
 //   federation data read via server.read.
 const { definePlugin, owncast } = require("@owncast/plugin-sdk");

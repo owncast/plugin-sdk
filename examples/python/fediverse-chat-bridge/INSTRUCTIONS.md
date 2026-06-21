@@ -12,10 +12,10 @@ When a remote fediverse user mentions or replies to you, a system message (no ch
 
 > 🖼 **Alex** @alex@example.social, great stream tonight!
 
-— with the name linking to their profile and the text linking to the original post.
+The name links to their profile, and the text links to the original post.
 
 All remote text is HTML-escaped before display, so a malicious post can't inject markup into chat.
 
 ## Permissions
 
-- **chat.send** — posts the system messages under the plugin's bot identity.
+- **chat.send**: posts the system messages under the plugin's bot identity.

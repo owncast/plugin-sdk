@@ -1,6 +1,6 @@
 # viewer-gate
 
-Example plugin that combines `manifest.styles` and `manifest.scripts`. On every viewer page load the plugin mounts a confirmation modal asking *Are you sure you want to view this page?* Yes dismisses the modal; No redirects the tab to `yahoo.com`.
+Example plugin that combines `manifest.styles` and `manifest.scripts`. On every viewer page load the plugin mounts a confirmation modal asking *Are you sure you want to view this page?* Yes dismisses the modal, No redirects the tab to `yahoo.com`.
 
 ```json
 {
@@ -10,6 +10,6 @@ Example plugin that combines `manifest.styles` and `manifest.scripts`. On every 
 }
 ```
 
-Requires `ui.modify` (the plugin paints UI inside the viewer chrome). The host reads both bundled files from `assets/` and inlines them into the existing customStyles / `/customjavascript` responses; no `http.serve` needed. Both assets are browser-side CSS/JS — there's no Python handler code.
+Requires `ui.modify` (the plugin paints UI inside the viewer chrome). The host reads both bundled files from `assets/` and inlines them into the existing customStyles / `/customjavascript` responses, no `http.serve` needed. Both assets are browser-side CSS/JS, so there's no Python handler code.
 
 Useful as a template for plugins that need both CSS and JavaScript to ship together. Every selector in `modal.css` is scoped under `#viewer-gate-overlay`, and the `gate.js` mount routine creates its DOM under that same id so the plugin can't bleed into the host page.

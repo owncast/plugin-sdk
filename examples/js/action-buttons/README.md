@@ -13,7 +13,7 @@ Action buttons place UI inside Owncast's own viewer chrome, so the manifest must
 1. The plugin declares any always-on buttons under `manifest.actions[]`.
 2. On load (or reload), the host parses the manifest and validates each entry: title is required, exactly one of `url` or `html` must be present, relative URLs are rewritten into this plugin's namespace, cross-plugin URLs are rejected.
 3. At runtime, `owncast.actions.add(buttons)` appends to the plugin's effective list. The host runs the same validation on each entry and persists the result in the plugin's config.
-4. `owncast.actions.clear()` drops the runtime additions; only the manifest's defaults remain.
+4. `owncast.actions.clear()` drops the runtime additions. Only the manifest's defaults remain.
 5. On every viewer `/api/config` request, the host returns `manifest.actions` ++ the runtime list, projected into Owncast's existing `ExternalAction` shape.
 
 ## Action shapes

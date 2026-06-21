@@ -24,7 +24,7 @@ def b64encode(data):
     return base64.b64encode(data).decode("ascii")
 
 
-# The UI uses flat file names; the host would sandbox a path either way, but
+# The UI uses flat file names. The host would sandbox a path either way, but
 # keeping names flat avoids surprising the listing. Reject anything with a
 # path separator or a bare dot.
 def bad_name(name):

@@ -1,4 +1,4 @@
-// A single, fixed command — so this example parses msg.body by hand to show
+// A single, fixed command, so this example parses msg.body by hand to show
 // that's perfectly fine. For multiple commands, aliases, cooldowns, or
 // moderator gating, reach for the SDK's defineCommands router instead (see the
 // stream-ops / stream-tracker / timer-bot examples).

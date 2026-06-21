@@ -77,7 +77,7 @@ def save_custom_button(req):
     url = payload.get("url").strip() if isinstance(payload, dict) and isinstance(payload.get("url"), str) else ""
     if not title and not url:
         owncast.kv.delete(CUSTOM_BUTTON_KEY)
-        # Older SDK versions may not expose kv.delete; just overwrite
+        # Older SDK versions may not expose kv.delete, so just overwrite
         # with an empty value so load_custom_button returns None.
         owncast.kv.set(CUSTOM_BUTTON_KEY, "")
         owncast.actions.clear()

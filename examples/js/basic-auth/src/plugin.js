@@ -7,14 +7,14 @@
 //                         visitors here)
 //   GET /login?password=...&return_to=...
 //                      -> correct password: register + grant a session, then
-//                         redirect back; wrong password: re-show the form
+//                         redirect back. Wrong password: re-show the form
 //   GET /logout        -> clear the session
 //   GET /revoke        -> (admin only) revoke all sessions on next page load
 //   GET /unrevoke      -> (admin only) lift the revocation
 //
 // onAuthCheck re-validates the session on each page load: while "revoked" is
 // set, every viewer is bounced back to the login screen. This is the revocation
-// hook — a real provider-backed plugin would check per-user state here.
+// hook. A real provider-backed plugin would check per-user state here.
 const { definePlugin, owncast, authCheck } = require("@owncast/plugin-sdk");
 
 function page(returnTo, message) {
@@ -64,7 +64,7 @@ module.exports = definePlugin({
     }
 
     // Admin-only revocation toggle. req.authenticated is true for admin
-    // requests (Basic auth / admin session); viewers can't flip it.
+    // requests (Basic auth / admin session). Viewers can't flip it.
     if (req.path === "/revoke" || req.path === "/unrevoke") {
       if (!req.authenticated) return { status: 403, body: "admin only" };
       owncast.kv.set("revoked", req.path === "/revoke" ? "1" : "");

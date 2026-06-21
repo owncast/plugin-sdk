@@ -7,7 +7,7 @@ from owncast_plugin import plugin, owncast
 #   - on_tick fires once a second for open-ended periodic work.
 #
 # Commands are declared with plugin.commands(...) (the SDK wires the chat
-# subscription — no on_chat_message). State lives in the long-lived instance, so
+# subscription, so there's no on_chat_message). State lives in the long-lived instance, so
 # it persists between calls. Our own replies don't start with "!", so the router
 # never reacts to them.
 _state = {"reminder_id": None, "interval_id": None, "countdown": 0}
@@ -33,7 +33,7 @@ def _parse_int(s):
     return int(s[:j])
 
 
-# !remind <seconds> <message> — send the message once, later (set_timeout).
+# !remind <seconds> <message>: send the message once, later (set_timeout).
 def _remind(ctx):
     seconds = _parse_int(ctx.args[0]) if ctx.args else None
     message = " ".join(ctx.args[1:])
@@ -48,7 +48,7 @@ def _remind(ctx):
     say(f"Reminder set: {seconds}s")
 
 
-# !every <seconds> <message> — repeat until !stop (set_interval). One at a time.
+# !every <seconds> <message>: repeat until !stop (set_interval). One at a time.
 def _every(ctx):
     seconds = _parse_int(ctx.args[0]) if ctx.args else None
     message = " ".join(ctx.args[1:])
@@ -63,7 +63,7 @@ def _every(ctx):
     say(f"Repeating every {seconds}s (send !stop to end)")
 
 
-# !countdown <seconds> — count down live, one number a second, via on_tick.
+# !countdown <seconds>: count down live, one number a second, via on_tick.
 def _countdown(ctx):
     seconds = _parse_int(ctx.args[0]) if ctx.args else None
     if not seconds:
@@ -73,7 +73,7 @@ def _countdown(ctx):
     say(f"Counting down from {seconds}")
 
 
-# !stop — cancel the repeater, any pending reminder, and the countdown.
+# !stop: cancel the repeater, any pending reminder, and the countdown.
 def _stop(ctx):
     if _state["interval_id"] is not None:
         owncast.timer.clear(_state["interval_id"])
@@ -108,8 +108,8 @@ plugin.commands({
 })
 
 
-# Fires once a second while the plugin is enabled. Drives the live countdown;
-# does nothing the rest of the time. `now` is the host wall-clock time in ms.
+# Fires once a second while the plugin is enabled. Drives the live countdown
+# and does nothing the rest of the time. `now` is the host wall-clock time in ms.
 @plugin.on_tick
 def on_tick(ev):
     if _state["countdown"] <= 0:

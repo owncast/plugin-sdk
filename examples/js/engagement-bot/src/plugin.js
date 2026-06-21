@@ -33,7 +33,7 @@ module.exports = definePlugin({
     });
   },
 
-  // Mentions and replies carry content; echo a short summary to Discord
+  // Mentions and replies carry content, so echo a short summary to Discord
   // so the streamer sees off-platform engagement in their normal channel.
   onFediverseMention(post) {
     const snippet =

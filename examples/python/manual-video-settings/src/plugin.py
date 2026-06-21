@@ -1,6 +1,6 @@
 # manual-video-settings: admin form that drives owncast.video_config.
 # All editing is done through host-gated /admin/* routes, so the plugin
-# itself doesn't have to check auth; the host rejects unauthenticated
+# itself doesn't have to check auth. The host rejects unauthenticated
 # requests before they reach on_http_request.
 #
 #   GET  /admin/             , admin form (public/admin/index.html)

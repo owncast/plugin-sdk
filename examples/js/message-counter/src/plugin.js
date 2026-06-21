@@ -3,7 +3,7 @@ const { definePlugin, owncast } = require("@owncast/plugin-sdk");
 module.exports = definePlugin({
   onChatMessage(msg) {
     // Key per-user state on the stable user id, not the display name (which
-    // can change); show the display name in the message.
+    // can change). Show the display name in the message.
     const id = msg.user ? msg.user.id : "anon";
     const name = msg.user ? msg.user.displayName : "someone";
     const key = `count:${id}`;

@@ -1,6 +1,6 @@
 # Chat Overlay
 
-Serves a standalone **chat overlay** web page — handy as a browser source in OBS or as a second-screen chat view. The page polls the plugin for recent chat history and renders messages live.
+Serves a standalone **chat overlay** web page. It works well as a browser source in OBS or as a second-screen chat view. The page polls the plugin for recent chat history and renders messages live.
 
 ## How to use it
 
@@ -12,6 +12,6 @@ The page fetches recent messages from `/plugins/overlay/api/messages` on an inte
 
 ## Permissions
 
-- **http.serve** — serves the overlay page and its JSON messages endpoint.
-- **chat.history** — reads recent chat messages to render.
-- **ui.modify** — adds the "Chat Overlay" action button to the viewer chrome.
+- **http.serve**: serves the overlay page and its JSON messages endpoint.
+- **chat.history**: reads recent chat messages to render.
+- **ui.modify**: adds the "Chat Overlay" action button to the viewer chrome.

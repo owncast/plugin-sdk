@@ -81,7 +81,7 @@ def files_delete(req):
     return delete_file(req)
 
 
-# Download routes on the path only; the ?name=<n> query string is excluded from
+# Download routes on the path only. The ?name=<n> query string is excluded from
 # matching and read from req.raw["query"] inside download_file.
 @plugin.get("/admin/api/files/download")
 def files_download(req):

@@ -1,6 +1,6 @@
 # __PLUGIN_DISPLAY_NAME__
 
-An Owncast plugin scaffolded with `create-owncast-plugin`. The slug is `__PLUGIN_SLUG__`; everything below uses it as the build artifact filename and the URL prefix Owncast routes through your plugin.
+An Owncast plugin scaffolded with `create-owncast-plugin`. The slug is `__PLUGIN_SLUG__`, and everything below uses it as the build artifact filename and the URL prefix Owncast routes through your plugin.
 
 ## Develop
 
@@ -22,11 +22,11 @@ fetches the host binaries `test`/`serve` use, and caches them after the first ru
 
 ## Files
 
-- `src/plugin.js`, your handler code; edit this
+- `src/plugin.js`, your handler code. Edit this
 - `plugin.manifest.json`, the manifest: display name, slug, version, permissions, and optional `bot.displayName` for the chat identity
-- `__tests__/plugin.test.js`, a sample scenario test; add more
-- `icon.png` (optional), drop a square PNG here and it bundles into the `.ocpkg` automatically. The admin uses it in the plugin list and sidebar; no permission required. Plugins without one fall back to a generic puzzle-piece glyph.
-- `INSTRUCTIONS.md` (optional), edit this and it bundles into the `.ocpkg` automatically. The admin renders it as markdown in an **Instructions** tab on the plugin's details page; no permission required.
+- `__tests__/plugin.test.js`, a sample scenario test. Add more
+- `icon.png` (optional), drop a square PNG here and it bundles into the `.ocpkg` automatically. The admin uses it in the plugin list and sidebar, no permission required. Plugins without one fall back to a generic puzzle-piece glyph.
+- `INSTRUCTIONS.md` (optional), edit this and it bundles into the `.ocpkg` automatically. The admin renders it as markdown in an **Instructions** tab on the plugin's details page, no permission required.
 
 ## Learn more
 

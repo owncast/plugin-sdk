@@ -7,9 +7,9 @@
 //
 // The host (Owncast) instantiates this engine per plugin and, before the first
 // call, sets the Extism config keys:
-//   __slug    — the plugin's slug (host functions read it back to resolve identity)
-//   script    — the plugin's bundled JS (the author's plugin.js with the SDK external)
-//   manifest  — the plugin's manifest JSON (echoed by register() with derived subscriptions)
+//   __slug:    the plugin's slug (host functions read it back to resolve identity)
+//   script:    the plugin's bundled JS (the author's plugin.js with the SDK external)
+//   manifest:  the plugin's manifest JSON (echoed by register() with derived subscriptions)
 const sdk = require("@owncast/plugin-sdk");
 
 let loaded = false;
@@ -55,7 +55,7 @@ function on_http_request() {
   return 0;
 }
 // on_auth_check re-validates a viewer's session on page load (the host calls it
-// only for the active auth.gate plugin, only on /). Input is { user }; output
+// only for the active auth.gate plugin, only on /). Input is { user }. Output
 // is a verdict { action: "ok" | "refresh" | "deny", ttl?, reason? }.
 function on_auth_check() {
   ensureLoaded();
@@ -72,7 +72,7 @@ function on_page_content() {
   Host.outputString(sdk.dispatchPageContent(JSON.parse(Host.inputString())));
   return 0;
 }
-// on_page_styles / on_page_scripts take no input — the host calls them once
+// on_page_styles / on_page_scripts take no input. The host calls them once
 // per /api/config for any plugin holding ui.modify, and the returned CSS/JS is
 // appended to the viewer page's customStyles / customJavascript.
 function on_page_styles() {

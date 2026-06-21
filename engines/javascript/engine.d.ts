@@ -1,6 +1,6 @@
 // Host-import union for the shared JS engine. Unlike per-plugin builds (which
 // only import the host functions a plugin's permissions grant), the shared
-// engine imports the FULL set — the host registers all of them once and gates
+// engine imports the FULL set. The host registers all of them once and gates
 // each by the calling plugin's permissions at call time. This list must stay
 // in sync with Owncast's BuildHostFunctions (services/plugins/hostfns.go).
 declare module 'main' {

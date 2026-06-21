@@ -1,5 +1,5 @@
 // admin-demo, shows manifest-declared admin pages. The /admin/* routes
-// are auth-gated by the host; the plugin doesn't have to check anything.
+// are auth-gated by the host, so the plugin doesn't have to check anything.
 //
 // Layout:
 //   GET  /             , public landing page (public/index.html)

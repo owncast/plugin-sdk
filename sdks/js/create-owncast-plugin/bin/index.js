@@ -39,7 +39,7 @@ const templateDir = path.join(__dirname, "..", "template");
 
 // Pin the new project to the SDK version that matches this scaffolder.
 // create-owncast-plugin and @owncast/plugin-sdk are released in lockstep, so
-// the scaffolder's own version is the right pin — this keeps the template from
+// the scaffolder's own version is the right pin. This keeps the template from
 // drifting behind the SDK (it used to hardcode an older "^0.3.1").
 const sdkVersion = require("../package.json").version;
 

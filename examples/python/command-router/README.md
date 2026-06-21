@@ -3,7 +3,7 @@
 Uses the low-level `define_commands()` router directly, instead of the
 declarative `plugin.commands()` table from the `mod-commands` example.
 `define_commands()` returns the router as a plain function you wire yourself,
-which unlocks a few things the table shorthand can't express:
+which lets you express a few things the table shorthand can't:
 
 - **Case-sensitive matching.** `case_sensitive=True` means `!SHOUT` does not run
   `!shout`.

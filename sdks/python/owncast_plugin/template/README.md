@@ -1,6 +1,6 @@
 # __PLUGIN_DISPLAY_NAME__
 
-An Owncast plugin scaffolded with `owncast-plugin-py new`. The slug is `__PLUGIN_SLUG__`; everything below uses it as the build artifact filename and the URL prefix Owncast routes through your plugin.
+An Owncast plugin scaffolded with `owncast-plugin-py new`. The slug is `__PLUGIN_SLUG__`, and everything below uses it as the build artifact filename and the URL prefix Owncast routes through your plugin.
 
 ## Develop
 
@@ -11,7 +11,7 @@ owncast-plugin-py serve        # build, then host the plugin on http://localhost
 owncast-plugin-py package      # build, then bundle into __PLUGIN_SLUG__.ocpkg for distribution
 ```
 
-These commands assume `owncast-plugin-py` is on your PATH (`uv tool install owncast-plugin-sdk`, or `pip install owncast-plugin-sdk`). If you instead run it through `uvx` without installing, prefix every command with `uvx --from <sdk-path> ` — `uvx` is one-shot and doesn't add the command to your PATH.
+These commands assume `owncast-plugin-py` is on your PATH (`uv tool install owncast-plugin-sdk`, or `pip install owncast-plugin-sdk`). If you instead run it through `uvx` without installing, prefix every command with `uvx --from <sdk-path> `, since `uvx` is one-shot and doesn't add the command to your PATH.
 
 Plugins ship as source and run on the Python engine the Owncast host embeds, so there's no compile step and no toolchain to install. `test`/`serve` download and cache the host binaries on first use, and that's it.
 
@@ -21,11 +21,11 @@ Plugins ship as source and run on the Python engine the Owncast host embeds, so 
 
 ## Files
 
-- `src/plugin.py`, your handler code; edit this
+- `src/plugin.py`, your handler code. Edit this
 - `plugin.manifest.json`, the manifest: display name, slug, version, permissions, and optional `bot.displayName` for the chat identity
-- `__tests__/plugin.test.json`, a sample scenario test; add more
-- `icon.png` (optional), drop a square PNG here and it bundles into the `.ocpkg` automatically. The admin uses it in the plugin list and sidebar; no permission required. Plugins without one fall back to a generic puzzle-piece glyph.
-- `INSTRUCTIONS.md` (optional), edit this and it bundles into the `.ocpkg` automatically. The admin renders it as markdown in an **Instructions** tab on the plugin's details page; no permission required.
+- `__tests__/plugin.test.json`, a sample scenario test. Add more
+- `icon.png` (optional), drop a square PNG here and it bundles into the `.ocpkg` automatically. The admin uses it in the plugin list and sidebar, no permission required. Plugins without one fall back to a generic puzzle-piece glyph.
+- `INSTRUCTIONS.md` (optional), edit this and it bundles into the `.ocpkg` automatically. The admin renders it as markdown in an **Instructions** tab on the plugin's details page, no permission required.
 
 ## Learn more
 

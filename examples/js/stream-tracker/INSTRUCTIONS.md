@@ -16,6 +16,6 @@ It also posts "/me"-style action announcements automatically when the stream goe
 
 ## Permissions
 
-- **chat.send** — posts command answers and announcements.
-- **storage.kv** — persists the chat roster and stream-start time.
-- **server.read** — reads server info for `!server` and stream details.
+- **chat.send**: posts command answers and announcements.
+- **storage.kv**: persists the chat roster and stream-start time.
+- **server.read**: reads server info for `!server` and stream details.

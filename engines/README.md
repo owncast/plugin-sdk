@@ -1,7 +1,7 @@
 # Regenerating the shared engines (maintainer runbook)
 
-Owncast embeds **one interpreter engine per language** — QuickJS for JavaScript,
-CPython for Python — compiled to WebAssembly. The host compiles each engine once
+Owncast embeds **one interpreter engine per language**, QuickJS for JavaScript
+and CPython for Python, compiled to WebAssembly. The host compiles each engine once
 and instantiates it per plugin (injecting the plugin's source via Extism config),
 instead of every plugin shipping its own interpreter. See
 [../docs/ARCHITECTURE.md](../docs/ARCHITECTURE.md#execution-model).
@@ -16,25 +16,25 @@ repo**.
 
 Regenerate whenever any of these change:
 
-- the SDK runtime — `sdks/js/index.js` or `sdks/python/owncast_plugin/__init__.py`
-  (it's bundled into the engine),
-- the engine bootstrap — `engines/javascript/entry.js` (JS) or the bootstrap in
+- the SDK runtime (`sdks/js/index.js` or `sdks/python/owncast_plugin/__init__.py`),
+  which is bundled into the engine,
+- the engine bootstrap, `engines/javascript/entry.js` (JS) or the bootstrap in
   `engines/build_py.py` (Python),
 - the host-import union (`engines/javascript/engine.d.ts` / the Python build's
   import block), i.e. when a host function is added or removed.
 
-You do **not** regenerate engines to publish a plugin — author plugins ship
+You do **not** regenerate engines to publish a plugin. Author plugins ship
 source and run on whatever engine the host already embeds.
 
 ## Prerequisites
 
 - **Node** (this repo uses 24.x). `make` fetches the JS engine toolchain
   (`extism-js` + binaryen) itself into `engines/.toolchain/` via
-  `install-toolchain.mjs` — you do **not** need `npm install` for this, and the
+  `install-toolchain.mjs`. You do **not** need `npm install` for this, and the
   author-facing `@owncast/plugin-sdk` install no longer downloads any wasm
   tooling.
 - **Python 3** and the `extism-py` toolchain. The Python SDK fetches it on first
-  use; running any Python plugin build once (or `owncast-plugin-py build`)
+  use. Running any Python plugin build once (or `owncast-plugin-py build`)
   populates `~/.cache/owncast-plugin-sdk/`. Override the binary with `EXTISM_PY`.
 
 ## Regenerate

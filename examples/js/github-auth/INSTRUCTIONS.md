@@ -21,8 +21,8 @@ Visiting `/plugins/github-auth/logout` clears the session.
 
 ## Permissions
 
-- **auth.gate** — lets the plugin act as the site's authentication gate (issue and clear sessions).
-- **users.register** — find-or-create the authenticated Owncast user for a GitHub identity.
-- **http.serve** — serve the login screen and OAuth callback.
-- **network.fetch** — talk to `github.com` and `api.github.com` to verify the user.
-- **storage.kv** — hold the short-lived OAuth `state` value for CSRF protection.
+- **auth.gate**: lets the plugin act as the site's authentication gate (issue and clear sessions).
+- **users.register**: find-or-create the authenticated Owncast user for a GitHub identity.
+- **http.serve**: serve the login screen and OAuth callback.
+- **network.fetch**: talk to `github.com` and `api.github.com` to verify the user.
+- **storage.kv**: hold the short-lived OAuth `state` value for CSRF protection.

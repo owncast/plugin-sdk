@@ -1,5 +1,5 @@
 # A minimal Mustache-subset renderer. The JS version of this example uses the
-# `mustache` npm package; this Python port keeps its own small renderer here and
+# `mustache` npm package. This Python port keeps its own small renderer here and
 # imports it from plugin.py.
 #
 # Supports the features the two templates use: {{var}} (HTML-escaped),

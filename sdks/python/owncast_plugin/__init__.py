@@ -38,14 +38,14 @@ def _host(name):
     fn = _HOST.get(name)
     if fn is None:
         raise RuntimeError(
-            "owncast: host function '%s' is unavailable — declare the "
+            "owncast: host function '%s' is unavailable. Declare the "
             "permission it needs in plugin.manifest.json." % name
         )
     return fn
 
 
 def _call_json(name, *args):
-    """Call a host fn that returns a JSON (or empty) string; decode it."""
+    """Call a host fn that returns a JSON (or empty) string, then decode it."""
     raw = _host(name)(*args)
     if not raw:
         return None
@@ -57,7 +57,7 @@ def _call_json(name, *args):
 
 # ---------------------------------------------------------------------------
 # Wire payloads: attribute views over the host's JSON (snake_case accessors map
-# to camelCase wire keys; `.raw` exposes the underlying dict).
+# to camelCase wire keys, and `.raw` exposes the underlying dict).
 # ---------------------------------------------------------------------------
 class _Obj:
     def __init__(self, data):
@@ -127,10 +127,10 @@ _PAGE = {}      # slug -> fn
 _PAGE_STYLES = [None]   # on_page_styles handler (global, no slug)
 _PAGE_SCRIPTS = [None]  # on_page_scripts handler (global, no slug)
 
-# A plugin may use plugin.commands(...) AND @plugin.on_chat_message together; on
+# A plugin may use plugin.commands(...) AND @plugin.on_chat_message together. On
 # each chat message the command router runs first, then the on_chat_message
-# handler (which sees every message — guard with a prefix check if you only want
-# non-command chatter). These hold the two pieces; _chat_dispatch composes them.
+# handler (which sees every message, so guard with a prefix check if you only want
+# non-command chatter). These hold the two pieces, and _chat_dispatch composes them.
 _COMMANDS_ROUTER = [None]  # the define_commands router, if plugin.commands() used
 _CHAT_HANDLER = [None]     # the @plugin.on_chat_message handler, if registered
 # Command metadata recorded by define_commands, reported to the host via
@@ -186,10 +186,10 @@ class _Plugin:
 
     def on_http_request(self, arg=None, *, methods=None):
         """HTTP handler. Three forms:
-          @plugin.on_http_request              — catch-all (req.path/req.method parsed by you)
-          @plugin.on_http_request("/api/x")    — only requests to that exact path (any method)
-          @plugin.on_http_request("/api/x", methods=["GET","POST"])  — path + methods
-        Routes are matched before the catch-all; the path is relative to the
+          @plugin.on_http_request              : catch-all (req.path/req.method parsed by you)
+          @plugin.on_http_request("/api/x")    : only requests to that exact path (any method)
+          @plugin.on_http_request("/api/x", methods=["GET","POST"])  : path + methods
+        Routes are matched before the catch-all. The path is relative to the
         plugin's /plugins/<slug>/ root (e.g. "/api/messages")."""
         if callable(arg):  # bare @plugin.on_http_request
             _HTTP[0] = arg
@@ -204,7 +204,7 @@ class _Plugin:
     def on_auth_check(self, fn):
         """Re-validate a viewer's gate session on page load (auth.gate plugins).
         The host calls it on the viewer's `/` request with the resolved
-        `req.user`; return auth_check.ok() / refresh() / deny(). Optional —
+        `req.user`, and you return auth_check.ok() / refresh() / deny(). Optional:
         without it a granted session lasts until its cookie expires (no
         mid-session revocation). Used bare: `@plugin.on_auth_check`."""
         _AUTH_CHECK[0] = fn
@@ -246,8 +246,8 @@ class _Plugin:
 
     def on_page_styles(self, fn):
         """Return CSS to inline into the viewer page's customStyles at request
-        time — the same whole-UI core-theming slot as manifest `styles`. The
-        host calls this for any plugin holding `ui.modify`; just define the
+        time, the same whole-UI core-theming slot as manifest `styles`. The
+        host calls this for any plugin holding `ui.modify`, so just define the
         handler (no manifest field, no slug). Return "" to contribute nothing.
         Output is appended after any static `styles` files. Used bare:
         `@plugin.on_page_styles`."""
@@ -255,7 +255,7 @@ class _Plugin:
         return fn
 
     def on_page_scripts(self, fn):
-        """Return JavaScript to append to the viewer page's customJavascript —
+        """Return JavaScript to append to the viewer page's customJavascript,
         the dynamic counterpart to manifest `scripts`. The host wraps each
         plugin's script in a try/catch, but it runs in the shared viewer
         `window`: wrap your code in an IIFE and escape untrusted strings.
@@ -265,14 +265,14 @@ class _Plugin:
 
     def commands(self, table, *, prefix="!", case_sensitive=False, on_unknown=None):
         """Declare a chat-command table. The SDK wires the chat subscription for
-        you — no @plugin.on_chat_message needed:
+        you, so no @plugin.on_chat_message is needed:
 
             plugin.commands({
                 "uptime": {"description": "Stream uptime", "run": lambda ctx: ctx.reply("up!")},
             })
 
         `table` maps command name -> def (run/description/usage/aliases/
-        mod_only/cooldown_ms/...); see define_commands. For advanced composition
+        mod_only/cooldown_ms/...). See define_commands. For advanced composition
         (e.g. dropping command messages from chat via a filter) use
         define_commands() directly inside your own handler instead."""
         router = define_commands({
@@ -340,7 +340,7 @@ auth_check = _AuthCheck()
 # ---------------------------------------------------------------------------
 class CommandContext:
     """What a command's run() receives: the message, parsed args, and reply
-    helpers. ``reply`` posts publicly; ``reply_privately`` whispers to the
+    helpers. ``reply`` posts publicly, and ``reply_privately`` whispers to the
     sender (falling back to a public post if their connection is unknown)."""
 
     def __init__(self, msg, command, args, arg_string):
@@ -360,7 +360,7 @@ class CommandContext:
 
 def _ts_millis(msg):
     """Parse a chat message's ISO-8601 timestamp to epoch millis, or 0 when
-    absent/unparseable — matching the JS router, which clocks cooldowns off
+    absent/unparseable, matching the JS router, which clocks cooldowns off
     msg.timestamp so they're deterministic in tests and free of sandbox-clock
     quirks."""
     ts = msg.timestamp if isinstance(msg, _Obj) else None
@@ -377,8 +377,8 @@ def define_commands(config):
     """Build a chat-command router so plugins stop reimplementing prefix
     parsing, aliases, per-user cooldowns, and moderator gating. Returns a
     callable you feed a ChatMessage (from on_chat_message or
-    filter_chat_message); it returns True when the message was a command (even
-    if gated), False otherwise — so a filter can drop command messages:
+    filter_chat_message). It returns True when the message was a command (even
+    if gated), False otherwise, so a filter can drop command messages:
 
         commands = define_commands({
             "prefix": "!",
@@ -405,7 +405,7 @@ def define_commands(config):
 
     # Resolve every name and alias to its canonical command definition, and
     # record metadata so the host can build a unified !help (see
-    # _describe_commands). Metadata is reported via register(); it never
+    # _describe_commands). Metadata is reported via register() and never
     # affects routing.
     table = {}
     defs = config.get("commands", {})
@@ -534,7 +534,7 @@ class _KV:
         self.set(key, json.dumps(value))
 
     def delete(self, key):
-        # The host has no kv-delete fn; clearing the value is the delete.
+        # The host has no kv-delete fn, so clearing the value is the delete.
         self.set(key, "")
 
 
@@ -632,7 +632,7 @@ class _Users:
     def register(self, auth_id, display_name=None, scopes=None):
         """Find-or-create an authenticated user for an external identity.
 
-        auth_id is the stable, provider-scoped id (e.g. "github:583231"); the
+        auth_id is the stable, provider-scoped id (e.g. "github:583231"). The
         host namespaces it by this plugin's slug so plugins can't collide on or
         spoof each other's users. Returns an object with .user_id. Raises on
         host error. Requires the 'users.register' permission.
@@ -765,7 +765,7 @@ owncast = _Owncast()
 
 
 # ---------------------------------------------------------------------------
-# Dispatch — called by the build-generated wasm exports.
+# Dispatch: called by the build-generated wasm exports.
 # ---------------------------------------------------------------------------
 def _describe_commands():
     """Report the plugin's chat commands to the host for a unified !help.
@@ -842,8 +842,8 @@ def _dispatch_http(request):
 
 
 def _dispatch_auth_check(request):
-    # No handler → always ok (the hook is optional; a plugin that doesn't
-    # implement it simply never revokes a session mid-stream).
+    # No handler → always ok (the hook is optional, and a plugin that doesn't
+    # implement it never revokes a session mid-stream).
     if _AUTH_CHECK[0] is None:
         return {"action": "ok"}
     return _AUTH_CHECK[0](_Obj(request)) or {"action": "ok"}

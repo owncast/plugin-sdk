@@ -1,15 +1,15 @@
-# AGENTS.md — __PLUGIN_DISPLAY_NAME__
+# AGENTS.md: __PLUGIN_DISPLAY_NAME__
 
 Guidance for AI coding agents working on this Owncast plugin (slug:
 `__PLUGIN_SLUG__`). It encodes the SDK's rules so you can add behavior correctly
 without re-deriving how the runtime works. Tool-agnostic: "run" means use your
-shell tool; follow these steps with whatever model/harness you are.
+shell tool. Follow these steps with whatever model/harness you are.
 
 > **Skill available.** This plugin ships the `create-owncast-plugin-py` skill at
 > `.agents/skills/create-owncast-plugin-py/SKILL.md`. Skill-aware agents discover it
-> automatically; otherwise read that file — it drives the full build-this-plugin
+> automatically, otherwise read that file. It drives the full build-this-plugin
 > workflow (turn a plain-language request into handlers + manifest, then test and
-> package). This AGENTS.md is the quick reference; the skill is the playbook.
+> package). This AGENTS.md is the quick reference, and the skill is the playbook.
 
 ## What this project is
 
@@ -23,14 +23,14 @@ needs. Plugins ship as source and run on the Python engine the host embeds, so
 
 ## Files you edit
 
-- `src/plugin.py` — handler code. Register **only** the handlers you need; the
+- `src/plugin.py`: handler code. Register **only** the handlers you need. The
   SDK derives event subscriptions from which handlers exist.
-- `plugin.manifest.json` — `name`, `slug`, `version`, `description`,
+- `plugin.manifest.json`: `name`, `slug`, `version`, `description`,
   `permissions`, optional `bot.displayName`, `config`, and UI fields.
-- `__tests__/plugin.test.json` — scenario tests (JSON); update them to assert your real behavior.
-- `public/` (create if needed) — files served at `/plugins/__PLUGIN_SLUG__/...`.
-- `assets/` (create if needed) — host-read for inlined UI (`styles`/`scripts`/
-  `extraPageContent`); **not** reachable via URL.
+- `__tests__/plugin.test.json`: scenario tests (JSON). Update them to assert your real behavior.
+- `public/` (create if needed): files served at `/plugins/__PLUGIN_SLUG__/...`.
+- `assets/` (create if needed): host-read for inlined UI (`styles`/`scripts`/
+  `extraPageContent`), but **not** reachable via URL.
 
 ## Workflow
 
@@ -48,7 +48,7 @@ tests. Fix the code or correct the expectation (and say which).
 ## The golden rule
 
 **The `permissions` array must contain exactly the permission for every
-`owncast.*` method you call** — no more, no less. A missing permission makes the
+`owncast.*` method you call**, no more and no less. A missing permission makes the
 call throw and/or the host refuse to load the plugin. Admins judge trust by the
 declared list, so don't over-declare.
 
@@ -81,22 +81,22 @@ declared list, so don't over-declare.
 | Post publicly to the fediverse (high-trust)     | (any)                                               | `owncast.fediverse.post(text)`                 | `fediverse.post`                       |
 | React to fediverse follows/likes/mentions       | `@plugin.on_fediverse_*`                            | —                                              | —                                      |
 | Read/change video config                        | (any)                                               | `owncast.video_config.read/write`              | `videoconfig.read` / `videoconfig.write` |
-| Compose with other plugins                      | emit `owncast.events.emit`; receive `@plugin.on(...)` | `owncast.events.emit(type, payload)`         | `events.emit` (emitter only)           |
+| Compose with other plugins                      | emit `owncast.events.emit`, receive `@plugin.on(...)` | `owncast.events.emit(type, payload)`         | `events.emit` (emitter only)           |
 
 ## Gotchas that bite
 
 - **`msg.user` is an attribute object, or `None`.** Production sends a ChatUser
-  (`msg.user.id`, `msg.user.display_name`, `msg.user.scopes`); a message with no
+  (`msg.user.id`, `msg.user.display_name`, `msg.user.scopes`). A message with no
   associated account has `msg.user is None`. Guard it: `msg.user.display_name if
   msg.user else "someone"`. For per-user state and mod gating use `msg.user.id`
   and `msg.user.scopes`, never the display name. Use `msg.raw` for the underlying dict.
 - **Chat text is HTML-escaped on display.** `chat.send`/`send_action` take plain
-  text. Only `chat.system(body)` renders HTML — escape untrusted content yourself.
+  text. Only `chat.system(body)` renders HTML, so escape untrusted content yourself.
 - **Filters are time-capped (50 ms) and fail open.** Keep `filter_chat_message`
-  fast; an erroring filter is treated as `filter.pass_()`. Five consecutive
+  fast. An erroring filter is treated as `filter.pass_()`. Five consecutive
   failures auto-disable the plugin for the session.
-- **`filter.pass_()` has a trailing underscore** — `pass` is a Python keyword.
-- **No `time.sleep` / threads for delays** — use `owncast.timer.*` (timers don't
+- **`filter.pass_()` has a trailing underscore** because `pass` is a Python keyword.
+- **No `time.sleep` / threads for delays.** Use `owncast.timer.*` (timers don't
   survive a host restart).
 - **`network.fetch` requires `network.allowedHosts`** in the manifest, e.g.
   `"network": { "allowedHosts": ["api.example.com"] }`. The bare `"*"` is allowed
@@ -106,8 +106,8 @@ declared list, so don't over-declare.
 - **Pure-Python only.** Dependencies with C extensions (numpy, pandas, …) won't
   load on the embedded engine. Don't shadow stdlib names (e.g. a top-level
   `def json(...)`): your code runs in the same global scope as the runtime.
-- **Prefer `define_commands`** over hand-rolled prefix parsing for chat commands —
-  it gives aliases, per-user cooldowns, and `mod_only` gating.
+- **Prefer `define_commands`** over hand-rolled prefix parsing for chat commands.
+  It gives aliases, per-user cooldowns, and `mod_only` gating.
 
 ## Testing
 
@@ -132,8 +132,8 @@ Step types: `event`, `filter`, `http`, `tabContent`, `pageContent`.
 
 ## Full reference
 
-The exhaustive author guide — every handler, API method, limit, and testing
-pattern — lives at:
+The exhaustive author guide, covering every handler, API method, limit, and
+testing pattern, lives at:
 
 **https://github.com/owncast/plugin-sdk/blob/main/docs/PLUGIN_AUTHOR_GUIDE.md**
 

@@ -1,7 +1,7 @@
 const { definePlugin, defineCommands, filter, owncast } = require("@owncast/plugin-sdk");
 
 // The low-level command router. The mod-commands example uses the declarative
-// `commands` table; this one calls defineCommands() directly, which hands back
+// `commands` table. This one calls defineCommands() directly, which hands back
 // the router as a plain function you wire yourself. That lets you do things the
 // table shorthand can't, shown here:
 //
@@ -22,7 +22,7 @@ const commands = defineCommands({
       usage: "!shout <message>",
       cooldownMs: 30000,
       run: (ctx) => ctx.reply(`📢 ${ctx.argString.toUpperCase()}`),
-      onCooldown: (ctx) => ctx.reply("Easy there — you can only shout every 30 seconds."),
+      onCooldown: (ctx) => ctx.reply("Easy there, you can only shout every 30 seconds."),
     },
     secret: {
       description: "Whisper a secret only the sender can see",
@@ -33,7 +33,7 @@ const commands = defineCommands({
 
 module.exports = definePlugin({
   // chat.filter is required to subscribe to filterChatMessage. Recognized
-  // commands are dropped so they never show up in public chat; anything that
+  // commands are dropped so they never show up in public chat. Anything that
   // isn't a command passes through unchanged.
   filterChatMessage: (msg) =>
     commands(msg) ? filter.drop("handled as a command") : filter.pass(),

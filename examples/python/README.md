@@ -1,11 +1,11 @@
 # Python plugin examples
 
-One self-contained plugin per directory, authored in Python and compiled to wasm with `extism-py`. Each is a port of the matching [JavaScript example](../js/) — the manifest and behavior are the same, so the [author guide](../../docs/PLUGIN_AUTHOR_GUIDE.md) applies to both. The only difference is the API surface: Python uses decorator-registered handlers (`@plugin.on_chat_message`) and `snake_case` methods (`owncast.chat.send`, `owncast.video_config.read`). The table below maps each example to the SDK feature it covers.
+One self-contained plugin per directory, authored in Python and compiled to wasm with `extism-py`. Each is a port of the matching [JavaScript example](../js/). The manifest and behavior are the same, so the [author guide](../../docs/PLUGIN_AUTHOR_GUIDE.md) applies to both. The only difference is the API surface: Python uses decorator-registered handlers (`@plugin.on_chat_message`) and `snake_case` methods (`owncast.chat.send`, `owncast.video_config.read`). The table below maps each example to the SDK feature it covers.
 
 | Plugin                                            | One-line summary                                                                                        |
 | ------------------------------------------------- | ------------------------------------------------------------------------------------------------------- |
 | [hello-world](./hello-world/)                     | Minimum viable plugin, proves the load + `register()` path works.                                       |
-| [chat-logger](./chat-logger/)                     | Logs every chat message; the simplest notification handler.                                             |
+| [chat-logger](./chat-logger/)                     | Logs every chat message. The simplest notification handler.                                             |
 | [echo-bot](./echo-bot/)                           | Posts a reply to every chat message via `owncast.chat.send`. |
 | [mod-commands](./mod-commands/)                   | Declarative `plugin.commands()` table: custom prefix, aliases, mod-only + `on_denied`, `on_unknown`, `@plugin.on_chat_message` composition, `!help` metadata. |
 | [command-router](./command-router/)              | Low-level `define_commands` + `filter_chat_message`: case-sensitive matching, per-user cooldowns, private replies, drops commands from chat. |
@@ -15,12 +15,12 @@ One self-contained plugin per directory, authored in Python and compiled to wasm
 | [buggy-filter](./buggy-filter/)                   | Always raises, exercises the host's fail-open + strike system.                                          |
 | [relay](./relay/)                                 | Emits a custom `announcement.broadcast` event (plugin → plugin).                                        |
 | [announcer](./announcer/)                         | Subscribes to `announcement.broadcast` via `@plugin.on(...)`.                                            |
-| [ip-bot](./ip-bot/)                               | Outbound HTTP via `owncast.http.fetch`; mocked in tests.                                                |
+| [ip-bot](./ip-bot/)                               | Outbound HTTP via `owncast.http.fetch`, mocked in tests.                                                |
 | [overlay](./overlay/)                             | `http.serve`, static files from `public/` + dynamic JSON endpoint.                                      |
 | [stream-tracker](./stream-tracker/)               | Every typed lifecycle / chat-user handler + read APIs.                                                  |
 | [stream-ops](./stream-ops/)                       | Broadcast telemetry (`server.read`) + video config read/write (`videoconfig.read`/`videoconfig.write`). |
 | [manual-video-settings](./manual-video-settings/) | Admin form for the video config: latency, codec, and per-variant resolution / framerate / bitrate.      |
-| [engagement-bot](./engagement-bot/)               | Discord + browser-push + fediverse notifier on stream / fediverse events; small inline spam filter.     |
+| [engagement-bot](./engagement-bot/)               | Discord + browser-push + fediverse notifier on stream / fediverse events, with a small inline spam filter.     |
 | [admin-demo](./admin-demo/)                       | `manifest.admin.pages`, host-gated admin routes.                                                        |
 | [file-manager](./file-manager/)                   | `storage.fs`, admin page to browse/upload/download/delete files in the plugin's private sandbox.        |
 | [action-buttons](./action-buttons/)               | `manifest.actions` + runtime `owncast.actions.add` (ui.modify), with an admin page that adds buttons.   |
@@ -52,4 +52,4 @@ owncast-plugin-py serve   examples/python/<name>    # local dev server (POST /_d
 owncast-plugin-py package examples/python/<name>    # build + bundle -> <slug>.ocpkg (the file you ship)
 ```
 
-A Python plugin's source lives in `src/plugin.py`; `extism-py` compiles a single file, so the build inlines the SDK runtime and your code into one module before compiling. You still `from owncast_plugin import …` for editor support and unit tests.
+A Python plugin's source lives in `src/plugin.py`. `extism-py` compiles a single file, so the build inlines the SDK runtime and your code into one module before compiling. You still `from owncast_plugin import …` for editor support and unit tests.

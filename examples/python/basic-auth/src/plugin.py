@@ -7,14 +7,14 @@ shares one authenticated identity ("Guest"). No external provider.
                         visitors here)
   GET /login?password=...&return_to=...
                      -> correct password: register + grant a session, then
-                        redirect back; wrong password: re-show the form
+                        redirect back. wrong password: re-show the form
   GET /logout        -> clear the session
   GET /revoke        -> (admin only) revoke all sessions on next page load
   GET /unrevoke      -> (admin only) lift the revocation
 
 on_auth_check re-validates the session on each page load: while "revoked" is
 set, every viewer is bounced back to the login screen. This is the revocation
-hook — a real provider-backed plugin would check per-user state here.
+hook. A real provider-backed plugin would check per-user state here.
 """
 from owncast_plugin import plugin, owncast, auth_check
 
@@ -73,7 +73,7 @@ def logout(req):
 
 @plugin.get("/revoke")
 def revoke(req):
-    # req.authenticated is true for admin requests; viewers can't flip it.
+    # req.authenticated is true for admin requests. Viewers can't flip it.
     if not req.authenticated:
         return {"status": 403, "body": "admin only"}
     owncast.kv.set("revoked", "1")

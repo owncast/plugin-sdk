@@ -4,7 +4,7 @@ The login flow is just a small HTTP app served under /plugins/github-auth/:
 
   GET /          -> a "Sign in with GitHub" screen (the host redirects
                     unauthenticated visitors here)
-  GET /callback  -> GitHub redirects back with ?code; we exchange it for a
+  GET /callback  -> GitHub redirects back with ?code. We exchange it for a
                     token, look up the user, then register the identity and
                     grant a gate session
   GET /logout    -> clear the session
@@ -28,7 +28,7 @@ def _query(req):
 
 @plugin.get("/")
 def login(req):
-    # A real plugin generates a random `state` and persists it for CSRF; we use
+    # A real plugin generates a random `state` and persists it for CSRF. We use
     # a fixed value here to keep the example short. The return_to is where we
     # send the viewer after a successful login.
     return_to = _query(req).get("return_to") or "/"
@@ -88,7 +88,7 @@ def callback(req):
     display = gh.get("name") or gh.get("login") or auth_id
 
     # Identity, then session. register() finds-or-creates the Owncast user for
-    # this GitHub identity (the host namespaces auth_id by our slug); the
+    # this GitHub identity (the host namespaces auth_id by our slug). The
     # returned user_id is what grant_session() issues the cookie for.
     result = owncast.users.register(auth_id, display_name=display)
     owncast.auth.grant_session(result.user_id)

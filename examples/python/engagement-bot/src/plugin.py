@@ -40,7 +40,7 @@ def _snippet(text):
     return text[:200] + "…" if len(text) > 200 else text
 
 
-# Mentions and replies carry content; echo a short summary to Discord
+# Mentions and replies carry content, so echo a short summary to Discord
 # so the streamer sees off-platform engagement in their normal channel.
 @plugin.on_fediverse_mention
 def on_fediverse_mention(post):

@@ -5,7 +5,7 @@ from owncast_plugin import plugin, filter
 MIN_INTERVAL_MS = 2000
 
 # Per-user last-post times held in plugin memory. The dict lives for the
-# lifetime of the loaded wasm instance; reloading or restarting the
+# lifetime of the loaded wasm instance. Reloading or restarting the
 # plugin resets the limiter, which is the right behavior for a soft
 # slow-mode (no stale state across restarts).
 last_by_user = {}
@@ -20,7 +20,7 @@ def _to_millis(timestamp):
 @plugin.filter_chat_message
 def slow_mode(msg):
     # Compare against the host's per-message timestamp. Key the limiter on
-    # the stable user id; show the display name in the drop reason.
+    # the stable user id, and show the display name in the drop reason.
     now = _to_millis(msg.timestamp)
     uid = msg.user.id if msg.user else "anon"
     name = msg.user.display_name if msg.user else uid

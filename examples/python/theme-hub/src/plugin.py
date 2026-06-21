@@ -1,9 +1,9 @@
 # theme-hub: a hub of selectable viewer themes (Python port).
 #
 # The plugin ships a catalog of themes in assets/themes.json. The admin picks
-# one from the admin panel; the choice is persisted in the plugin's KV store.
-# On every /api/config the host calls on_page_styles() — because the plugin
-# holds ui.modify — and the returned CSS is appended to Owncast's customStyles,
+# one from the admin panel, and the choice is persisted in the plugin's KV store.
+# On every /api/config the host calls on_page_styles() (because the plugin
+# holds ui.modify) and the returned CSS is appended to Owncast's customStyles,
 # the same core-theming slot manifest.styles uses, so it restyles the whole
 # viewer UI. on_page_scripts() additionally tags the page with the active id.
 #
@@ -13,8 +13,8 @@
 # a remote themes.json and the rest of the plugin is unchanged.
 #
 # Endpoints (all under /admin, auth-gated by the host):
-#   GET  /admin/api/state  — {"themes": [{"id","name","description"}], "selected"}
-#   POST /admin/api/state  — {"selected": "<id>" | ""} -> persists the choice
+#   GET  /admin/api/state  returns {"themes": [{"id","name","description"}], "selected"}
+#   POST /admin/api/state  takes {"selected": "<id>" | ""} and persists the choice
 import json
 
 from owncast_plugin import plugin, owncast
@@ -43,7 +43,7 @@ def _selected_id():
     return owncast.kv.get(SELECTED_KEY) or ""
 
 
-# The metadata the admin panel needs — never ships the raw CSS to the listing.
+# The metadata the admin panel needs. Never ships the raw CSS to the listing.
 def _state():
     return {
         "themes": [

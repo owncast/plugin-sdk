@@ -8,8 +8,8 @@ Writes a line to the Owncast **server log** for every chat message. A read-only 
 2. Have someone post in chat.
 3. Each message shows up in the server's standard-error output, prefixed with `[chat-logger]`.
 
-There is nothing to configure and no viewer-facing output — this is purely a server-side log. It's a good starting point for an analytics or archival plugin.
+There is nothing to configure and no viewer-facing output. This is purely a server-side log. It's a good starting point for an analytics or archival plugin.
 
 ## Permissions
 
-None. A plugin can observe chat events through the message handler without declaring any permission; permissions are only required to *act* (send, moderate, and so on).
+None. A plugin can observe chat events through the message handler without declaring any permission. Permissions are only required to *act* (send, moderate, and so on).

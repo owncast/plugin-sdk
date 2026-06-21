@@ -13,8 +13,8 @@ markdown in an **Instructions** tab on the plugin's details page.
 
 ## Permissions
 
-- `http.serve` — needed to serve the landing page and admin pages.
-- `storage.kv` — needed to persist the demo settings.
+- `http.serve`: needed to serve the landing page and admin pages.
+- `storage.kv`: needed to persist the demo settings.
 
 ## Try it
 

@@ -8,7 +8,7 @@
 // "Slug" is the plugin's identifier: lowercase, hyphenated, used in
 // filenames, URL segments, and as the registry's primary key. Plugin
 // authors set the human-readable display name via `name` in their
-// manifest; if they don't set `slug`, the CLI auto-derives it from
+// manifest. If they don't set `slug`, the CLI auto-derives it from
 // `name`.
 
 const fs = require("fs");
@@ -31,9 +31,9 @@ function fail(e) {
 const slugPattern = /^[a-z][a-z0-9-]{0,63}$/;
 
 // slugify mirrors the host's Go slugify: ASCII letters and digits
-// pass through lowercased; everything else collapses to a single
-// hyphen; leading and trailing hyphens are trimmed.
-// Non-ASCII names (e.g. "Café") degrade noisily (-> "caf"); plugins
+// pass through lowercased, everything else collapses to a single
+// hyphen, and leading and trailing hyphens are trimmed.
+// Non-ASCII names (e.g. "Café") degrade noisily (-> "caf"), so plugins
 // with accented or non-Latin display names should pin `slug` in the
 // manifest instead of relying on auto-derivation.
 function slugify(input) {
@@ -145,7 +145,7 @@ async function buildMain() {
 
   // Shared-engine model: bundle the author's plugin into a tiny CommonJS
   // script with @owncast/plugin-sdk marked EXTERNAL. It ships in the .ocpkg as
-  // plugin.js; the host infers the JavaScript runtime from that filename and
+  // plugin.js. The host infers the JavaScript runtime from that filename and
   // runs it on the embedded JS engine, which provides
   // require("@owncast/plugin-sdk"). No per-plugin wasm, no extism-js.
   const buildDir = path.join(cwd, ".owncast-build");
@@ -162,7 +162,7 @@ async function buildMain() {
     logLevel: "warning",
   });
 
-  // public/ and assets/ live at the source root; the packager picks them up.
+  // public/ and assets/ live at the source root, and the packager picks them up.
   console.log(`built ${path.relative(cwd, scriptOut)}`);
 }
 
@@ -185,8 +185,8 @@ async function packageMain() {
   }
 
   // The code entry's name (plugin.js) is what tells the host this is a
-  // JavaScript plugin — no "type" field in the manifest. The manifest ships
-  // verbatim.
+  // JavaScript plugin, so there is no "type" field in the manifest. The
+  // manifest ships verbatim.
   const publicDir = path.join(cwd, "public");
   const assetsDir = path.join(cwd, "assets");
   const zip = new JSZip();
@@ -204,7 +204,7 @@ async function packageMain() {
   }
   // Bundle a top-level INSTRUCTIONS.md if the plugin source root has one.
   // The host serves it to the admin (which renders it as markdown in a
-  // details tab); like icon.png it needs no manifest field and no
+  // details tab). Like icon.png it needs no manifest field and no
   // http.serve permission. The filename is fixed for simplicity.
   const instructionsPath = path.join(cwd, "INSTRUCTIONS.md");
   if (fs.existsSync(instructionsPath) && fs.statSync(instructionsPath).isFile()) {
@@ -251,7 +251,7 @@ async function packageMain() {
     fs.unlinkSync(scriptPath);
   } catch (e) {
     // Don't fail the package step over a cleanup miss. The .ocpkg is
-    // already written; surface the warning so the author notices the
+    // already written, so surface the warning so the author notices the
     // straggler but treat the run as successful.
     if (e.code !== "ENOENT") {
       console.warn(`warning: could not clean up ${path.relative(cwd, scriptPath)}: ${e.message}`);
@@ -290,7 +290,7 @@ function findCacheDir() {
     path.join(__dirname, "..", "..", "..", "tools"),
   ];
   // Pick the first candidate that has the prebuilt host binaries (the only
-  // tooling the SDK ships now — `build` is pure esbuild and needs nothing here).
+  // tooling the SDK ships now, since `build` is pure esbuild and needs nothing here).
   for (const c of candidates) {
     if (
       fs.existsSync(path.join(c, "owncast-plugin-test")) ||

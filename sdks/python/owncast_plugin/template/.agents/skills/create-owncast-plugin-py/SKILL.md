@@ -9,14 +9,14 @@ This skill walks any AI assistant through building a working Owncast plugin in
 **Python** for a non-expert user: gather what they want in plain language,
 scaffold the project, write the code and manifest, verify it with tests, and
 produce the single `.ocpkg` file they upload to their Owncast server. The user
-should never have to understand the runtime — you do that part.
+should never have to understand the runtime. You do that part.
 
 > **Picking a language?** Owncast plugins can be written in JavaScript or Python.
 > The two SDKs are first-class peers: the same handlers, APIs, permissions, and
 > manifest apply to both, and only the scaffolding and language syntax differ.
 > This skill is the **Python** path. For JavaScript, use `create-owncast-plugin-js`.
 > If the language isn't decided yet, start from the `create-owncast-plugin`
-> router — it gathers the author's intent and dispatches to the right one.
+> router, which gathers the author's intent and dispatches to the right one.
 
 This file is the complete operating guide. It is written to be tool-agnostic:
 wherever it says "ask the user," use whatever question mechanism your harness
@@ -30,7 +30,7 @@ to events (chat messages, stream start/stop, fediverse activity) by registering
 handler functions with `@plugin.*` decorators, and calls back into Owncast
 through the `owncast.*` API (send chat, store data, fetch URLs, serve web pages,
 etc.). A `plugin.manifest.json` declares the plugin's identity and the
-**permissions** it needs — every API call requires its matching permission, or
+**permissions** it needs. Every API call requires its matching permission, or
 the host refuses to load the plugin. The build step just emits the Python source
 as `<slug>.py` and bundles it with the manifest and assets into one `.ocpkg` file
 for distribution.
@@ -41,7 +41,7 @@ for distribution.
 
 ## The workflow (follow in order)
 
-### Step 1 — Understand what they want
+### Step 1: Understand what they want
 
 Ask the user, in plain language:
 
@@ -57,21 +57,21 @@ Then map their description to capabilities using the **Capability map** below.
 That tells you which handler(s) to write, which `owncast.*` calls to make, and
 which permissions the manifest must declare. If a request needs a high-trust
 permission (`fediverse.post`, `videoconfig.write`, `users.moderate`,
-`network.fetch` to arbitrary hosts), note it back to the user — the server admin
+`network.fetch` to arbitrary hosts), note it back to the user. The server admin
 will have to approve it.
 
 Keep it small. Build the simplest plugin that does what they asked. You can
 always add handlers later.
 
-### Step 2 — Make sure you have a plugin project
+### Step 2: Make sure you have a plugin project
 
 **If your working directory already contains a `plugin.manifest.json`**, you are
 already inside a scaffolded plugin (this skill may have shipped inside it). Do
-**not** scaffold again — skip to Step 3 and edit the project in place, using its
+**not** scaffold again. Skip to Step 3 and edit the project in place, using its
 existing slug.
 
 **Otherwise, scaffold a new project** with the official scaffolder
-(non-interactive; takes the slug as an argument):
+(non-interactive, takes the slug as an argument):
 
 ```sh
 owncast-plugin-py new <slug>
@@ -83,13 +83,13 @@ This creates a `<slug>/` directory with `plugin.manifest.json`,
 `src/plugin.py`, and `__tests__/plugin.test.json` already wired up. All
 subsequent commands run **from inside that directory**.
 
-### Step 3 — Write the plugin
+### Step 3: Write the plugin
 
 Edit two files based on what you learned in Step 1:
 
-- **`src/plugin.py`** — register only the handlers the behavior needs. See
+- **`src/plugin.py`**: register only the handlers the behavior needs. See
   **Writing handlers** and the **Capability map**.
-- **`plugin.manifest.json`** — set `name`, `description`, and the exact
+- **`plugin.manifest.json`**: set `name`, `description`, and the exact
   `permissions` list for the APIs you call. See **The manifest**.
 
 If the plugin serves web content, add files under `public/` (web-served) or
@@ -97,24 +97,24 @@ If the plugin serves web content, add files under `public/` (web-served) or
 `__tests__/plugin.test.json` with scenarios that assert your actual behavior
 (see **Testing**).
 
-**Clear the scaffolded placeholders** — they ship verbatim, so don't leave the
+**Clear the scaffolded placeholders.** They ship verbatim, so don't leave the
 defaults:
 
 - Set a real `description` in `plugin.manifest.json` (the scaffold leaves `"An
   Owncast plugin"`).
-- **Fill in `INSTRUCTIONS.md`** — it's bundled into the `.ocpkg` and rendered as
+- **Fill in `INSTRUCTIONS.md`.** It's bundled into the `.ocpkg` and rendered as
   an **Instructions** tab on the plugin's page in the Owncast admin. Its only
   audience is the **person installing and running the plugin** (the Owncast
-  admin / streamer) — not you the developer. Write it for them, in plain
-  language: **what the plugin does and how to use it once enabled** — any
+  admin / streamer), not you the developer. Write it for them, in plain
+  language: **what the plugin does and how to use it once enabled**, including any
   settings to configure and what each does, the features it adds and how to use
   them (e.g. chat commands like `!hello`, what happens automatically), and where
   any page, button, or tab it adds shows up. You built the plugin, so describe
   its real behavior concretely and accurately. Always write this to the best of
-  your ability — don't ship the "Write anything an Owncast admin should know…"
+  your ability. Don't ship the "Write anything an Owncast admin should know…"
   placeholder and don't leave it empty.
 
-### Step 4 — Test
+### Step 4: Test
 
 ```sh
 owncast-plugin-py test
@@ -126,19 +126,19 @@ toolchain: plugins run on the engine the host embeds). `test` emits
 plugin runtime with mocked side effects, so a pass means the same behavior in
 production.
 
-**When the build or tests fail, first classify the failure — they need opposite
+**When the build or tests fail, first classify the failure. They need opposite
 responses:**
 
 - **A behavior/assertion failure** (the test ran and the output didn't match, a
   Python error in your handler, a missing permission for an API you call). This
   is yours to fix: read the diff, correct `src/plugin.py`, the manifest, or the
   expectation, and re-run. Don't package with these unresolved.
-- **A toolchain/version-skew failure** — host/runtime mismatch errors that fire
+- **A toolchain/version-skew failure**, with host/runtime mismatch errors that fire
   **before your test logic runs** (e.g. an import or host-function name the
-  runtime doesn't recognize). This is **not** a bug in your plugin — don't edit
+  runtime doesn't recognize). This is **not** a bug in your plugin, so don't edit
   handlers to chase it. It means the installed SDK runtime and its bundled
-  test-host binary are out of sync. Respond by: (1) ensuring the latest version —
-  `pip install -U owncast-plugin-sdk` (or `uv tool upgrade`) and re-run; (2) if
+  test-host binary are out of sync. Respond by: (1) ensuring the latest version with
+  `pip install -U owncast-plugin-sdk` (or `uv tool upgrade`) and re-run. (2) If
   it persists, note that the compiled `.ocpkg` is still valid for a current
   Owncast server (the skew is only in the local test harness), proceed to **Step
   5**, and tell the user tests couldn't run locally due to a toolchain version
@@ -148,7 +148,7 @@ responses:**
 that's required once, and continue to write correct code so they can run
 `owncast-plugin-py test && owncast-plugin-py package` themselves.)
 
-### Step 5 — Package and hand off
+### Step 5: Package and hand off
 
 ```sh
 owncast-plugin-py package
@@ -202,11 +202,11 @@ Several rows combine for richer plugins.
 | Post publicly to the fediverse (high-trust)     | (any)                                               | `owncast.fediverse.post(text)`                 | `fediverse.post`                       |
 | React to fediverse follows/likes/mentions       | `@plugin.on_fediverse_*` handlers                   | —                                              | —                                      |
 | Read/change video/transcoding config            | (any)                                               | `owncast.video_config.read/write`              | `videoconfig.read` / `videoconfig.write` |
-| Compose with other plugins via custom events    | emit: `owncast.events.emit`; receive: `@plugin.on(...)` | `owncast.events.emit(type, payload)`       | `events.emit` (emitter only)           |
+| Compose with other plugins via custom events    | emit: `owncast.events.emit`, receive: `@plugin.on(...)` | `owncast.events.emit(type, payload)`       | `events.emit` (emitter only)           |
 
 **Golden rule:** the `permissions` array must contain exactly the permission for
 every `owncast.*` method you call. Missing one = the call throws and/or the host
-refuses to load the plugin. Don't add permissions you don't use — admins judge
+refuses to load the plugin. Don't add permissions you don't use, since admins judge
 trust by the declared list.
 
 ---
@@ -228,7 +228,7 @@ def greet(msg):
         owncast.chat.send(f"hello, {name}!")
 ```
 
-Register **only** the handlers you need — the SDK derives event subscriptions
+Register **only** the handlers you need. The SDK derives event subscriptions
 from which handlers exist. Decorators: `@plugin.on_chat_message`,
 `@plugin.filter_chat_message`, `@plugin.on_chat_user_joined` / `_parted` /
 `_renamed`, `@plugin.on_message_moderated`, `@plugin.on_stream_started` /
@@ -242,21 +242,21 @@ HTTP routes (`@plugin.get/post/put/delete/patch(path)`, `@plugin.route`,
 Important shape/behavior notes:
 
 - **`msg.user` is an attribute object or `None`.** Production sends a ChatUser
-  (`msg.user.id`, `msg.user.display_name`, `msg.user.scopes`); a message with no
+  (`msg.user.id`, `msg.user.display_name`, `msg.user.scopes`). A message with no
   account is `None`. Read the name defensively: `msg.user.display_name if
   msg.user else "..."`. For stable per-user state and moderator gating use
-  `msg.user.id` and `msg.user.scopes` — never match on display name. Use
+  `msg.user.id` and `msg.user.scopes`, never the display name. Use
   `msg.raw` for the underlying dict. (`define_commands` handles this for you.)
 - **Chat text is HTML-escaped on display.** `chat.send`/`send_action` take plain
-  text. The exception is `chat.system(body)`, whose body renders as HTML — escape
+  text. The exception is `chat.system(body)`, whose body renders as HTML, so escape
   untrusted content yourself.
 - **Filters fail open and are time-capped (50 ms).** `filter_chat_message` must
-  be fast; a filter that errors is treated as `filter.pass_()`. Five consecutive
+  be fast. A filter that errors is treated as `filter.pass_()`. Five consecutive
   failures auto-disable the plugin for the session.
 - **`filter.pass_()` has a trailing underscore** (`pass` is a Python keyword).
-- **No `time.sleep` / threads for delays** — use `owncast.timer.*`. Timers don't
+- **No `time.sleep` / threads for delays.** Use `owncast.timer.*`. Timers don't
   survive a host restart.
-- **Chat commands:** prefer `define_commands({...})` over hand-rolled parsing — it
+- **Chat commands:** prefer `define_commands({...})` over hand-rolled parsing. It
   gives aliases, per-user cooldowns, and `mod_only` gating for free. Wire it with
   `@plugin.on_chat_message`.
 
@@ -273,12 +273,12 @@ Important shape/behavior notes:
 }
 ```
 
-- `name` — human-readable; also the default chat-bot display name. `bot.displayName` overrides it.
-- `slug` — canonical id (URL prefix, storage namespace, filename). Auto-derived from `name` if omitted; keep it explicit and matching the directory.
-- `permissions` — see the Capability map. Declare exactly what you use.
-- `config` — optional admin-configurable settings: `{ "key": { "type": "string|number|boolean", "default": ..., "description": "..." } }`, read via `owncast.config.get`.
+- `name`: human-readable, and also the default chat-bot display name. `bot.displayName` overrides it.
+- `slug`: canonical id (URL prefix, storage namespace, filename). Auto-derived from `name` if omitted, but keep it explicit and matching the directory.
+- `permissions`: see the Capability map. Declare exactly what you use.
+- `config`: optional admin-configurable settings: `{ "key": { "type": "string|number|boolean", "default": ..., "description": "..." } }`, read via `owncast.config.get`.
 - UI fields (`actions`, `styles`, `scripts`, `extraPageContent`, `tabs`) all require `ui.modify`.
-- `admin.pages` — `[{ "title", "path": "/admin/*" }]`; the host auth-gates matching paths.
+- `admin.pages`: `[{ "title", "path": "/admin/*" }]`, and the host auth-gates matching paths.
 - **`network.fetch` also requires `network` block:** `"network": { "allowedHosts": ["api.example.com", "*.weather.com"] }`. The bare wildcard `"*"` is allowed but must be written explicitly. The host rejects the load if `network.fetch` is granted without `allowedHosts`.
 
 ## Project layout
@@ -321,11 +321,11 @@ Step types: `event`, `filter` (with `expect: {action, payload?, reason?}`),
 Two shapes that trip people up:
 
 - **A chat event's `user` is an object** (`{ "id", "displayName", "scopes"? }`)
-  in production; the test payload should match what your handler reads. If the
+  in production. The test payload should match what your handler reads. If the
   handler reads `msg.user.id` / `.scopes` / `.display_name`, pass an object
   (`"user": { "id": "u1", "displayName": "alice" }`). A payload with no `user`
   arrives as `msg.user is None`.
-- **`config` values come from the manifest defaults** in tests — there is no
+- **`config` values come from the manifest defaults** in tests. There is no
   `given.config`. `owncast.config.get("key")` returns the `default` you declared
   under `config` in `plugin.manifest.json`, so assert against that default (or
   change the default if you want to test another value).
@@ -386,9 +386,9 @@ ground for authors who want a web reference: the
 
 ## Checklist before you hand off the .ocpkg
 
-- [ ] `name`, `slug`, real `description` set (not the `"An Owncast plugin"` placeholder); slug valid and matches the directory.
-- [ ] `permissions` lists exactly the APIs the code calls — no more, no less.
-- [ ] `network.allowedHosts` present if `network.fetch` is used; `ui.modify` present for any UI field; `chat.filter` present if `filter_chat_message` is defined.
-- [ ] `INSTRUCTIONS.md` is written for the person installing/running the plugin (what it does and how to use it once enabled), not the scaffold placeholder; it ships in the `.ocpkg`.
-- [ ] `owncast-plugin-py test` passes — or, if it failed only on a toolchain/version skew (not your logic), you confirmed that and said so.
-- [ ] `owncast-plugin-py package` produced `<slug>.ocpkg`; you gave the user its path and install instructions, and noted which permissions the admin must approve.
+- [ ] `name`, `slug`, real `description` set (not the `"An Owncast plugin"` placeholder), and slug valid and matches the directory.
+- [ ] `permissions` lists exactly the APIs the code calls, no more and no less.
+- [ ] `network.allowedHosts` present if `network.fetch` is used, `ui.modify` present for any UI field, and `chat.filter` present if `filter_chat_message` is defined.
+- [ ] `INSTRUCTIONS.md` is written for the person installing/running the plugin (what it does and how to use it once enabled), not the scaffold placeholder, and it ships in the `.ocpkg`.
+- [ ] `owncast-plugin-py test` passes, or, if it failed only on a toolchain/version skew (not your logic), you confirmed that and said so.
+- [ ] `owncast-plugin-py package` produced `<slug>.ocpkg`, you gave the user its path and install instructions, and noted which permissions the admin must approve.

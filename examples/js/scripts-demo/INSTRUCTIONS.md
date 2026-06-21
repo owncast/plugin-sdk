@@ -30,10 +30,10 @@ The host reads `client.js` from the plugin's `assets/` directory and concatenate
 
 ## Permissions
 
-- **ui.modify** — the plugin runs JavaScript in the viewer page's window context.
+- **ui.modify**: the plugin runs JavaScript in the viewer page's window context.
 
 `http.serve` is not required: the bytes are inlined into the `/customjavascript` response, not served at a URL.
 
 ## When to use this as a template
 
-Start here if you want to extend the viewer page's behavior at runtime — analytics beacons, third-party widget bootstrappers, custom DOM that responds to viewer interaction. The script runs in the same window as the host's chrome, so you have full DOM access and can read/write anything the host page renders.
+Start here if you want to extend the viewer page's behavior at runtime: analytics beacons, third-party widget bootstrappers, custom DOM that responds to viewer interaction. The script runs in the same window as the host's chrome, so you have full DOM access and can read/write anything the host page renders.

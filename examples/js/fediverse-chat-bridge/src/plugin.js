@@ -5,7 +5,7 @@
 
 const { definePlugin, owncast } = require("@owncast/plugin-sdk");
 
-// Anything coming from a remote fediverse server is untrusted text; the
+// Anything coming from a remote fediverse server is untrusted text. The
 // system-message body is rendered as HTML, so escape everything that lands
 // in attribute values or text nodes before inserting it.
 function escapeHtml(s) {

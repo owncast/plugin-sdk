@@ -17,6 +17,6 @@ Layout:
 | ------------------------------ | ------------------------------------------------- |
 | `GET  /admin/`                 | Static HTML form (auth-gated by the host).        |
 | `GET  /admin/api/config`       | Returns the current `VideoConfig` as JSON.        |
-| `POST /admin/api/config`       | Applies a `VideoConfigUpdate`; 204 on success.    |
+| `POST /admin/api/config`       | Applies a `VideoConfigUpdate`, returns 204 on success. |
 
 See [`stream-ops`](../stream-ops/) for the same APIs driven from chat commands instead of a UI, and [`admin-demo`](../admin-demo/) for the bare minimum admin-page pattern.

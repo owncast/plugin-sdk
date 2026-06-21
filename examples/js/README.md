@@ -1,11 +1,11 @@
 # JavaScript plugin examples
 
-One self-contained npm project per directory. Each has its own `README.md` with a longer description; the table below is a quick map of which example covers which SDK feature.
+One self-contained npm project per directory. Each has its own `README.md` with a longer description. The table below is a quick map of which example covers which SDK feature.
 
 | Plugin                                            | One-line summary                                                                                        |
 | ------------------------------------------------- | ------------------------------------------------------------------------------------------------------- |
 | [hello-world](./hello-world/)                     | Minimum viable plugin, proves the load + `register()` path works.                                       |
-| [chat-logger](./chat-logger/)                     | Logs every chat message; the simplest notification handler.                                             |
+| [chat-logger](./chat-logger/)                     | Logs every chat message. The simplest notification handler.                                             |
 | [echo-bot](./echo-bot/)                           | Posts a reply to every chat message via `owncast.chat.send`.                                            |
 | [mod-commands](./mod-commands/)                   | Declarative `commands` table: custom prefix, aliases, mod-only + `onDenied`, `onUnknownCommand`, `onChatMessage` composition, `!help` metadata. |
 | [command-router](./command-router/)              | Low-level `defineCommands` + `filterChatMessage`: case-sensitive matching, per-user cooldowns, private replies, drops commands from chat. |
@@ -15,12 +15,12 @@ One self-contained npm project per directory. Each has its own `README.md` with 
 | [buggy-filter](./buggy-filter/)                   | Always throws, exercises the host's fail-open + strike system.                                          |
 | [relay](./relay/)                                 | Emits a custom `announcement.broadcast` event (plugin → plugin).                                        |
 | [announcer](./announcer/)                         | Subscribes to `announcement.broadcast` via the `on: { ... }` map.                                       |
-| [ip-bot](./ip-bot/)                               | Outbound HTTP via `owncast.http.fetch`; mocked in tests.                                                |
+| [ip-bot](./ip-bot/)                               | Outbound HTTP via `owncast.http.fetch`, mocked in tests.                                                |
 | [overlay](./overlay/)                             | `http.serve`, static files from `public/` + dynamic JSON endpoint.                                      |
 | [stream-tracker](./stream-tracker/)               | Every typed lifecycle / chat-user handler + read APIs.                                                  |
 | [stream-ops](./stream-ops/)                       | Broadcast telemetry (`server.read`) + video config read/write (`videoconfig.read`/`videoconfig.write`). |
 | [manual-video-settings](./manual-video-settings/) | Admin form for the video config: latency, codec, and per-variant resolution / framerate / bitrate.      |
-| [engagement-bot](./engagement-bot/)               | Discord + browser-push + fediverse notifier on stream / fediverse events; small inline spam filter.     |
+| [engagement-bot](./engagement-bot/)               | Discord + browser-push + fediverse notifier on stream / fediverse events, with a small inline spam filter.     |
 | [admin-demo](./admin-demo/)                       | `manifest.admin.pages`, host-gated admin routes.                                                        |
 | [file-manager](./file-manager/)                   | `storage.fs`, admin page to browse/upload/download/delete files in the plugin's private sandbox.        |
 | [action-buttons](./action-buttons/)               | `manifest.actions` + runtime `owncast.actions.add` (ui.modify), with an admin page that adds buttons.   |

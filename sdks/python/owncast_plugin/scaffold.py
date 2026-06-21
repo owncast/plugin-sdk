@@ -96,7 +96,7 @@ def create(target):
         print("You ran this through uvx, so the `owncast-plugin-py` command isn't")
         print("installed on your PATH. Either install it once and use it directly:")
         print("")
-        print("  uv tool install owncast-plugin-sdk   # not on PyPI yet; until then:")
+        print("  uv tool install owncast-plugin-sdk   # not on PyPI yet, until then:")
         print("  uv tool install PATH/TO/sdks/python")
         print("  owncast-plugin-py test")
         print("  owncast-plugin-py package")

@@ -6,7 +6,7 @@
 //
 // That's all an author needs: plugins ship source and run on the interpreter
 // engine the host already embeds, so the wasm compiler toolchain (extism-js,
-// binaryen) is NOT downloaded here — it's a maintainer-only dependency of the
+// binaryen) is NOT downloaded here. It's a maintainer-only dependency of the
 // engine build (see engines/install-toolchain.mjs).
 //
 // PoC scope: linux-x86_64 + darwin-arm64 + darwin-x86_64 covered.
@@ -23,15 +23,15 @@ const HOST_BINARIES_REPO = "owncast/plugin-sdk";
 
 // The host binaries (owncast-plugin-test/serve) implement the host-function
 // contract that the bundled JS runtime imports. That contract is additive
-// within a major version — host functions are only ever added, never removed or
-// renamed (a removal is a breaking change that requires a major bump) — so the
+// within a major version. Host functions are only ever added, never removed or
+// renamed (a removal is a breaking change that requires a major bump), so the
 // NEWEST published binary is compatible with every plugin runtime. We therefore
 // fetch the latest release tag rather than deriving one from the npm version.
 //
 // This keeps the binary in lockstep with `@owncast/plugin-sdk@^x` (which npm
 // already floats to the newest compatible runtime) and fixes the old "zero the
 // patch" guess: that fetched v<major>.<minor>.0, which 404'd on JS-only patches
-// and — when a host change shipped in a patch (e.g. timer support in 0.4.2) —
+// and, when a host change shipped in a patch (e.g. timer support in 0.4.2),
 // fetched a binary too old to satisfy the runtime's imports, breaking
 // `npm test`.
 //
@@ -156,7 +156,7 @@ async function main() {
         fs.chmodSync(dest, 0o755);
         fs.unlinkSync(gz);
       } catch (e) {
-        // 404 is expected before the first release; other errors get a soft
+        // 404 is expected before the first release. Other errors get a soft
         // warning so the user sees them but the install still succeeds.
         console.warn(
           `[plugin-sdk] could not fetch ${binary}: ${e.message}\n` +

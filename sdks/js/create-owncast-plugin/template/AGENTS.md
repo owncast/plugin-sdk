@@ -1,15 +1,15 @@
-# AGENTS.md — __PLUGIN_DISPLAY_NAME__
+# AGENTS.md: __PLUGIN_DISPLAY_NAME__
 
 Guidance for AI coding agents working on this Owncast plugin (slug:
 `__PLUGIN_SLUG__`). It encodes the SDK's rules so you can add behavior correctly
 without re-deriving how the runtime works. Tool-agnostic: "run" means use your
-shell tool; follow these steps with whatever model/harness you are.
+shell tool. Follow these steps with whatever model/harness you are.
 
 > **Skill available.** This plugin ships the `create-owncast-plugin-js` skill at
 > `.agents/skills/create-owncast-plugin-js/SKILL.md`. Skill-aware agents discover it
-> automatically; otherwise read that file — it drives the full build-this-plugin
+> automatically, otherwise read that file. It drives the full build-this-plugin
 > workflow (turn a plain-language request into handlers + manifest, then test and
-> package). This AGENTS.md is the quick reference; the skill is the playbook.
+> package). This AGENTS.md is the quick reference, and the skill is the playbook.
 
 ## What this project is
 
@@ -17,20 +17,20 @@ An Owncast plugin: JavaScript that runs sandboxed inside the Owncast server. It
 subscribes to events by defining handler functions in `src/plugin.js`, and calls
 back into Owncast through the `owncast.*` API. `plugin.manifest.json` declares
 the plugin's identity and the **permissions** it needs. Plugins ship as source
-and run on the JavaScript engine the Owncast host embeds (no wasm compile step);
+and run on the JavaScript engine the Owncast host embeds (no wasm compile step).
 `npm run package` bundles your code into one `__PLUGIN_SLUG__.ocpkg` file for
 distribution.
 
 ## Files you edit
 
-- `src/plugin.js` — handler code. Define **only** the handlers you need; the SDK
+- `src/plugin.js`: handler code. Define **only** the handlers you need. The SDK
   derives event subscriptions from which handlers exist.
-- `plugin.manifest.json` — `name`, `slug`, `version`, `description`,
+- `plugin.manifest.json`: `name`, `slug`, `version`, `description`,
   `permissions`, optional `bot.displayName`, `config`, and UI fields.
-- `__tests__/plugin.test.js` — scenario tests; update them to assert your real behavior.
-- `public/` (create if needed) — files served at `/plugins/__PLUGIN_SLUG__/...`.
-- `assets/` (create if needed) — host-read for inlined UI (`styles`/`scripts`/
-  `extraPageContent`); **not** reachable via URL.
+- `__tests__/plugin.test.js`: scenario tests. Update them to assert your real behavior.
+- `public/` (create if needed): files served at `/plugins/__PLUGIN_SLUG__/...`.
+- `assets/` (create if needed): host-read for inlined UI (`styles`/`scripts`/
+  `extraPageContent`), but **not** reachable via URL.
 
 ## Workflow
 
@@ -42,12 +42,12 @@ npm run serve        # optional: host on http://localhost:8080 for manual testin
 ```
 
 Always run `npm test` after changing code, and don't `npm run package` with
-failing tests — fix the code or correct the expectation (and say which).
+failing tests. Fix the code or correct the expectation (and say which).
 
 ## The golden rule
 
 **The `permissions` array must contain exactly the permission for every
-`owncast.*` method you call** — no more, no less. A missing permission makes the
+`owncast.*` method you call**, no more and no less. A missing permission makes the
 call throw and/or the host refuse to load the plugin. Admins judge trust by the
 declared list, so don't over-declare.
 
@@ -67,7 +67,7 @@ declared list, so don't over-declare.
 | Store state                                     | (any)                                        | `owncast.kv.get/set` (+ `getJSON/setJSON`)| `storage.kv`                           |
 | Admin-configurable settings                     | (read at runtime)                            | `owncast.config.get(key, fallback?)`      | — (declare under `config`)             |
 | Call an external API                            | (any)                                        | `owncast.http.fetch(url, opts?)`          | `network.fetch` + `network.allowedHosts` |
-| Delayed / periodic work                         | `onTick({now})` / `owncast.timer.*`          | `owncast.timer.setTimeout/setInterval`    | — (ambient; no global setTimeout)      |
+| Delayed / periodic work                         | `onTick({now})` / `owncast.timer.*`          | `owncast.timer.setTimeout/setInterval`    | — (ambient, no global setTimeout)      |
 | Serve a web page / JSON endpoint / overlay      | `onHttpRequest(req)` + `public/`             | return `{status, headers, body}`          | `http.serve`                           |
 | Push realtime updates to a browser              | (any)                                        | `owncast.sse.send(channel, event, data)`  | `http.sse`                             |
 | Admin settings page in the Owncast UI           | `onHttpRequest` + `public/admin/...`         | —                                         | `http.serve` + `admin.pages`           |
@@ -80,17 +80,17 @@ declared list, so don't over-declare.
 | Post publicly to the fediverse (high-trust)     | (any)                                        | `owncast.fediverse.post(text)`            | `fediverse.post`                       |
 | React to fediverse follows/likes/mentions       | `onFediverse*`                               | —                                         | —                                      |
 | Read/change video config                        | (any)                                        | `owncast.videoConfig.read/write`          | `videoconfig.read` / `videoconfig.write` |
-| Compose with other plugins                      | emit `owncast.events.emit`; receive `on:{}`  | `owncast.events.emit(type, payload)`      | `events.emit` (emitter only)           |
+| Compose with other plugins                      | emit `owncast.events.emit`, receive `on:{}`  | `owncast.events.emit(type, payload)`      | `events.emit` (emitter only)           |
 
 ## Gotchas that bite
 
-- **`msg.user` is a string or an object.** Production sends a `ChatUser` (`{id, displayName, scopes?}`); older hosts and the scaffolded test scenarios send a plain display-name string. Read the name as `typeof msg.user === "string" ? msg.user : msg.user?.displayName`. For per-user state and mod gating use the object form (`msg.user?.id`, `msg.user?.scopes?.includes("MODERATOR")`), never the display name, and treat a string/absent user as having no id/scopes.
-- **Chat text is HTML-escaped on display.** `chat.send`/`sendAction` take plain text. Only `chat.system(body)` renders HTML — escape untrusted content yourself.
-- **Filters are time-capped (50 ms) and fail open.** Keep `filterChatMessage` fast; an erroring filter is treated as `filter.pass()`. Five consecutive failures auto-disable the plugin for the session.
-- **No global `setTimeout`** — use `owncast.timer.*` (timers don't survive a host restart). `Date`/`Date.now()` work normally.
+- **`msg.user` is a string or an object.** Production sends a `ChatUser` (`{id, displayName, scopes?}`). Older hosts and the scaffolded test scenarios send a plain display-name string. Read the name as `typeof msg.user === "string" ? msg.user : msg.user?.displayName`. For per-user state and mod gating use the object form (`msg.user?.id`, `msg.user?.scopes?.includes("MODERATOR")`), never the display name, and treat a string/absent user as having no id/scopes.
+- **Chat text is HTML-escaped on display.** `chat.send`/`sendAction` take plain text. Only `chat.system(body)` renders HTML, so escape untrusted content yourself.
+- **Filters are time-capped (50 ms) and fail open.** Keep `filterChatMessage` fast. An erroring filter is treated as `filter.pass()`. Five consecutive failures auto-disable the plugin for the session.
+- **No global `setTimeout`.** Use `owncast.timer.*` (timers don't survive a host restart). `Date`/`Date.now()` work normally.
 - **`network.fetch` requires `network.allowedHosts`** in the manifest, e.g. `"network": { "allowedHosts": ["api.example.com"] }`. The bare `"*"` is allowed but must be explicit.
 - **Any UI field** (`actions`, `styles`, `scripts`, `extraPageContent`, `tabs`) **requires `ui.modify`**.
-- **Prefer `defineCommands`** over hand-rolled prefix parsing for chat commands — it gives aliases, per-user cooldowns, and `modOnly` gating.
+- **Prefer `defineCommands`** over hand-rolled prefix parsing for chat commands. It gives aliases, per-user cooldowns, and `modOnly` gating.
 
 ## Testing
 
@@ -111,8 +111,8 @@ Step types: `event`, `filter`, `http`, `tabContent`, `pageContent`.
 
 ## Full reference
 
-The exhaustive author guide — every handler, API method, limit, and testing
-pattern — lives at:
+The exhaustive author guide, covering every handler, API method, limit, and
+testing pattern, lives at:
 
 **https://github.com/owncast/plugin-sdk/blob/main/docs/PLUGIN_AUTHOR_GUIDE.md**
 

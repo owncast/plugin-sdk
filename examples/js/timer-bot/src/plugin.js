@@ -7,7 +7,7 @@ const { definePlugin, owncast } = require("@owncast/plugin-sdk");
 //   - onTick fires once a second for open-ended periodic work.
 //
 // Commands are declared with definePlugin's `commands` table (the SDK wires the
-// chat subscription — no onChatMessage). State lives in the long-lived
+// chat subscription, so no onChatMessage). State lives in the long-lived
 // instance, so it persists between calls. Our own replies don't start with "!",
 // so the router never reacts to them.
 let reminderId = null;
@@ -20,7 +20,7 @@ function say(text) {
 
 module.exports = definePlugin({
   commands: {
-    // !remind <seconds> <message> — send the message once, later (setTimeout).
+    // !remind <seconds> <message>: send the message once, later (setTimeout).
     remind: {
       description: "Remind you with a message after N seconds",
       usage: "!remind <seconds> <message>",
@@ -40,7 +40,7 @@ module.exports = definePlugin({
       },
     },
 
-    // !every <seconds> <message> — repeat until !stop (setInterval). One at a
+    // !every <seconds> <message>: repeat until !stop (setInterval). One at a
     // time for this demo.
     every: {
       description: "Repeat a message every N seconds until !stop",
@@ -61,7 +61,7 @@ module.exports = definePlugin({
       },
     },
 
-    // !countdown <seconds> — count down live, one number a second, using the
+    // !countdown <seconds>: count down live, one number a second, using the
     // tick event instead of a timer.
     countdown: {
       description: "Count down live from N seconds (driven by onTick)",
@@ -77,7 +77,7 @@ module.exports = definePlugin({
       },
     },
 
-    // !stop — cancel the repeater, any pending reminder, and the countdown.
+    // !stop: cancel the repeater, any pending reminder, and the countdown.
     stop: {
       description: "Cancel the repeater, pending reminder, and countdown",
       run: () => {
@@ -95,8 +95,8 @@ module.exports = definePlugin({
     },
   },
 
-  // Fires once a second while the plugin is enabled. Drives the live countdown;
-  // does nothing the rest of the time. `now` is the host wall-clock time in ms.
+  // Fires once a second while the plugin is enabled. Drives the live countdown
+  // and does nothing the rest of the time. `now` is the host wall-clock time in ms.
   onTick() {
     if (countdown <= 0) return;
     say(String(countdown));

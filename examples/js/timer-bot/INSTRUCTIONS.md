@@ -1,6 +1,6 @@
 # Timer Bot
 
-A chat bot that demonstrates time-based actions. Plugins can't use a raw `setTimeout`, so the host provides scheduled timers and a once-a-second tick — this bot drives both from chat commands.
+A chat bot that demonstrates time-based actions. Plugins can't use a raw `setTimeout`, so the host provides scheduled timers and a once-a-second tick, and this bot drives both from chat commands.
 
 ## Commands
 
@@ -17,8 +17,8 @@ The bot posts a confirmation when you set a timer, and shows a usage hint if the
 
 ## Notes
 
-Timers are in-memory: they do **not** survive a plugin reload or a server restart. `!every` runs one repeater at a time — starting a new one replaces the old.
+Timers are in-memory: they do **not** survive a plugin reload or a server restart. `!every` runs one repeater at a time, so starting a new one replaces the old.
 
 ## Permissions
 
-- **chat.send** — posts reminders, countdowns, and confirmations.
+- **chat.send**: posts reminders, countdowns, and confirmations.

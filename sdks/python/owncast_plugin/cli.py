@@ -1,8 +1,8 @@
-"""`owncast-plugin-py` — build, package, test, and serve Owncast Python plugins.
+"""`owncast-plugin-py`: build, package, test, and serve Owncast Python plugins.
 
 Plugins ship their source and run on the Python engine the host already embeds
 (the shared-engine model), so an author never compiles to wasm: `build` just
-emits the plugin source as <slug>.py. No PDK (extism-py / binaryen) is needed —
+emits the plugin source as <slug>.py. No PDK (extism-py / binaryen) is needed,
 only `pip install owncast-plugin-sdk` (or `uv add` / `uvx owncast-plugin-py ...`)
 and this command. The host binaries that back `test`/`serve` are fetched and
 cached on first use by toolchain.py.

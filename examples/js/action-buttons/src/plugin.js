@@ -72,7 +72,7 @@ module.exports = definePlugin({
       const url = typeof payload?.url === "string" ? payload.url.trim() : "";
       if (!title && !url) {
         owncast.kv.delete && owncast.kv.delete(CUSTOM_BUTTON_KEY);
-        // Older SDK versions may not expose kv.delete; just overwrite
+        // Older SDK versions may not expose kv.delete, so just overwrite
         // with an empty value so loadCustomButton returns null.
         owncast.kv.set(CUSTOM_BUTTON_KEY, "");
         owncast.actions.clear();

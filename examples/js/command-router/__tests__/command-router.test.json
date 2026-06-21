@@ -46,7 +46,7 @@
         "expect": { "action": "drop" }
       }
     ],
-    "expect": { "chatSends": ["📢 ONE", "Easy there — you can only shout every 30 seconds."] }
+    "expect": { "chatSends": ["📢 ONE", "Easy there, you can only shout every 30 seconds."] }
   },
   {
     "name": "!secret whispers privately when the connection is known",

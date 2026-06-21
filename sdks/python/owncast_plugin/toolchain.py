@@ -65,7 +65,7 @@ def _latest_host_tag():
         with urllib.request.urlopen(url) as r:
             return json.load(r)["tag_name"]
     except Exception as e:  # noqa: BLE001
-        sys.exit("could not resolve latest host-binary release (%s); set "
+        sys.exit("could not resolve latest host-binary release (%s). Set "
                  "OWNCAST_PLUGIN_HOST_BINARIES_VERSION or OWNCAST_PLUGIN_HOST_BIN_DIR" % e)
 
 

@@ -142,7 +142,7 @@ ENV = dict(
     PATH=os.path.join(CACHE, "bin") + ":" + os.environ.get("PATH", ""),
 )
 
-# Full permission union so the engine declares every host function; the host
+# Full permission union so the engine declares every host function. The host
 # registers all of them and gates each by the calling plugin's permissions.
 ALL_PERMS = list(HOST_FNS.keys())
 
@@ -251,7 +251,7 @@ def main():
     open(entry, "w").write(combined)
 
     if not os.path.exists(EXTISM_PY):
-        sys.exit("extism-py not found at %s — run a Python build once to fetch the toolchain" % EXTISM_PY)
+        sys.exit("extism-py not found at %s. Run a Python build once to fetch the toolchain." % EXTISM_PY)
     os.makedirs(out_dir, exist_ok=True)
     out = os.path.join(out_dir, "engine.wasm")
     proc = subprocess.run([EXTISM_PY, entry, "-o", out], capture_output=True, text=True, env=ENV)

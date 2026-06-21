@@ -1,12 +1,12 @@
 # Page Content Demo
 
-Demonstrates dynamic viewer page content rendered server-side with Mustache. The plugin contributes a personalised banner above the tab row and a live "Stream Info" tab — both rendered at request time with no static HTML files or client-side fetch calls.
+Demonstrates dynamic viewer page content rendered server-side with Mustache. The plugin contributes a personalised banner above the tab row and a live "Stream Info" tab. Both are rendered at request time with no static HTML files or client-side fetch calls.
 
 ## What you'll see when enabled
 
 **Banner (extra page content):** An amber-bordered panel at the top of the viewer page's extra-content block greeting the viewer by their chat display name. Anonymous viewers see "visitor".
 
-**Stream Info tab:** A new tab in the viewer tab row showing live stream state (online/offline, title, viewer count, started time), server metadata (name, version, URL), tags, social handles, and federation status — all rendered from `owncast.stream.current()` and related APIs.
+**Stream Info tab:** A new tab in the viewer tab row showing live stream state (online/offline, title, viewer count, started time), server metadata (name, version, URL), tags, social handles, and federation status, all rendered from `owncast.stream.current()` and related APIs.
 
 ## How it works
 
@@ -31,15 +31,15 @@ Both handlers load their Mustache template from `assets/` via `owncast.assets.re
 
 ## Templates
 
-- `assets/greeting.mustache` — the banner; uses `{{displayName}}` with Mustache's auto-escaping.
-- `assets/info.mustache` — the stream info tab; uses `{{#stream.online}}` / `{{^stream.online}}` conditionals and `{{#tags}}{{.}}{{/tags}}` iteration.
+- `assets/greeting.mustache`: the banner. Uses `{{displayName}}` with Mustache's auto-escaping.
+- `assets/info.mustache`: the stream info tab. Uses `{{#stream.online}}` / `{{^stream.online}}` conditionals and `{{#tags}}{{.}}{{/tags}}` iteration.
 
 ## Permissions
 
-- **ui.modify** — required for `extraPageContent` and `tabs`.
-- **server.read** — required by `onTabContent` to call `owncast.stream.current()`, `owncast.server.info()`, etc.
+- **ui.modify**: required for `extraPageContent` and `tabs`.
+- **server.read**: required by `onTabContent` to call `owncast.stream.current()`, `owncast.server.info()`, etc.
 
-`http.serve` is not needed. The host calls the handlers directly and inlines the returned HTML; there are no plugin HTTP endpoints.
+`http.serve` is not needed. The host calls the handlers directly and inlines the returned HTML. There are no plugin HTTP endpoints.
 
 ## Testing
 

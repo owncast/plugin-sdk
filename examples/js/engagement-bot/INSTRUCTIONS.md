@@ -4,7 +4,7 @@ Connects Owncast events to your outside channels: it pings Discord and posts to 
 
 ## Setup
 
-This plugin uses integrations you've **already configured in Owncast** — it adds no settings of its own:
+This plugin uses integrations you've **already configured in Owncast**, and adds no settings of its own:
 
 - **Discord** and **browser-push** notifications use your server's configured notification channels (**Admin → Notifications**). If those aren't set up, those messages have nowhere to go.
 - **Fediverse** posting uses your server's fediverse / ActivityPub account. Federation must be enabled (**Admin → Social / Federation**).
@@ -20,6 +20,6 @@ Then enable the plugin in **Admin → Plugins**.
 
 ## Permissions
 
-- **notifications.send** — Discord messages and browser-push notifications.
-- **fediverse.post** — the go-live fediverse announcement.
-- **chat.moderate** — deleting spam messages from chat.
+- **notifications.send**: Discord messages and browser-push notifications.
+- **fediverse.post**: the go-live fediverse announcement.
+- **chat.moderate**: deleting spam messages from chat.

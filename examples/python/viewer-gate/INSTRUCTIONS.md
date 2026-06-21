@@ -33,10 +33,10 @@ The manifest declares both a stylesheet and a script:
 
 ## Permissions
 
-- **ui.modify** — the plugin paints UI inside the viewer chrome and runs JavaScript in the page's window context.
+- **ui.modify**: the plugin paints UI inside the viewer chrome and runs JavaScript in the page's window context.
 
 `http.serve` is not required: each file's bytes are read from `assets/` and inlined into the existing customStyles / `/customjavascript` responses, not served at a URL.
 
 ## When to use this as a template
 
-Start here if your plugin needs CSS and JavaScript working together — for example: a popup, an injected toolbar, a tutorial overlay, or any UI that ships its own DOM plus its own styling. The pattern of scoping every selector under a single root id is worth keeping; without it your CSS rules can match elements the host page renders and produce surprising regressions.
+Start here if your plugin needs CSS and JavaScript working together, for example: a popup, an injected toolbar, a tutorial overlay, or any UI that ships its own DOM plus its own styling. The pattern of scoping every selector under a single root id is worth keeping. Without it your CSS rules can match elements the host page renders and produce surprising regressions.

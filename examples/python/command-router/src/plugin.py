@@ -1,7 +1,7 @@
 from owncast_plugin import plugin, filter, define_commands
 
 # The low-level command router. The mod-commands example uses the declarative
-# plugin.commands() table; this one calls define_commands() directly, which
+# plugin.commands() table. This one calls define_commands() directly, which
 # hands back the router as a plain function you wire yourself. That lets you do
 # things the table shorthand can't, shown here:
 #
@@ -21,7 +21,7 @@ def _shout(ctx):
 
 
 def _shout_cooldown(ctx):
-    ctx.reply("Easy there — you can only shout every 30 seconds.")
+    ctx.reply("Easy there, you can only shout every 30 seconds.")
 
 
 def _secret(ctx):
@@ -47,7 +47,7 @@ _commands = define_commands({
 
 
 # chat.filter is required to subscribe to filter_chat_message. Recognized
-# commands are dropped so they never show up in public chat; anything that
+# commands are dropped so they never show up in public chat. Anything that
 # isn't a command passes through unchanged.
 @plugin.filter_chat_message
 def _route(msg):

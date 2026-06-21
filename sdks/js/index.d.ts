@@ -1,10 +1,10 @@
 /**
  * Built-in chat message payload (`chat.message.received` and the chat filter).
  *
- * `user` carries the full sender identity — use `user.id` for stable per-user
+ * `user` carries the full sender identity. Use `user.id` for stable per-user
  * state and `user.scopes` (e.g. `"MODERATOR"`) for reliable, non-spoofable
  * moderation gating rather than matching on the display name. `clientId`
- * identifies the originating connection; pass it to `owncast.chat.sendTo` (or
+ * identifies the originating connection. Pass it to `owncast.chat.sendTo` (or
  * `owncast.chat.replyTo(msg, …)`) to whisper a reply back to the sender.
  *
  * `user` is undefined for the rare message with no associated account.
@@ -212,7 +212,7 @@ export interface UserRegisterResult {
 export interface GrantSessionRequest {
   /** The Owncast user ID returned by `owncast.users.register`. */
   userId: string;
-  /** Optional session lifetime in seconds; 0/omitted uses the host default. */
+  /** Optional session lifetime in seconds. 0/omitted uses the host default. */
   ttl?: number;
 }
 
@@ -290,7 +290,7 @@ export const filter: {
 
 /** Request passed to `onAuthCheck`: the host-resolved identity of the viewer
  *  whose session is being re-validated (same `user` shape `onHttpRequest`
- *  receives — the plugin never re-resolves it). */
+ *  receives, and the plugin never re-resolves it). */
 export interface AuthCheckRequest {
   user: User;
 }
@@ -298,7 +298,7 @@ export interface AuthCheckRequest {
 /** Verdict returned from `onAuthCheck`:
  *  - `ok`      keep the session as-is
  *  - `refresh` keep it and re-issue the cookie (optionally with a new `ttl`
- *              in seconds) — use for sliding-expiry
+ *              in seconds) for sliding-expiry
  *  - `deny`    end the session and bounce the viewer back to the login screen */
 export type AuthCheckResult =
   | { action: "ok" }
@@ -363,9 +363,9 @@ export interface TickEvent {
 
 export interface PluginDef {
   /** Declarative chat-command table. When set, the SDK wires the chat
-   *  subscription and prefix parsing for you — no onChatMessage needed. Maps
+   *  subscription and prefix parsing for you, so no onChatMessage is needed. Maps
    *  canonical command name → definition (run/description/usage/aliases/
-   *  modOnly/cooldownMs/...); see {@link CommandDefinition}. For advanced
+   *  modOnly/cooldownMs/...). See {@link CommandDefinition}. For advanced
    *  composition (e.g. dropping command messages via a filter) use the
    *  lower-level {@link defineCommands} router instead. If you also provide
    *  onChatMessage, the router runs first and then onChatMessage runs for every
@@ -430,9 +430,9 @@ export interface PluginDef {
 
   /** Re-validate a viewer's gate session on page load. Only meaningful for the
    *  active `auth.gate` plugin: the host calls it on the viewer's `/` request
-   *  with the resolved `req.user`, and acts on the verdict — `ok` to continue,
+   *  with the resolved `req.user`, and acts on the verdict: `ok` to continue,
    *  `refresh` to extend the session, `deny` to revoke it and force re-login.
-   *  Optional; without it a granted session simply lasts until its cookie
+   *  Optional. Without it a granted session lasts until its cookie
    *  expires (no mid-session revocation). This is the revocation hook: return
    *  `deny` for users your provider has banned/deleted. Requires `auth.gate`. */
   onAuthCheck?(req: AuthCheckRequest): AuthCheckResult;
@@ -451,7 +451,7 @@ export interface PluginDef {
 
   /** Return CSS to inline into the viewer page at request time, the dynamic
    *  counterpart to `manifest.styles`, applied to the whole UI. Called once
-   *  per `/api/config` for any plugin holding `ui.modify`; no manifest field
+   *  per `/api/config` for any plugin holding `ui.modify`. No manifest field
    *  is needed, just export this handler. Return nothing (a bare `return`, or
    *  `""`) to contribute nothing. The output is appended after any static
    *  `manifest.styles` files, so returning only the active override wins
@@ -497,7 +497,7 @@ export interface CommandContext {
   argString: string;
   /** Post a public reply as the plugin's chat bot. */
   reply(text: string): void;
-  /** Whisper a reply to the sender; falls back to a public post if their
+  /** Whisper a reply to the sender, falling back to a public post if their
    *  connection is unknown. */
   replyPrivately(text: string): void;
 }
@@ -505,7 +505,7 @@ export interface CommandContext {
 /** One command in a {@link defineCommands} table. */
 export interface CommandDefinition {
   /** Short, human-readable summary of what the command does. Surfaced in
-   *  command listings (e.g. a future `!help`); ignored by the router itself. */
+   *  command listings (e.g. a future `!help`), and ignored by the router itself. */
   description?: string;
   /** Optional usage/example string, e.g. "!latency <0-4>". */
   usage?: string;
@@ -538,7 +538,7 @@ export interface CommandsConfig {
 }
 
 /** Build a chat-command router (prefix parsing, aliases, per-user cooldowns,
- *  moderator gating). Feed the returned function a `ChatMessage`; it returns
+ *  moderator gating). Feed the returned function a `ChatMessage`, and it returns
  *  true when the message was a command (even if gated), false otherwise. */
 export function defineCommands(
   config: CommandsConfig,
@@ -566,7 +566,7 @@ export const owncast: {
      *  `chat.send`. */
     replyTo(msg: ChatMessage | number | bigint, text: string): boolean;
     /** Recent chat history (most recent last). Requires `chat.history`.
-     *  Default limit is 50; pass a smaller number to get fewer. */
+     *  Default limit is 50. Pass a smaller number to get fewer. */
     history(limit?: number): ChatMessage[];
     /** Hide a chat message by ID. Requires `chat.moderate`. */
     deleteMessage(messageId: string): void;
@@ -581,12 +581,12 @@ export const owncast: {
     list(): User[];
     /** Fetch one user by ID. Requires `users.read`. */
     get(id: string): User | null;
-    /** Enable/disable a user; reason is optional. Requires `users.moderate`. */
+    /** Enable/disable a user, with an optional reason. Requires `users.moderate`. */
     setEnabled(id: string, enabled: boolean, reason?: string): void;
     /** Ban an IP address. Requires `users.moderate`. */
     banIP(ip: string): void;
     /** Find-or-create an authenticated user for an external identity. `authId`
-     *  is the stable provider-scoped id (e.g. `"github:583231"`); the host
+     *  is the stable provider-scoped id (e.g. `"github:583231"`). The host
      *  namespaces it by this plugin's slug so plugins can't collide on or spoof
      *  each other's users. Returns `{ userId }`. Throws on host error.
      *  Requires `users.register`. */
@@ -604,7 +604,7 @@ export const owncast: {
      *  the response/redirect. Requires `auth.gate`. */
     endSession(): void;
   };
-  /** Upload bytes to Owncast's storage backend (local or S3); returns a
+  /** Upload bytes to Owncast's storage backend (local or S3). Returns a
    *  public URL. Requires `storage.upload`. */
   storage: {
     upload(name: string, data: Uint8Array | string): UploadResult | null;
@@ -619,7 +619,7 @@ export const owncast: {
     readText(path: string): string | null;
     /** Write bytes or a string, creating parent directories as needed. */
     write(path: string, data: Uint8Array | string): FsResult;
-    /** List entry names directly inside dir; missing dir lists as empty. */
+    /** List entry names directly inside dir. A missing dir lists as empty. */
     list(dir: string): string[];
     /** Remove a single file or empty directory. */
     delete(path: string): FsResult;
@@ -627,7 +627,7 @@ export const owncast: {
     exists(path: string): boolean;
   };
   /** Post to the fediverse on the streamer's behalf. Requires `fediverse.post`,
-   *  which is high-trust (posts go out under the streamer's own handle);
+   *  which is high-trust (posts go out under the streamer's own handle), so
    *  admins should grant it sparingly. */
   fediverse: {
     /** Publish a public, text-only post. Returns `{ url }` (currently empty
@@ -656,7 +656,7 @@ export const owncast: {
     setJSON(key: string, value: unknown): void;
   };
   /** Read this plugin's admin-configurable settings, declared under
-   *  `config` in the manifest. Ambient — no permission required. */
+   *  `config` in the manifest. Ambient, so no permission is required. */
   config: {
     /** The effective value of a manifest-declared config key (admin override,
      *  else the declared default), parsed to its declared type. Returns
@@ -664,10 +664,10 @@ export const owncast: {
      *  value. */
     get<T = unknown>(key: string, fallback?: T): T;
   };
-  /** Read files the plugin bundled in its own `assets/` directory — templates,
+  /** Read files the plugin bundled in its own `assets/` directory: templates,
    *  data files, and other bundled resources loaded at request time. Path is
-   *  relative to `assets/` and must not contain `..`. Ambient — no permission
-   *  required. */
+   *  relative to `assets/` and must not contain `..`. Ambient, so no permission
+   *  is required. */
   assets: {
     /** Raw bytes of the file, or `null` if not found. */
     read(path: string): Uint8Array | null;
@@ -684,30 +684,30 @@ export const owncast: {
   actions: {
     /** Append one or more buttons to the plugin's runtime list. Each
      *  entry is validated with the same rules as `manifest.actions`
-     *  (title required; exactly one of `url` or `html`; relative URLs
-     *  rewritten into this plugin's namespace; cross-plugin URLs
+     *  (title required, exactly one of `url` or `html`, relative URLs
+     *  rewritten into this plugin's namespace, cross-plugin URLs
      *  rejected). The next viewer `/api/config` request returns
      *  `manifest.actions` ++ the runtime list. */
     add(actions: ActionButton | ActionButton[]): void;
-    /** Drop the runtime additions; only `manifest.actions` remain on
+    /** Drop the runtime additions, so only `manifest.actions` remain on
      *  the next viewer `/api/config` request. */
     clear(): void;
   };
   sse: {
     /** Push one Server-Sent-Event to every browser connected to this
      *  plugin's `/plugins/<name>/_sse/<channel>` stream. `event` is the SSE
-     *  event name (`""` → the default "message" event); `data` is sent as-is
-     *  if a string, otherwise JSON-stringified. Fire-and-forget; frames to a
+     *  event name (`""` → the default "message" event). `data` is sent as-is
+     *  if a string, otherwise JSON-stringified. Fire-and-forget, and frames to a
      *  slow client are dropped rather than blocking the plugin. Requires the
      *  `http.sse` permission. */
     send(channel: string, event: string, data: unknown): void;
   };
-  /** Host-driven timers. The sandbox has no setTimeout; these ask the host to
+  /** Host-driven timers. The sandbox has no setTimeout, so these ask the host to
    *  call your callback back later (in this instance). No permission required.
    *  Timers do not survive a plugin reload or host restart. */
   timer: {
     /** Run `fn` once after ~`ms` milliseconds. Returns an id for `clear()`.
-     *  Very small delays are clamped up by the host; throws past the
+     *  Very small delays are clamped up by the host. Throws past the
      *  per-plugin pending-timer cap. */
     setTimeout(fn: () => void, ms: number): number;
     /** Run `fn` every ~`ms` milliseconds until `clear()`. The next run is
@@ -734,7 +734,7 @@ export const owncast: {
     tags(): string[];
   };
   /** Read/change video/transcoding configuration. read() requires
-   *  `videoconfig.read`; write() requires `videoconfig.write`. */
+   *  `videoconfig.read`, and write() requires `videoconfig.write`. */
   videoConfig: {
     read(): VideoConfig;
     write(config: VideoConfigUpdate): void;
@@ -755,7 +755,7 @@ export interface HttpResponse {
 
 /** An entry in `manifest.actions`, declares an action button the Owncast
  *  UI surfaces while this plugin is enabled. Mirrors Owncast's existing
- *  ExternalAction shape; the host merges enabled-plugin buttons with the
+ *  ExternalAction shape. The host merges enabled-plugin buttons with the
  *  admin-configured list.
  *
  *  Exactly one of `url` or `html` is required.
@@ -786,10 +786,10 @@ export interface ActionButton {
 
 /** `manifest.network`, narrows outbound HTTP scope for plugins that
  *  declare the `network.fetch` permission. Required when that permission
- *  is granted; the host rejects loads otherwise. */
+ *  is granted. The host rejects loads otherwise. */
 export interface NetworkConfig {
   /** Hostname globs the plugin can reach via `owncast.http.fetch`.
-   *  Bare names match exactly (`"api.discord.com"`); `*` is a wildcard
+   *  Bare names match exactly (`"api.discord.com"`), and `*` is a wildcard
    *  segment (`"*.weather.com"`). The bare wildcard `"*"` matches any
    *  host but must be written explicitly. */
   allowedHosts: string[];

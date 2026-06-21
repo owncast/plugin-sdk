@@ -1,10 +1,10 @@
 // stream-tracker, exercises every typed event and read API.
 //
 // On stream lifecycle / chat user activity, it persists a small running
-// state in plugin config (when the stream started; who's currently in
+// state in plugin config (when the stream started, who's currently in
 // chat). Interactive commands (!uptime, !who, !server) are declared with
-// definePlugin's `commands` table — the SDK wires the chat subscription, so
-// there's no onChatMessage — and answered via owncast.chat.send, posting as
+// definePlugin's `commands` table (the SDK wires the chat subscription, so
+// there's no onChatMessage) and answered via owncast.chat.send, posting as
 // the plugin's own bot ("stream-tracker") which the host provisions
 // automatically. Action-style messages announce stream start / title changes.
 const { definePlugin, owncast } = require("@owncast/plugin-sdk");

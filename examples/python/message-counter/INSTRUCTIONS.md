@@ -11,5 +11,5 @@ Counts accumulate indefinitely and persist across restarts. Each plugin's storag
 
 ## Permissions
 
-- **storage.kv** — persists each user's count.
-- **chat.send** — posts the total back to chat.
+- **storage.kv**: persists each user's count.
+- **chat.send**: posts the total back to chat.

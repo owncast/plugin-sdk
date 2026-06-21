@@ -5,7 +5,7 @@ from owncast_plugin import plugin, owncast
 #     prefix keyword,
 #   - aliases (an alternate name that invokes the same command),
 #   - a moderator-only command (the host checks the sender's scopes before
-#     running a mod_only command; everyone else is routed to on_denied), and
+#     running a mod_only command, everyone else is routed to on_denied), and
 #   - on_unknown, the fallback for a prefixed message that matches no command
 #     in the table.
 #

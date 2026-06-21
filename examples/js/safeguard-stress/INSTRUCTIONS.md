@@ -1,6 +1,6 @@
 # Safeguard Stress (demo)
 
-A test fixture, not a usable plugin. It misbehaves on demand — spinning in tight loops, returning oversized output, and trying to allocate past the wasm memory cap — to verify that the host's sandbox limits actually stop it.
+A test fixture, not a usable plugin. It misbehaves on demand (spinning in tight loops, returning oversized output, and trying to allocate past the wasm memory cap) to verify that the host's sandbox limits actually stop it.
 
 ## What it's for
 
@@ -10,4 +10,4 @@ There is no reason to enable this on a real server. Read its source if you want 
 
 ## Permissions
 
-- **http.serve**, **chat.filter** — present only so the fixture can exercise those code paths under load. They demonstrate nothing useful for a real plugin.
+- **http.serve**, **chat.filter**: present only so the fixture can exercise those code paths under load. They demonstrate nothing useful for a real plugin.

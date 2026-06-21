@@ -9,14 +9,14 @@ This skill walks any AI assistant through building a working Owncast plugin in
 **JavaScript** for a non-expert user: gather what they want in plain language,
 scaffold the project, write the code and manifest, verify it with tests, and
 produce the single `.ocpkg` file they upload to their Owncast server. The user
-should never have to understand the runtime — you do that part.
+should never have to understand the runtime. You do that part.
 
 > **Picking a language?** Owncast plugins can be written in JavaScript or Python.
 > The two SDKs are first-class peers: the same handlers, APIs, permissions, and
 > manifest apply to both, and only the scaffolding and language syntax differ.
 > This skill is the **JavaScript** path. For Python, use `create-owncast-plugin-py`.
 > If the language isn't decided yet, start from the `create-owncast-plugin`
-> router — it gathers the author's intent and dispatches to the right one.
+> router, which gathers the author's intent and dispatches to the right one.
 
 This file is the complete operating guide. It is written to be tool-agnostic:
 wherever it says "ask the user," use whatever question mechanism your harness
@@ -30,14 +30,14 @@ subscribes to events (chat messages, stream start/stop, fediverse activity) by
 defining handler functions, and calls back into Owncast through the `owncast.*`
 API (send chat, store data, fetch URLs, serve web pages, etc.). A
 `plugin.manifest.json` declares the plugin's identity and the **permissions** it
-needs — every API call requires its matching permission, or the host refuses to
+needs. Every API call requires its matching permission, or the host refuses to
 load the plugin. Plugins ship as source and run on the JavaScript engine the
-Owncast host embeds (no wasm compile step); `npm run package` bundles everything
+Owncast host embeds (no wasm compile step). `npm run package` bundles everything
 into one `.ocpkg` file for distribution.
 
 ## The workflow (follow in order)
 
-### Step 1 — Understand what they want
+### Step 1: Understand what they want
 
 Ask the user, in plain language:
 
@@ -53,21 +53,21 @@ Then map their description to capabilities using the **Capability map** below.
 That tells you which handler(s) to write, which `owncast.*` calls to make, and
 which permissions the manifest must declare. If a request needs a high-trust
 permission (`fediverse.post`, `videoconfig.write`, `users.moderate`,
-`network.fetch` to arbitrary hosts), note it back to the user — the server admin
+`network.fetch` to arbitrary hosts), note it back to the user. The server admin
 will have to approve it.
 
 Keep it small. Build the simplest plugin that does what they asked. You can
 always add handlers later.
 
-### Step 2 — Make sure you have a plugin project
+### Step 2: Make sure you have a plugin project
 
 **If your working directory already contains a `plugin.manifest.json`**, you are
 already inside a scaffolded plugin (this skill may have shipped inside it). Do
-**not** scaffold again — skip to Step 3 and edit the project in place, using its
+**not** scaffold again. Skip to Step 3 and edit the project in place, using its
 existing slug.
 
 **Otherwise, scaffold a new project** with the official scaffolder
-(non-interactive; takes the slug as an argument):
+(non-interactive, takes the slug as an argument):
 
 ```sh
 npx create-owncast-plugin@latest <slug>
@@ -77,13 +77,13 @@ This creates a `<slug>/` directory with `package.json`, `plugin.manifest.json`,
 `src/plugin.js`, and `__tests__/plugin.test.js` already wired up. All subsequent
 commands run **from inside that directory**.
 
-### Step 3 — Write the plugin
+### Step 3: Write the plugin
 
 Edit two files based on what you learned in Step 1:
 
-- **`src/plugin.js`** — define only the handlers the behavior needs. See
+- **`src/plugin.js`**: define only the handlers the behavior needs. See
   **Writing handlers** and the **Capability map**.
-- **`plugin.manifest.json`** — set `name`, `description`, and the exact
+- **`plugin.manifest.json`**: set `name`, `description`, and the exact
   `permissions` list for the APIs you call. See **The manifest**.
 
 If the plugin serves web content, add files under `public/` (web-served) or
@@ -91,24 +91,24 @@ If the plugin serves web content, add files under `public/` (web-served) or
 `__tests__/plugin.test.js` with scenarios that assert your actual behavior (see
 **Testing**).
 
-**Clear the scaffolded placeholders** — they ship verbatim, so don't leave the
+**Clear the scaffolded placeholders.** They ship verbatim, so don't leave the
 defaults:
 
 - Set a real `description` in `plugin.manifest.json` (the scaffold leaves `"An
   Owncast plugin"`).
-- **Fill in `INSTRUCTIONS.md`** — it's bundled into the `.ocpkg` and rendered as
+- **Fill in `INSTRUCTIONS.md`.** It's bundled into the `.ocpkg` and rendered as
   an **Instructions** tab on the plugin's page in the Owncast admin. Its only
   audience is the **person installing and running the plugin** (the Owncast
-  admin / streamer) — not you the developer. Write it for them, in plain
-  language: **what the plugin does and how to use it once enabled** — any
+  admin / streamer), not you the developer. Write it for them, in plain
+  language: **what the plugin does and how to use it once enabled**, including any
   settings to configure and what each does, the features it adds and how to use
   them (e.g. chat commands like `!hello`, what happens automatically), and where
   any page, button, or tab it adds shows up. You built the plugin, so describe
   its real behavior concretely and accurately. Always write this to the best of
-  your ability — don't ship the "Write anything an Owncast admin should know…"
+  your ability. Don't ship the "Write anything an Owncast admin should know…"
   placeholder and don't leave it empty.
 
-### Step 4 — Install, then test
+### Step 4: Install, then test
 
 ```sh
 npm install      # one-time, fetches the prebuilt test/serve host binaries
@@ -116,23 +116,23 @@ npm test         # builds the plugin, then runs your scenario tests
 ```
 
 `npm test` bundles `src/plugin.js` into `<slug>.js` and runs `__tests__/*.test.js`
-against the real plugin runtime with mocked side effects — a pass means the same
+against the real plugin runtime with mocked side effects. A pass means the same
 behavior in production.
 
-**When the build or tests fail, first classify the failure — they need opposite
+**When the build or tests fail, first classify the failure. They need opposite
 responses:**
 
 - **A behavior/assertion failure** (the test ran and the output didn't match, a
   JS error in your handler, a missing permission for an API you call). This is
   yours to fix: read the diff, correct `src/plugin.js`, the manifest, or the
   expectation, and re-run. Don't package with these unresolved.
-- **A toolchain/version-skew failure** — messages like `"owncast_<something>" is
+- **A toolchain/version-skew failure**, with messages like `"owncast_<something>" is
   not exported in module "extism:host/user"`, or other host/runtime mismatch
   errors that fire **before your test logic runs**. This is **not** a bug in your
-  plugin — don't edit handlers to chase it. It means the installed
+  plugin, so don't edit handlers to chase it. It means the installed
   `@owncast/plugin-sdk` runtime and its bundled test-host binary are out of sync.
-  Respond by: (1) ensuring the latest versions —
-  `npm install @owncast/plugin-sdk@latest` and re-run; (2) if it persists, note
+  Respond by: (1) ensuring the latest versions with
+  `npm install @owncast/plugin-sdk@latest` and re-run. (2) If it persists, note
   that the compiled `.ocpkg` is still valid for a current Owncast server (the
   skew is only in the local test harness), proceed to **Step 5**, and tell the
   user tests couldn't run locally due to a toolchain version mismatch. Do not
@@ -142,13 +142,13 @@ responses:**
 tell the user that's required once, and continue to write correct code so they
 can run `npm install && npm test && npm run package` themselves.)
 
-### Step 5 — Package and hand off
+### Step 5: Package and hand off
 
 ```sh
 npm run package
 ```
 
-This produces **`<slug>.ocpkg`** in the project directory — a single self-contained
+This produces **`<slug>.ocpkg`** in the project directory, a single self-contained
 file bundling the manifest, your plugin source (`<slug>.js`), and any `public/`/
 `assets/`/`icon.png`/`INSTRUCTIONS.md`. Give the user the path to that file and tell them
 how to install it:
@@ -196,11 +196,11 @@ combine for richer plugins.
 | Post publicly to the fediverse (high-trust)     | (any)                                        | `owncast.fediverse.post(text)`            | `fediverse.post`                       |
 | React to fediverse follows/likes/mentions       | `onFediverse*` handlers                       | —                                         | —                                      |
 | Read/change video/transcoding config            | (any)                                        | `owncast.videoConfig.read/write`          | `videoconfig.read` / `videoconfig.write` |
-| Compose with other plugins via custom events    | emit: `owncast.events.emit`; receive: `on:{}`| `owncast.events.emit(type, payload)`      | `events.emit` (emitter only)           |
+| Compose with other plugins via custom events    | emit: `owncast.events.emit`, receive: `on:{}`| `owncast.events.emit(type, payload)`      | `events.emit` (emitter only)           |
 
 **Golden rule:** the `permissions` array must contain exactly the permission for
 every `owncast.*` method you call. Missing one = the call throws and/or the host
-refuses to load the plugin. Don't add permissions you don't use — admins judge
+refuses to load the plugin. Don't add permissions you don't use, since admins judge
 trust by the declared list.
 
 ---
@@ -224,7 +224,7 @@ module.exports = definePlugin({
 });
 ```
 
-Define **only** the handlers you need — the SDK derives event subscriptions from
+Define **only** the handlers you need. The SDK derives event subscriptions from
 which handlers exist. Full list of handlers: `onChatMessage`,
 `filterChatMessage`, `onChatUserJoined`, `onChatUserParted`,
 `onChatUserRenamed`, `onMessageModerated`, `onStreamStarted`, `onStreamStopped`,
@@ -236,23 +236,23 @@ which handlers exist. Full list of handlers: `onChatMessage`,
 Important shape/behavior notes:
 
 - **`msg.user` is a string *or* an object.** In production it's a `ChatUser`
-  (`{ id, displayName, scopes? }`); older hosts and the scaffolded test
+  (`{ id, displayName, scopes? }`). Older hosts and the scaffolded test
   scenarios send a plain display-name string. Read the name defensively:
   `typeof msg.user === "string" ? msg.user : msg.user?.displayName`. For stable
   per-user state and moderator gating use the object form (`msg.user?.id`,
-  `msg.user?.scopes?.includes("MODERATOR")`) — never match on display name — and
+  `msg.user?.scopes?.includes("MODERATOR")`), never match on display name, and
   treat a string or absent user as having no id/scopes. (`defineCommands` handles
   this for you.)
 - **Chat text is HTML-escaped on display.** `chat.send`/`sendAction` take plain
-  text. The exception is `chat.system(body)`, whose body renders as HTML — escape
+  text. The exception is `chat.system(body)`, whose body renders as HTML, so escape
   untrusted content yourself.
 - **Filters fail open and are time-capped (50 ms).** `filterChatMessage` must be
-  fast; a filter that errors is treated as `filter.pass()`. Five consecutive
+  fast. A filter that errors is treated as `filter.pass()`. Five consecutive
   failures auto-disable the plugin for the session.
-- **`Date`/`Date.now()` work**, but there is no global `setTimeout` — use
+- **`Date`/`Date.now()` work**, but there is no global `setTimeout`. Use
   `owncast.timer.*`. Timers don't survive a host restart.
 - **Chat commands:** prefer `defineCommands({ prefix:"!", commands:{...} })` over
-  hand-rolled parsing — it gives aliases, per-user cooldowns, and `modOnly`
+  hand-rolled parsing. It gives aliases, per-user cooldowns, and `modOnly`
   gating for free. Wire it as `onChatMessage: commands`.
 
 ## The manifest
@@ -268,12 +268,12 @@ Important shape/behavior notes:
 }
 ```
 
-- `name` — human-readable; also the default chat-bot display name. `bot.displayName` overrides it.
-- `slug` — canonical id (URL prefix, storage namespace, filename). Auto-derived from `name` if omitted; keep it explicit and matching the directory.
-- `permissions` — see the Capability map. Declare exactly what you use.
-- `config` — optional admin-configurable settings: `{ "key": { "type": "string|number|boolean", "default": ..., "description": "..." } }`, read via `owncast.config.get`.
+- `name`: human-readable, and also the default chat-bot display name. `bot.displayName` overrides it.
+- `slug`: canonical id (URL prefix, storage namespace, filename). Auto-derived from `name` if omitted, but keep it explicit and matching the directory.
+- `permissions`: see the Capability map. Declare exactly what you use.
+- `config`: optional admin-configurable settings: `{ "key": { "type": "string|number|boolean", "default": ..., "description": "..." } }`, read via `owncast.config.get`.
 - UI fields (`actions`, `styles`, `scripts`, `extraPageContent`, `tabs`) all require `ui.modify`.
-- `admin.pages` — `[{ "title", "path": "/admin/*" }]`; the host auth-gates matching paths.
+- `admin.pages`: `[{ "title", "path": "/admin/*" }]`, and the host auth-gates matching paths.
 - **`network.fetch` also requires `network` block:** `"network": { "allowedHosts": ["api.example.com", "*.weather.com"] }`. The bare wildcard `"*"` is allowed but must be written explicitly. The host rejects the load if `network.fetch` is granted without `allowedHosts`.
 
 ## Project layout
@@ -317,12 +317,12 @@ Step types: `event`, `filter` (with `expect: {action, payload?, reason?}`),
 Two shapes that trip people up:
 
 - **A chat event's `user` can be a string or an object.** The scaffolded tests
-  use the string shorthand (`payload: { user: "alice", ... }`); production sends
+  use the string shorthand (`payload: { user: "alice", ... }`), while production sends
   a `{ id, displayName, scopes? }` object. Keep your test payloads and handler in
   sync: if the handler reads `msg.user.id` / `.scopes` (or `.displayName`), pass
-  an object (`user: { id: "u1", displayName: "alice" }`); if it reads a bare
+  an object (`user: { id: "u1", displayName: "alice" }`). If it reads a bare
   string, pass a string. The defensive read above works with both.
-- **`config` values come from the manifest defaults** in tests — there is no
+- **`config` values come from the manifest defaults** in tests. There is no
   `given.config`. `owncast.config.get("key")` returns the `default` you declared
   under `config` in `plugin.manifest.json`, so assert against that default (or
   change the default if you want to test another value).
@@ -385,9 +385,9 @@ ground for authors who want a web reference: the
 
 ## Checklist before you hand off the .ocpkg
 
-- [ ] `name`, `slug`, real `description` set (not the `"An Owncast plugin"` placeholder); slug valid and matches the directory.
-- [ ] `permissions` lists exactly the APIs the code calls — no more, no less.
-- [ ] `network.allowedHosts` present if `network.fetch` is used; `ui.modify` present for any UI field; `chat.filter` present if `filterChatMessage` is defined.
-- [ ] `INSTRUCTIONS.md` is written for the person installing/running the plugin (what it does and how to use it once enabled), not the scaffold placeholder; it ships in the `.ocpkg`.
-- [ ] `npm test` passes — or, if it failed only on a toolchain/version skew (not your logic), you confirmed that and said so.
-- [ ] `npm run package` produced `<slug>.ocpkg`; you gave the user its path and install instructions, and noted which permissions the admin must approve.
+- [ ] `name`, `slug`, real `description` set (not the `"An Owncast plugin"` placeholder), and slug valid and matches the directory.
+- [ ] `permissions` lists exactly the APIs the code calls, no more and no less.
+- [ ] `network.allowedHosts` present if `network.fetch` is used, `ui.modify` present for any UI field, and `chat.filter` present if `filterChatMessage` is defined.
+- [ ] `INSTRUCTIONS.md` is written for the person installing/running the plugin (what it does and how to use it once enabled), not the scaffold placeholder, and it ships in the `.ocpkg`.
+- [ ] `npm test` passes, or, if it failed only on a toolchain/version skew (not your logic), you confirmed that and said so.
+- [ ] `npm run package` produced `<slug>.ocpkg`, you gave the user its path and install instructions, and noted which permissions the admin must approve.

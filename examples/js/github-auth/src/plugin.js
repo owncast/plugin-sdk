@@ -4,7 +4,7 @@
 //
 //   GET /          -> a "Sign in with GitHub" screen (the host redirects
 //                     unauthenticated visitors here)
-//   GET /callback  -> GitHub redirects back with ?code; we exchange it for a
+//   GET /callback  -> GitHub redirects back with ?code, then we exchange it for a
 //                     token, look up the user, then register the identity and
 //                     grant a gate session
 //   GET /logout    -> clear the session
@@ -23,7 +23,7 @@ module.exports = definePlugin({
     const query = req.query || {};
 
     if (req.method === "GET" && req.path === "/") {
-      // A real plugin generates a random `state` and persists it for CSRF; we
+      // A real plugin generates a random `state` and persists it for CSRF. We
       // use a fixed value here to keep the example short.
       const returnTo = query.return_to || "/";
       const state = "demo-state";
@@ -83,7 +83,7 @@ module.exports = definePlugin({
       const display = gh.name || gh.login || authId;
 
       // Identity, then session. register() finds-or-creates the Owncast user
-      // for this GitHub identity (the host namespaces authId by our slug); the
+      // for this GitHub identity (the host namespaces authId by our slug). The
       // returned userId is what grantSession() issues the cookie for.
       const { userId } = owncast.users.register({ authId, displayName: display });
       owncast.auth.grantSession({ userId });

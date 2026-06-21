@@ -13,9 +13,9 @@ function hugeString(bytes) {
 // timeout before we got to test the output-size cap.
 // Sized just over each cap so the handler can serialize and return the
 // payload within the per-call timeout, the tests want the *size* check to
-// fire, not the timeout. (MaxFilterOutputBytes = 1 MiB; we send 1.1 MiB.
-// MaxHTTPHandlerOutputBytes = 12 MiB; HTTP test has a 5s call cap so 13 MiB
-// is fine there.)
+// fire, not the timeout. (MaxFilterOutputBytes = 1 MiB, and we send 1.1 MiB.
+// MaxHTTPHandlerOutputBytes = 12 MiB, and the HTTP test has a 5s call cap so
+// 13 MiB is fine there.)
 const HUGE_FILTER_BODY = hugeString(1126400); // ~1.075 MiB, > 1 MiB cap
 const HUGE_HTTP_BODY = hugeString(13 * 1024 * 1024);
 
@@ -43,7 +43,7 @@ module.exports = definePlugin({
       case "spin":
         while (true) {}
       default:
-        // No-op; existence of the handler is enough to test the timeout
+        // No-op. Existence of the handler is enough to test the timeout
         // wrapping path.
         return;
     }

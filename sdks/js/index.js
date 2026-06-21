@@ -3,7 +3,7 @@
 // Authors define typed handlers (onChatMessage, filterChatMessage, ...) plus
 // an `on: { [customEvent]: handler }` object for plugin-emitted events. The
 // SDK derives the manifest's subscriptions from which handlers are present
-// and returns them via register(); authors don't maintain a duplicate list.
+// and returns them via register(). Authors don't maintain a duplicate list.
 
 let registered = null;
 
@@ -16,7 +16,7 @@ const commandManifest = [];
 // the host to schedule a callback and call back via the internal "timer.fire"
 // event. The author's callback stays here in the long-lived instance, keyed by
 // a guest-allocated id the host echoes back. State persists across calls
-// because the plugin instance is reused; timers are dropped on reload.
+// because the plugin instance is reused. Timers are dropped on reload.
 let nextTimerId = 1;
 const timerCallbacks = new Map(); // id -> { fn, repeat }
 
@@ -87,9 +87,9 @@ const filter = Object.freeze({
 });
 
 // Verdict helpers for onAuthCheck (the optional re-validation hook the host runs
-// on a viewer's page load). `ok` keeps the session; `refresh` keeps it and
-// extends the cookie (optional `ttl` seconds); `deny` ends it and bounces the
-// viewer back to the login screen.
+// on a viewer's page load). `ok` keeps the session, `refresh` keeps it and
+// extends the cookie (optional `ttl` seconds), and `deny` ends it and bounces
+// the viewer back to the login screen.
 const authCheck = Object.freeze({
   ok() {
     return { action: "ok" };
@@ -103,8 +103,8 @@ const authCheck = Object.freeze({
 });
 
 // dispatchAuthCheck routes the host's re-validation call to the author's
-// onAuthCheck handler. No handler → always "ok" (the hook is optional; a plugin
-// that doesn't implement it simply never revokes mid-session).
+// onAuthCheck handler. No handler → always "ok" (the hook is optional, and a
+// plugin that doesn't implement it simply never revokes mid-session).
 function dispatchAuthCheck(req) {
   if (!registered || !isFn(registered.onAuthCheck)) return { action: "ok" };
   return registered.onAuthCheck(req) || { action: "ok" };
@@ -208,8 +208,8 @@ function definePlugin(def) {
 
 // defineCommands builds a chat-command router so plugins stop reimplementing
 // prefix parsing, aliases, per-user cooldowns, and moderator gating. It returns
-// a function you feed a ChatMessage (from onChatMessage or filterChatMessage);
-// it parses the command and invokes the matching handler's run(ctx). The return
+// a function you feed a ChatMessage (from onChatMessage or filterChatMessage).
+// It parses the command and invokes the matching handler's run(ctx). The return
 // value is true when the message was a command (even if gated), false when it
 // wasn't — so a filter can drop command messages from chat:
 //
@@ -227,7 +227,7 @@ function definePlugin(def) {
 //   });
 //
 // run(ctx) receives { msg, user, command, args, argString, reply, replyPrivately }.
-// reply posts publicly; replyPrivately whispers to the sender (falling back to a
+// reply posts publicly. replyPrivately whispers to the sender (falling back to a
 // public post if their connection is unknown). Optional hooks: per-command or
 // top-level onCooldown(ctx) / onDenied(ctx), and a top-level onUnknown(ctx).
 function defineCommands(config) {
@@ -238,7 +238,7 @@ function defineCommands(config) {
 
   // Resolve every name and alias to its canonical command definition, and
   // record metadata so the host can build a unified `!help` (see
-  // describeCommands). Metadata is reported via register(); it never affects
+  // describeCommands). Metadata is reported via register() and never affects
   // routing.
   const table = new Map();
   const defs = config.commands || {};
@@ -421,7 +421,7 @@ function dispatchHttp(request) {
 // host runtime captures), so a plugin author running `owncast-plugin
 // serve` or hitting the host's logs sees exactly which permission to
 // add to their manifest. apiName is the SDK call the author wrote
-// (e.g. "owncast.actions.set"); perm is the manifest permission string.
+// (e.g. "owncast.actions.set"). perm is the manifest permission string.
 function permError(apiName, perm) {
   const msg = `${apiName} requires the '${perm}' permission. Add it to your plugin.manifest.json's "permissions" array.`;
   console.error(`[owncast-plugin] ${msg}`);
@@ -559,7 +559,7 @@ const owncast = {
       fns.owncast_ban_ip(Memory.fromString(ip).offset);
     },
     // Find-or-create an authenticated Owncast user for an external identity
-    // (e.g. a provider account). `authId` is the stable provider-scoped id; the
+    // (e.g. a provider account). `authId` is the stable provider-scoped id. The
     // host namespaces it by this plugin's slug so it can't collide with or spoof
     // another plugin's users. Optionally seeds displayName and scopes. Returns
     // { userId }. Throws on host error. Requires `users.register`.
@@ -581,11 +581,11 @@ const owncast = {
     },
   },
   // Viewer-authentication gate. Only a plugin holding `auth.gate` (and enabled by
-  // an admin) can issue sessions; these are valid only inside onHttpRequest,
+  // an admin) can issue sessions, and these are valid only inside onHttpRequest,
   // where the host attaches/clears the signed session cookie on the response.
   auth: {
     // Issue a gate session for an already-registered user (see users.register).
-    // `ttl` is optional seconds; 0/omitted uses the host default. Throws on
+    // `ttl` is optional seconds, and 0/omitted uses the host default. Throws on
     // host error. Requires `auth.gate`.
     grantSession(opts) {
       const fns = Host.getFunctions();
@@ -826,7 +826,7 @@ const owncast = {
       return JSON.parse(Memory.find(offset).readString());
     },
     /** Apply a partial video config change. Pass any of { latencyLevel, codec,
-     *  variants }; omitted fields are left unchanged. Throws if the host
+     *  variants }, where omitted fields are left unchanged. Throws if the host
      *  rejects the config. Requires `videoconfig.write`. */
     write(config) {
       const fns = Host.getFunctions();
@@ -950,7 +950,7 @@ const owncast = {
     // send(channel, event, data) pushes one Server-Sent-Event to every
     // browser connected to this plugin's /plugins/<name>/_sse/<channel>
     // stream. `event` is the SSE event name (browser side:
-    // source.addEventListener(event, ...)); pass "" for the default
+    // source.addEventListener(event, ...)). Pass "" for the default
     // "message" event. `data` is sent as-is if it's a string, otherwise
     // JSON-stringified. Fire-and-forget: returns immediately, and frames to
     // a slow client are dropped rather than blocking the plugin. Requires
@@ -970,7 +970,7 @@ const owncast = {
   timer: {
     // setTimeout(fn, ms) runs fn once after ~ms milliseconds. setInterval
     // repeats until clear(id). The host drives the schedule (the sandbox has
-    // no setTimeout); your callback runs in this instance when it fires.
+    // no setTimeout). Your callback runs in this instance when it fires.
     // Returns an id for clear(). Very small delays are clamped up by the host,
     // and there's a per-plugin cap on pending timers (throws past it).
     // Note: timers are in-memory and do not survive a plugin reload or a host
