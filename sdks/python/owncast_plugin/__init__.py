@@ -126,6 +126,7 @@ _TAB = {}       # slug -> fn
 _PAGE = {}      # slug -> fn
 _PAGE_STYLES = [None]   # on_page_styles handler (global, no slug)
 _PAGE_SCRIPTS = [None]  # on_page_scripts handler (global, no slug)
+_FILTER_PRIORITY = [100]  # filter-chain priority for this plugin (lower runs earlier); default matches the JS SDK
 
 # A plugin may use plugin.commands(...) AND @plugin.on_chat_message together. On
 # each chat message the command router runs first, then the on_chat_message
@@ -183,6 +184,12 @@ class _Plugin:
             _CUSTOM[event_type] = fn
             return fn
         return deco
+
+    def set_filter_priority(self, priority):
+        """Set this plugin's filter-chain priority (lower runs earlier). Applies
+        to every filter handler the plugin defines. Defaults to 100, matching
+        the JS SDK's definePlugin({filterPriority})."""
+        _FILTER_PRIORITY[0] = int(priority)
 
     def on_http_request(self, arg=None, *, methods=None):
         """HTTP handler. Three forms:
@@ -737,7 +744,15 @@ class _Http:
             opts.get("body"),
             opts.get("headers") or {},
         )
-        return _Obj({"status": resp.status_code, "body": resp.data_str()})
+        # Surface response headers to match the JS SDK and the documented
+        # {status, headers, body} shape. Read defensively so the SDK still works
+        # on a runtime whose response object doesn't expose them.
+        resp_headers = getattr(resp, "headers", None)
+        return _Obj({
+            "status": resp.status_code,
+            "headers": dict(resp_headers) if resp_headers else {},
+            "body": resp.data_str(),
+        })
 
 
 class _Owncast:
@@ -779,7 +794,7 @@ def _describe_subscriptions():
     if notify:
         subs["notify"] = notify
     if _FILTER:
-        subs["filter"] = [{"event": e} for e in _FILTER]
+        subs["filter"] = [{"event": e, "priority": _FILTER_PRIORITY[0]} for e in _FILTER]
     return subs
 
 
