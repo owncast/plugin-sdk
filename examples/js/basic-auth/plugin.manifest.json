@@ -3,8 +3,13 @@
   "name": "Basic Auth",
   "slug": "basic-auth",
   "version": "0.1.0",
-  "description": "Password gate: viewers must enter a shared password before they can access the site. The simplest possible auth.gate plugin, with no external provider and no network calls. This example was written in JavaScript.",
-  "permissions": ["auth.gate", "users.register", "http.serve", "storage.kv"],
+  "description": "Password gate: viewers must enter a shared password before they can access the site. The simplest possible auth.gate plugin, with no external provider and no network calls. This example was written in JavaScript. The default password is: letmein",
+  "permissions": [
+    "auth.gate",
+    "users.register",
+    "http.serve",
+    "storage.kv"
+  ],
   "config": {
     "password": {
       "type": "string",
