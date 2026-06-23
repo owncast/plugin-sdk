@@ -20,6 +20,7 @@ Every plugin must export these functions:
 | `on_page_content` | JSON `ContentRequest`      | raw HTML string             | Render HTML for a dynamic `extraPageContent` slot (one without a static `content` file).             |
 | `on_page_styles`  | none                       | raw CSS string              | Optional. Return CSS to append to `customStyles` on `/api/config`. Called only when the plugin holds `ui.modify`. |
 | `on_page_scripts` | none                       | raw JavaScript string       | Optional. Return JavaScript to append to `/customjavascript`. Same gating as `on_page_styles`.        |
+| `on_auth_check`   | JSON `AuthCheckRequest`    | JSON `AuthCheckResult`      | Optional. Re-validate a gate session on the viewer's `/` page load. Returns `{action: ok\|refresh\|deny}`. Called by the host only for the active `auth.gate` plugin. |
 
 `ContentRequest` shape: `{ "slug": "<tab-or-slot-slug>", "user"?: ChatUser }`. The host calls the appropriate export when building the `/api/config` response. The returned string is inlined directly as the body. An empty string is valid (renders nothing). Each entry point has a per-call timeout enforced by the host. See the host's `dispatcher.go` and `server.go` for current values.
 
@@ -110,6 +111,30 @@ Sandboxed per-plugin filesystem under `data/plugin-data/<slug>/`. The host confi
 
 - `owncast_user_set_enabled(idPtr: PTR, enabled: I32, reasonPtr: PTR): void`
 - `owncast_ban_ip(ipPtr: PTR): void`
+
+### `users.register`
+
+Find-or-create an authenticated Owncast user for an external identity. Used by
+a viewer-auth gate (see [`auth.gate`](#authgate)) to turn a provider login into
+a real Owncast user before granting it a session.
+
+- `owncast_users_register(reqPtr: PTR): PTR`, JSON `UserRegisterRequest` in, JSON `UserRegisterResult` out. The host namespaces the request's `authId` by the calling plugin's slug, so two plugins can't collide on or impersonate each other's users. The host restricts which `scopes` a plugin may assign and rejects administrative scopes, so an out-of-policy scope fails the call.
+
+### `auth.gate`
+
+Grants a plugin the right to be the site's viewer-authentication gate: it
+renders the login flow and names the authenticated user, and the host owns the
+signed session cookie end to end (the plugin never sees the token). Only one
+`auth.gate` plugin can be enabled at a time. Both functions are meaningful only
+inside an `on_http_request` handler, where the host attaches or clears the
+session cookie on the response after the call returns.
+
+- `owncast_auth_grant_session(reqPtr: PTR): PTR`, JSON `GrantSessionRequest` in, JSON `{error?}` out. Mints a session for the named `userId` (which the same plugin must have registered via `users.register`) and attaches the signed cookie to the in-flight response.
+- `owncast_auth_end_session(): void`, clears the session cookie on the in-flight response (logout).
+
+The optional `on_auth_check` export (see [Exports](#exports-plugin--host)) lets
+the gate re-validate a session on each `/` page load and return
+`ok` / `refresh` / `deny`.
 
 ### `fediverse.post`
 
@@ -294,7 +319,7 @@ The host emits the tab list on `GET /api/config` under `pluginTabs[]` as `[{slug
 
 ## Payload types
 
-The JSON shapes for `Manifest`, `Envelope`, `ChatMessage`, `FediverseInboundPost`, etc. are documented in the JS SDK's `index.d.ts` as TypeScript interfaces. Future SDKs (Go, Python) port these shapes into their native type system. The over-the-wire JSON is identical.
+The JSON shapes for `Manifest`, `Envelope`, `ChatMessage`, `FediverseInboundPost`, `UserRegisterRequest`, `GrantSessionRequest`, `AuthCheckResult`, etc. are documented in the JS SDK's `index.d.ts` as TypeScript interfaces. Future SDKs (Go, Python) port these shapes into their native type system. The over-the-wire JSON is identical.
 
 ## Conformance
 
@@ -302,11 +327,11 @@ Each language SDK is responsible for:
 
 - Declaring the imports listed above (gated by manifest permissions) so the plugin author's call into `owncast.chat.send(...)` resolves to the right wasm import.
 - Encoding/decoding payloads as JSON or text per the table above.
-- Implementing the exports' dispatch loop: parse the envelope, route to the right handler, serialize the response. This covers all eight exports: `register`, `on_event`, `on_filter`, `on_http_request`, `on_tab_content`, `on_page_content`, `on_page_styles`, and `on_page_scripts`.
+- Implementing the exports' dispatch loop: parse the envelope, route to the right handler, serialize the response. This covers all nine exports: `register`, `on_event`, `on_filter`, `on_http_request`, `on_tab_content`, `on_page_content`, `on_page_styles`, `on_page_scripts`, and `on_auth_check`.
 
 The Owncast server repo's plugin runtime is responsible for:
 
 - Registering each host function under the right Extism namespace and permission gate.
 - Calling exports with the right input shapes and observing the documented timeout / size caps.
 
-A drift test in each repo asserts its host-fn registrations match the names in this doc. See `host-runtime/plugin/sdk_drift_test.go` for the PoC version.
+The Owncast repo's `services/plugins/contract_test.go` re-derives the permission and host-function names (and wire-type field shapes) from the host implementation and compares them against the committed `plugin-contract.json` snapshot, so the runtime can't silently drift from the contract this document describes.

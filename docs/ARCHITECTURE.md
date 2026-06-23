@@ -37,7 +37,10 @@ also supported and loaded as-is. The host picks the path from the package's code
 file (see [build flow](#toolchain-and-build-flow)).
 
 - Every plugin exports the same fixed functions: `register`, `on_event`,
-  `on_filter`, `on_http_request`, `on_tab_content`, `on_page_content`.
+  `on_filter`, `on_http_request`, `on_tab_content`, `on_page_content`,
+  `on_page_styles`, `on_page_scripts`, and `on_auth_check`. Most are optional.
+  See the [Wire Protocol](./WIRE_PROTOCOL.md) for the full table and which
+  permissions gate them.
 - The host provides **host functions** (`owncast_*`). Because all plugins of a
   language share one engine, the engine imports the full set and the host
   enforces each plugin's **permissions at call time**: a host function resolves
@@ -123,26 +126,24 @@ the dev server, and production.
 
 The plugin-facing API exists in three representations that must agree:
 
-1. **Go**, the host functions, permissions, and types in
-   `host-runtime/plugin/hostfns.go`.
+1. **Go**, the host functions, permissions, and types in Owncast's
+   `services/plugins/hostfns.go`. The runtime lives in the Owncast repo (see
+   [Relationship to Owncast](#relationship-to-owncast)), and this SDK imports it.
 2. **TypeScript**, the `owncast.*` wrappers in `sdks/js/index.js` and the types
    in `sdks/js/index.d.ts`, which authors code against.
-3. **`host-runtime/plugin/plugin-contract.json`**, a generated snapshot of (1):
+3. **`services/plugins/plugin-contract.json`**, a generated snapshot of (1):
    permission identifiers, host-function names, and the field shapes of every
    wire type. It does nothing at runtime. It's a fingerprint.
 
-Two tests guard against drift:
+`services/plugins/contract_test.go` guards against drift: it re-derives the
+snapshot from `hostfns.go` and compares it to `plugin-contract.json` (field
+shapes included). Regenerate after an intentional change with
+`UPDATE_CONTRACT=1 go test ./services/plugins/ -run TestPluginContractMatchesSDK`.
 
-- **`sdk_drift_test.go`**, every `owncast_*` host function in `hostfns.go` must
-  be referenced in both `index.js` and the build CLI's import generator.
-- **`contract_test.go`**, re-derives the snapshot from `hostfns.go` and compares
-  it to `plugin-contract.json` (field shapes included). Regenerate after an
-  intentional change with `UPDATE_CONTRACT=1 go test ./plugin/ -run TestPluginContract`.
-
-The snapshot is also the artifact consumers vendor: Owncast keeps a copy and
-runs its own contract test against it, so its embedded runtime can't silently
-fall behind. See the [Wire Protocol](./WIRE_PROTOCOL.md) for the byte-level
-contract these three representations encode.
+The snapshot is the artifact this SDK and other consumers vendor, so an
+embedded runtime can't silently fall behind. See the
+[Wire Protocol](./WIRE_PROTOCOL.md) for the byte-level contract these three
+representations encode.
 
 ## Toolchain and build flow
 
@@ -211,9 +212,10 @@ amd64/arm64 on every `v*` tag.
 
 ## Relationship to Owncast
 
-The runtime (`host-runtime/plugin`) is **vendored into Owncast** as
-`services/plugins/`, where Owncast wires `HostEnv` to its real services. The
-implementation is allowed to fork for integration, but the API surface in
-`hostfns.go` must match this repo, enforced by Owncast's copy of
-`plugin-contract.json` and its contract test. The host-side details (wiring,
-the sync workflow) are documented in the Owncast repo at `docs/plugins.md`.
+The runtime **lives in the Owncast repo** as `services/plugins/`, where Owncast
+wires `HostEnv` to its real services. This SDK's `host-runtime/` module imports
+it, so the dev CLIs run the exact production runtime. The API surface in
+`hostfns.go` is pinned by `services/plugins/plugin-contract.json` and its
+contract test, so it can't drift from the [Wire Protocol](./WIRE_PROTOCOL.md).
+The host-side integration details (wiring, the sync workflow) are documented in
+the Owncast repo at `docs/plugins.md`.

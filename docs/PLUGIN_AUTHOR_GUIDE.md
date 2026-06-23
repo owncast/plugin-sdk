@@ -1315,4 +1315,4 @@ plugin <slug>: auto-disabled after 5 consecutive filter failures
 
 Disabled plugins are silently skipped by the filter chain. A successful filter call resets the counter, so transient flakiness doesn't accumulate. To re-enable a disabled plugin, restart the host.
 
-> **Note:** the 50 ms cancellation kicks in when your filter calls back into Owncast (via `owncast.*` APIs, `console.log`, etc.). A tight pure-JS loop with no calls out (e.g. `while(true) {}`) may not be cancelled until the outer 10 s safety net fires, at which point the strike system disables the plugin. Realistic plugin code yields plenty, so this isn't something to design around.
+> **Note:** the 50 ms cancellation is enforced by the wasm engine itself, which checks the deadline at loop boundaries, so even a tight pure-JS loop with no calls out (e.g. `while (true) {}`) is interrupted at about 50 ms rather than running to the 10 s ceiling. Repeated filter timeouts trip the strike system, which disables the plugin. Realistic plugin code finishes well under the limit, so this isn't something to design around.
