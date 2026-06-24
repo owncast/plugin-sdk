@@ -64,9 +64,9 @@ def create(target):
     print("")
     print("Next steps:")
     print("  cd %s" % target)
-    print("  owncast-plugin-py test")
-    print("  owncast-plugin-py package")
+    print("  uvx owncast-plugin-py test")
+    print("  uvx owncast-plugin-py package")
     print("")
-    print("(If `owncast-plugin-py` isn't found, install the SDK first with")
-    print(" `uv tool install owncast-plugin-py`, or run via `uvx owncast-plugin-py ...`.)")
+    print("(`uvx` runs the CLI without installing. To get the shorter")
+    print(" `owncast-plugin-py` command on your PATH: uv tool install owncast-plugin-py)")
     return slug

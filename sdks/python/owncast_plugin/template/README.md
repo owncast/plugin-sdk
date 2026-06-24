@@ -5,13 +5,13 @@ An Owncast plugin scaffolded with `owncast-plugin-py new`. The slug is `__PLUGIN
 ## Develop
 
 ```sh
-owncast-plugin-py build        # emit src/plugin.py as __PLUGIN_SLUG__.py
-owncast-plugin-py test         # build, then run scenarios from __tests__/
-owncast-plugin-py serve        # build, then host the plugin on http://localhost:8080
-owncast-plugin-py package      # build, then bundle into __PLUGIN_SLUG__.ocpkg for distribution
+uvx owncast-plugin-py build        # emit src/plugin.py as __PLUGIN_SLUG__.py
+uvx owncast-plugin-py test         # build, then run scenarios from __tests__/
+uvx owncast-plugin-py serve        # build, then host the plugin on http://localhost:8080
+uvx owncast-plugin-py package      # build, then bundle into __PLUGIN_SLUG__.ocpkg for distribution
 ```
 
-These commands assume `owncast-plugin-py` is on your PATH (`uv tool install owncast-plugin-py`, or `pip install owncast-plugin-py`). If you instead run it through `uvx` without installing, prefix every command with `uvx owncast-plugin-py `, since `uvx` is one-shot and doesn't add the command to your PATH.
+`uvx` runs the CLI without installing anything. To get the shorter `owncast-plugin-py` command on your PATH, install the SDK once with `uv tool install owncast-plugin-py` (or `pip install owncast-plugin-py`), then drop the `uvx` prefix.
 
 Plugins ship as source and run on the Python engine the Owncast host embeds, so there's no compile step and no toolchain to install. `test`/`serve` download and cache the host binaries on first use, and that's it.
 
