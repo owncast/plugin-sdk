@@ -28,6 +28,7 @@
   "files": [
     "index.js",
     "index.d.ts",
+    "slug.js",
     "testing.js",
     "bin/owncast-plugin.js",
     "scripts/postinstall.js"

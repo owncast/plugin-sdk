@@ -28,35 +28,12 @@ const fs = require("fs");
 const os = require("os");
 const path = require("path");
 const { execFileSync } = require("child_process");
+const { slugify } = require("./slug");
 
 // Find the directory holding the owncast-plugin-test binary. Check for that
 // binary specifically (not just any toolchain file) so we correctly fall
 // through to the dev tools/ dir when postinstall has only fetched part of the
 // toolchain (e.g., on a not-yet-released SDK version).
-// slugifyForTest mirrors the slugify in the build CLI + host SDKs so
-// this entrypoint can locate the built `<slug>.js` artifact when a
-// manifest omits `slug`. ASCII letters and digits pass through
-// lowercased, everything else collapses to a single hyphen, and trailing
-// hyphens are trimmed.
-function slugifyForTest(input) {
-  let out = "";
-  let prevHyphen = false;
-  for (const ch of input) {
-    const code = ch.codePointAt(0);
-    let lower = ch;
-    if (code >= 65 && code <= 90) lower = String.fromCodePoint(code + 32);
-    const lc = lower.codePointAt(0);
-    if ((lc >= 97 && lc <= 122) || (lc >= 48 && lc <= 57)) {
-      out += lower;
-      prevHyphen = false;
-    } else if (!prevHyphen && out.length > 0) {
-      out += "-";
-      prevHyphen = true;
-    }
-  }
-  return out.replace(/-+$/, "");
-}
-
 function findCacheDir() {
   const candidates = [
     path.join(__dirname, "bin", ".cache"), // installed under node_modules
@@ -116,7 +93,7 @@ function runScenarios(scenarios, opts = {}) {
   // The built artifact + symlink filenames key off slug (the identifier), not
   // the display name. Derive the slug here the same way the build CLI does so
   // this entrypoint works on manifests that omit `slug`.
-  const slug = manifest.slug || slugifyForTest(manifest.name);
+  const slug = manifest.slug || slugify(manifest.name);
   if (!slug) {
     console.error(
       `could not derive slug from manifest.name ${JSON.stringify(manifest.name)}; set manifest.slug explicitly`,

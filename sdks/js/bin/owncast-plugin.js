@@ -16,6 +16,7 @@ const path = require("path");
 const { execFileSync } = require("child_process");
 const esbuild = require("esbuild");
 const JSZip = require("jszip");
+const { slugify } = require("../slug");
 
 const cmd = process.argv[2] || "build";
 const restArgs = process.argv.slice(3);
@@ -29,31 +30,6 @@ function fail(e) {
 // followed by lowercase letters/digits/hyphens, up to 64 chars total.
 // Same shape the host + SDK + registry all validate against.
 const slugPattern = /^[a-z][a-z0-9-]{0,63}$/;
-
-// slugify mirrors the host's Go slugify: ASCII letters and digits
-// pass through lowercased, everything else collapses to a single
-// hyphen, and leading and trailing hyphens are trimmed.
-// Non-ASCII names (e.g. "Café") degrade noisily (-> "caf"), so plugins
-// with accented or non-Latin display names should pin `slug` in the
-// manifest instead of relying on auto-derivation.
-function slugify(input) {
-  let out = "";
-  let prevHyphen = false;
-  for (const ch of input) {
-    const code = ch.codePointAt(0);
-    let lower = ch;
-    if (code >= 65 && code <= 90) lower = String.fromCodePoint(code + 32);
-    const lc = lower.codePointAt(0);
-    if ((lc >= 97 && lc <= 122) || (lc >= 48 && lc <= 57)) {
-      out += lower;
-      prevHyphen = false;
-    } else if (!prevHyphen && out.length > 0) {
-      out += "-";
-      prevHyphen = true;
-    }
-  }
-  return out.replace(/-+$/, "");
-}
 
 // readAndResolveManifest loads plugin.manifest.json, validates the
 // required fields, and returns a manifest object with `slug` filled

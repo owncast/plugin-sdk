@@ -170,14 +170,8 @@ const HANDLERS = Object.freeze({
   onFediverseReply: { event: Events.FediverseReply, kind: HandlerKind.Notify },
 });
 
-// typeof comparisons in well-known categories. JS guarantees these strings,
-// but we go through named constants so a stray typo can't pass silently.
-const JsType = Object.freeze({
-  Function: "function",
-  Object: "object",
-});
-const isFn = (x) => typeof x === JsType.Function;
-const isObj = (x) => x !== null && typeof x === JsType.Object;
+const isFn = (x) => typeof x === "function";
+const isObj = (x) => x !== null && typeof x === "object";
 
 function definePlugin(def) {
   // `commands` is declarative sugar: give definePlugin a command table (and an
@@ -449,50 +443,45 @@ function scheduleTimer(fn, ms, repeat) {
   return id;
 }
 
+// hostFns returns the host import table, throwing an actionable error if the
+// named function wasn't granted (the plugin's manifest is missing its
+// permission). This is the per-call guard every owncast.* method used to inline.
+function hostFns(name, perm) {
+  const fns = Host.getFunctions();
+  if (!fns[name]) throw new Error(`permission '${perm}' not granted`);
+  return fns;
+}
+
 const owncast = {
   chat: {
     send(text) {
-      const fns = Host.getFunctions();
-      if (!fns.owncast_send_chat)
-        throw new Error(`permission '${Permissions.ChatSend}' not granted`);
+      const fns = hostFns("owncast_send_chat", Permissions.ChatSend);
       fns.owncast_send_chat(Memory.fromString(text).offset);
     },
     sendAction(text) {
-      const fns = Host.getFunctions();
-      if (!fns.owncast_send_chat_action)
-        throw new Error(`permission '${Permissions.ChatSend}' not granted`);
+      const fns = hostFns("owncast_send_chat_action", Permissions.ChatSend);
       fns.owncast_send_chat_action(Memory.fromString(text).offset);
     },
     system(body) {
-      const fns = Host.getFunctions();
-      if (!fns.owncast_send_chat_system)
-        throw new Error(`permission '${Permissions.ChatSend}' not granted`);
+      const fns = hostFns("owncast_send_chat_system", Permissions.ChatSend);
       fns.owncast_send_chat_system(Memory.fromString(body).offset);
     },
     history(limit) {
-      const fns = Host.getFunctions();
-      if (!fns.owncast_chat_history)
-        throw new Error(`permission '${Permissions.ChatHistory}' not granted`);
+      const fns = hostFns("owncast_chat_history", Permissions.ChatHistory);
       const offset = fns.owncast_chat_history(limit || 0);
       if (offset == 0) return [];
       return JSON.parse(Memory.find(offset).readString());
     },
     deleteMessage(messageId) {
-      const fns = Host.getFunctions();
-      if (!fns.owncast_delete_message)
-        throw new Error(`permission '${Permissions.ChatModerate}' not granted`);
+      const fns = hostFns("owncast_delete_message", Permissions.ChatModerate);
       fns.owncast_delete_message(Memory.fromString(String(messageId)).offset);
     },
     kick(clientId) {
-      const fns = Host.getFunctions();
-      if (!fns.owncast_kick_client)
-        throw new Error(`permission '${Permissions.ChatModerate}' not granted`);
+      const fns = hostFns("owncast_kick_client", Permissions.ChatModerate);
       fns.owncast_kick_client(BigInt(clientId));
     },
     sendTo(clientId, text) {
-      const fns = Host.getFunctions();
-      if (!fns.owncast_send_chat_to)
-        throw new Error(`permission '${Permissions.ChatSend}' not granted`);
+      const fns = hostFns("owncast_send_chat_to", Permissions.ChatSend);
       fns.owncast_send_chat_to(
         BigInt(clientId),
         Memory.fromString(text).offset,
@@ -513,9 +502,7 @@ const owncast = {
       return true;
     },
     clients() {
-      const fns = Host.getFunctions();
-      if (!fns.owncast_chat_clients)
-        throw new Error(`permission '${Permissions.ChatHistory}' not granted`);
+      const fns = hostFns("owncast_chat_clients", Permissions.ChatHistory);
       const offset = fns.owncast_chat_clients();
       if (offset == 0) return [];
       return JSON.parse(Memory.find(offset).readString());
@@ -523,27 +510,19 @@ const owncast = {
   },
   users: {
     list() {
-      const fns = Host.getFunctions();
-      if (!fns.owncast_users_list)
-        throw new Error(`permission '${Permissions.UsersRead}' not granted`);
+      const fns = hostFns("owncast_users_list", Permissions.UsersRead);
       const offset = fns.owncast_users_list();
       if (offset == 0) return [];
       return JSON.parse(Memory.find(offset).readString());
     },
     get(id) {
-      const fns = Host.getFunctions();
-      if (!fns.owncast_user_get)
-        throw new Error(`permission '${Permissions.UsersRead}' not granted`);
+      const fns = hostFns("owncast_user_get", Permissions.UsersRead);
       const offset = fns.owncast_user_get(Memory.fromString(id).offset);
       if (offset == 0) return null;
       return JSON.parse(Memory.find(offset).readString());
     },
     setEnabled(id, enabled, reason) {
-      const fns = Host.getFunctions();
-      if (!fns.owncast_user_set_enabled)
-        throw new Error(
-          `permission '${Permissions.UsersModerate}' not granted`,
-        );
+      const fns = hostFns("owncast_user_set_enabled", Permissions.UsersModerate);
       fns.owncast_user_set_enabled(
         Memory.fromString(id).offset,
         enabled ? 1 : 0,
@@ -551,11 +530,7 @@ const owncast = {
       );
     },
     banIP(ip) {
-      const fns = Host.getFunctions();
-      if (!fns.owncast_ban_ip)
-        throw new Error(
-          `permission '${Permissions.UsersModerate}' not granted`,
-        );
+      const fns = hostFns("owncast_ban_ip", Permissions.UsersModerate);
       fns.owncast_ban_ip(Memory.fromString(ip).offset);
     },
     // Find-or-create an authenticated Owncast user for an external identity
@@ -564,11 +539,7 @@ const owncast = {
     // another plugin's users. Optionally seeds displayName and scopes. Returns
     // { userId }. Throws on host error. Requires `users.register`.
     register(opts) {
-      const fns = Host.getFunctions();
-      if (!fns.owncast_users_register)
-        throw new Error(
-          `permission '${Permissions.UsersRegister}' not granted`,
-        );
+      const fns = hostFns("owncast_users_register", Permissions.UsersRegister);
       const req =
         typeof opts === "string" ? { authId: opts } : opts || {};
       const offset = fns.owncast_users_register(
@@ -588,9 +559,7 @@ const owncast = {
     // `ttl` is optional seconds, and 0/omitted uses the host default. Throws on
     // host error. Requires `auth.gate`.
     grantSession(opts) {
-      const fns = Host.getFunctions();
-      if (!fns.owncast_auth_grant_session)
-        throw new Error(`permission '${Permissions.AuthGate}' not granted`);
+      const fns = hostFns("owncast_auth_grant_session", Permissions.AuthGate);
       const req = typeof opts === "string" ? { userId: opts } : opts || {};
       const offset = fns.owncast_auth_grant_session(
         Memory.fromString(JSON.stringify(req)).offset,
@@ -602,19 +571,13 @@ const owncast = {
     // Clear the current viewer's gate session (logout). The plugin still owns the
     // response/redirect. Requires `auth.gate`.
     endSession() {
-      const fns = Host.getFunctions();
-      if (!fns.owncast_auth_end_session)
-        throw new Error(`permission '${Permissions.AuthGate}' not granted`);
+      const fns = hostFns("owncast_auth_end_session", Permissions.AuthGate);
       fns.owncast_auth_end_session();
     },
   },
   storage: {
     upload(name, data) {
-      const fns = Host.getFunctions();
-      if (!fns.owncast_storage_upload)
-        throw new Error(
-          `permission '${Permissions.StorageUpload}' not granted`,
-        );
+      const fns = hostFns("owncast_storage_upload", Permissions.StorageUpload);
       const dataMem =
         data instanceof Uint8Array
           ? Memory.fromBuffer(
@@ -640,9 +603,7 @@ const owncast = {
     // Read a file's raw bytes. Returns a Uint8Array, or null if the file
     // doesn't exist (or can't be read).
     read(path) {
-      const fns = Host.getFunctions();
-      if (!fns.owncast_fs_read)
-        throw new Error(`permission '${Permissions.StorageFS}' not granted`);
+      const fns = hostFns("owncast_fs_read", Permissions.StorageFS);
       const offset = fns.owncast_fs_read(Memory.fromString(path).offset);
       if (offset == 0) return null;
       return new Uint8Array(Memory.find(offset).readBytes());
@@ -650,9 +611,7 @@ const owncast = {
     // Read a file as UTF-8 text. Returns a string, or null if the file
     // doesn't exist. (The Extism boundary decodes the bytes as UTF-8.)
     readText(path) {
-      const fns = Host.getFunctions();
-      if (!fns.owncast_fs_read)
-        throw new Error(`permission '${Permissions.StorageFS}' not granted`);
+      const fns = hostFns("owncast_fs_read", Permissions.StorageFS);
       const offset = fns.owncast_fs_read(Memory.fromString(path).offset);
       if (offset == 0) return null;
       return Memory.find(offset).readString();
@@ -660,9 +619,7 @@ const owncast = {
     // Write bytes (Uint8Array) or a string to a file, creating parent
     // directories as needed. Returns { ok, error? }.
     write(path, data) {
-      const fns = Host.getFunctions();
-      if (!fns.owncast_fs_write)
-        throw new Error(`permission '${Permissions.StorageFS}' not granted`);
+      const fns = hostFns("owncast_fs_write", Permissions.StorageFS);
       const dataMem =
         data instanceof Uint8Array
           ? Memory.fromBuffer(
@@ -682,27 +639,21 @@ const owncast = {
     // List the entry names (files and subdirectories) directly inside dir.
     // A missing directory lists as empty. Returns string[].
     list(dir) {
-      const fns = Host.getFunctions();
-      if (!fns.owncast_fs_list)
-        throw new Error(`permission '${Permissions.StorageFS}' not granted`);
+      const fns = hostFns("owncast_fs_list", Permissions.StorageFS);
       const offset = fns.owncast_fs_list(Memory.fromString(dir || "").offset);
       if (offset == 0) return [];
       return JSON.parse(Memory.find(offset).readString());
     },
     // Remove a single file or empty directory. Returns { ok, error? }.
     delete(path) {
-      const fns = Host.getFunctions();
-      if (!fns.owncast_fs_delete)
-        throw new Error(`permission '${Permissions.StorageFS}' not granted`);
+      const fns = hostFns("owncast_fs_delete", Permissions.StorageFS);
       const offset = fns.owncast_fs_delete(Memory.fromString(path).offset);
       if (offset == 0) return { ok: false, error: "delete failed" };
       return JSON.parse(Memory.find(offset).readString());
     },
     // Report whether a path exists inside the sandbox. Returns boolean.
     exists(path) {
-      const fns = Host.getFunctions();
-      if (!fns.owncast_fs_exists)
-        throw new Error(`permission '${Permissions.StorageFS}' not granted`);
+      const fns = hostFns("owncast_fs_exists", Permissions.StorageFS);
       return fns.owncast_fs_exists(Memory.fromString(path).offset) === 1;
     },
   },
@@ -711,11 +662,7 @@ const owncast = {
      *  behalf. Returns { url } on success, null on failure (rate-limited,
      *  disabled by admin, etc.). Requires `fediverse.post`. */
     post(text) {
-      const fns = Host.getFunctions();
-      if (!fns.owncast_fediverse_post)
-        throw new Error(
-          `permission '${Permissions.FediversePost}' not granted`,
-        );
+      const fns = hostFns("owncast_fediverse_post", Permissions.FediversePost);
       const offset = fns.owncast_fediverse_post(Memory.fromString(text).offset);
       if (offset == 0) return null;
       return JSON.parse(Memory.find(offset).readString());
@@ -723,30 +670,18 @@ const owncast = {
   },
   notifications: {
     discord(text) {
-      const fns = Host.getFunctions();
-      if (!fns.owncast_notify_discord)
-        throw new Error(
-          `permission '${Permissions.NotificationsSend}' not granted`,
-        );
+      const fns = hostFns("owncast_notify_discord", Permissions.NotificationsSend);
       fns.owncast_notify_discord(Memory.fromString(text).offset);
     },
     browserPush(payload) {
-      const fns = Host.getFunctions();
-      if (!fns.owncast_notify_browser_push)
-        throw new Error(
-          `permission '${Permissions.NotificationsSend}' not granted`,
-        );
+      const fns = hostFns("owncast_notify_browser_push", Permissions.NotificationsSend);
       const obj = typeof payload === "string" ? { title: payload } : payload;
       fns.owncast_notify_browser_push(
         Memory.fromString(JSON.stringify(obj)).offset,
       );
     },
     fediverse(payload) {
-      const fns = Host.getFunctions();
-      if (!fns.owncast_notify_fediverse)
-        throw new Error(
-          `permission '${Permissions.NotificationsSend}' not granted`,
-        );
+      const fns = hostFns("owncast_notify_fediverse", Permissions.NotificationsSend);
       fns.owncast_notify_fediverse(
         Memory.fromString(JSON.stringify(payload)).offset,
       );
@@ -754,17 +689,13 @@ const owncast = {
   },
   stream: {
     current() {
-      const fns = Host.getFunctions();
-      if (!fns.owncast_stream_current)
-        throw new Error(`permission '${Permissions.ServerRead}' not granted`);
+      const fns = hostFns("owncast_stream_current", Permissions.ServerRead);
       const offset = fns.owncast_stream_current();
       if (offset == 0) return { online: false, viewers: 0 };
       return JSON.parse(Memory.find(offset).readString());
     },
     broadcaster() {
-      const fns = Host.getFunctions();
-      if (!fns.owncast_stream_broadcaster)
-        throw new Error(`permission '${Permissions.ServerRead}' not granted`);
+      const fns = hostFns("owncast_stream_broadcaster", Permissions.ServerRead);
       const offset = fns.owncast_stream_broadcaster();
       if (offset == 0) return {};
       return JSON.parse(Memory.find(offset).readString());
@@ -772,41 +703,31 @@ const owncast = {
   },
   server: {
     info() {
-      const fns = Host.getFunctions();
-      if (!fns.owncast_server_info)
-        throw new Error(`permission '${Permissions.ServerRead}' not granted`);
+      const fns = hostFns("owncast_server_info", Permissions.ServerRead);
       const offset = fns.owncast_server_info();
       if (offset == 0) return {};
       return JSON.parse(Memory.find(offset).readString());
     },
     socials() {
-      const fns = Host.getFunctions();
-      if (!fns.owncast_server_socials)
-        throw new Error(`permission '${Permissions.ServerRead}' not granted`);
+      const fns = hostFns("owncast_server_socials", Permissions.ServerRead);
       const offset = fns.owncast_server_socials();
       if (offset == 0) return [];
       return JSON.parse(Memory.find(offset).readString());
     },
     emotes() {
-      const fns = Host.getFunctions();
-      if (!fns.owncast_server_emotes)
-        throw new Error(`permission '${Permissions.ServerRead}' not granted`);
+      const fns = hostFns("owncast_server_emotes", Permissions.ServerRead);
       const offset = fns.owncast_server_emotes();
       if (offset == 0) return [];
       return JSON.parse(Memory.find(offset).readString());
     },
     federation() {
-      const fns = Host.getFunctions();
-      if (!fns.owncast_server_federation)
-        throw new Error(`permission '${Permissions.ServerRead}' not granted`);
+      const fns = hostFns("owncast_server_federation", Permissions.ServerRead);
       const offset = fns.owncast_server_federation();
       if (offset == 0) return { enabled: false };
       return JSON.parse(Memory.find(offset).readString());
     },
     tags() {
-      const fns = Host.getFunctions();
-      if (!fns.owncast_server_tags)
-        throw new Error(`permission '${Permissions.ServerRead}' not granted`);
+      const fns = hostFns("owncast_server_tags", Permissions.ServerRead);
       const offset = fns.owncast_server_tags();
       if (offset == 0) return [];
       return JSON.parse(Memory.find(offset).readString());
@@ -816,11 +737,7 @@ const owncast = {
     /** Read the current video/transcoding config: { latencyLevel, codec,
      *  variants }. Requires `videoconfig.read`. */
     read() {
-      const fns = Host.getFunctions();
-      if (!fns.owncast_video_config_read)
-        throw new Error(
-          `permission '${Permissions.VideoConfigRead}' not granted`,
-        );
+      const fns = hostFns("owncast_video_config_read", Permissions.VideoConfigRead);
       const offset = fns.owncast_video_config_read();
       if (offset == 0) return { latencyLevel: 0, codec: "", variants: [] };
       return JSON.parse(Memory.find(offset).readString());
@@ -829,11 +746,7 @@ const owncast = {
      *  variants }, where omitted fields are left unchanged. Throws if the host
      *  rejects the config. Requires `videoconfig.write`. */
     write(config) {
-      const fns = Host.getFunctions();
-      if (!fns.owncast_video_config_write)
-        throw new Error(
-          `permission '${Permissions.VideoConfigWrite}' not granted`,
-        );
+      const fns = hostFns("owncast_video_config_write", Permissions.VideoConfigWrite);
       const offset = fns.owncast_video_config_write(
         Memory.fromString(JSON.stringify(config || {})).offset,
       );
@@ -845,17 +758,13 @@ const owncast = {
   },
   kv: {
     get(key) {
-      const fns = Host.getFunctions();
-      if (!fns.owncast_kv_get)
-        throw new Error(`permission '${Permissions.StorageKV}' not granted`);
+      const fns = hostFns("owncast_kv_get", Permissions.StorageKV);
       const offset = fns.owncast_kv_get(Memory.fromString(key).offset);
       if (offset == 0) return null;
       return Memory.find(offset).readString();
     },
     set(key, value) {
-      const fns = Host.getFunctions();
-      if (!fns.owncast_kv_set)
-        throw new Error(`permission '${Permissions.StorageKV}' not granted`);
+      const fns = hostFns("owncast_kv_set", Permissions.StorageKV);
       fns.owncast_kv_set(
         Memory.fromString(key).offset,
         Memory.fromString(String(value)).offset,
@@ -912,9 +821,7 @@ const owncast = {
   },
   events: {
     emit(eventType, payload) {
-      const fns = Host.getFunctions();
-      if (!fns.owncast_emit_event)
-        throw new Error(`permission '${Permissions.EventsEmit}' not granted`);
+      const fns = hostFns("owncast_emit_event", Permissions.EventsEmit);
       fns.owncast_emit_event(
         Memory.fromString(eventType).offset,
         Memory.fromString(JSON.stringify(payload)).offset,
@@ -956,9 +863,7 @@ const owncast = {
     // a slow client are dropped rather than blocking the plugin. Requires
     // the 'http.sse' permission.
     send(channel, event, data) {
-      const fns = Host.getFunctions();
-      if (!fns.owncast_sse_send)
-        throw new Error(`permission '${Permissions.HttpSSE}' not granted`);
+      const fns = hostFns("owncast_sse_send", Permissions.HttpSSE);
       const payload = typeof data === "string" ? data : JSON.stringify(data);
       fns.owncast_sse_send(
         Memory.fromString(channel || "").offset,

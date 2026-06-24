@@ -17,27 +17,22 @@ from . import scaffold as _scaffold
 from . import toolchain
 
 
-def _emit(project, do_package):
-    fn = _build.package if do_package else _build.build
-    return fn(project)
-
-
 def cmd_build(args):
-    _emit(args.dir, do_package=False)
+    _build.build(args.dir)
 
 
 def cmd_package(args):
-    _emit(args.dir, do_package=True)
+    _build.package(args.dir)
 
 
 def cmd_test(args):
-    _emit(args.dir, do_package=False)
+    _build.build(args.dir)
     test_bin = toolchain.ensure_host_binary("owncast-plugin-test")
     sys.exit(subprocess.run([test_bin, args.dir]).returncode)
 
 
 def cmd_serve(args):
-    _emit(args.dir, do_package=False)
+    _build.build(args.dir)
     serve_bin = toolchain.ensure_host_binary("owncast-plugin-serve")
     env = dict(os.environ)
     if args.port:
