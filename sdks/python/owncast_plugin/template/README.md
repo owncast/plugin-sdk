@@ -11,7 +11,7 @@ owncast-plugin-py serve        # build, then host the plugin on http://localhost
 owncast-plugin-py package      # build, then bundle into __PLUGIN_SLUG__.ocpkg for distribution
 ```
 
-These commands assume `owncast-plugin-py` is on your PATH (`uv tool install owncast-plugin-sdk`, or `pip install owncast-plugin-sdk`). If you instead run it through `uvx` without installing, prefix every command with `uvx --from <sdk-path> `, since `uvx` is one-shot and doesn't add the command to your PATH.
+These commands assume `owncast-plugin-py` is on your PATH (`uv tool install owncast-plugin-py`, or `pip install owncast-plugin-py`). If you instead run it through `uvx` without installing, prefix every command with `uvx owncast-plugin-py `, since `uvx` is one-shot and doesn't add the command to your PATH.
 
 Plugins ship as source and run on the Python engine the Owncast host embeds, so there's no compile step and no toolchain to install. `test`/`serve` download and cache the host binaries on first use, and that's it.
 

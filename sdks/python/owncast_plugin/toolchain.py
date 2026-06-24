@@ -59,7 +59,7 @@ def _download(url, dest):
 def _own_version_tag():
     try:
         from importlib.metadata import version
-        return "v" + version("owncast-plugin-sdk")
+        return "v" + version("owncast-plugin-py")
     except Exception:  # noqa: BLE001
         return None
 

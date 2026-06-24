@@ -1,4 +1,4 @@
-# owncast-plugin-sdk (Python)
+# owncast-plugin-py (Python)
 
 SDK for authoring [Owncast](https://owncast.online) plugins in **Python**. Plugins ship their Python source and run sandboxed inside the Owncast server on an embedded Python engine. They use the same runtime, wire protocol, and `.ocpkg` format as the [JavaScript SDK](../js), so a Python plugin is a first-class peer of a JS one.
 
@@ -10,16 +10,16 @@ You write ordinary Python with decorators. There is no compile step and no PDK t
 
 ## Quick start
 
-Install the SDK to get the `owncast-plugin-py` CLI. It fetches and caches the host test/serve binaries on first use, so there's nothing else to install by hand. There's no wasm compiler to fetch, because plugins run on the engine the host embeds.
+Scaffold a new plugin project (the Python peer of `npm create owncast-plugin`) with no install, straight from the published package:
 
 ```sh
-uv tool install owncast-plugin-sdk      # or:  pip install owncast-plugin-sdk
+uvx owncast-plugin-py new my-plugin   # drops a working starter into ./my-plugin
 ```
 
-Scaffold a new plugin project (the Python peer of `npm create owncast-plugin`):
+To get the `owncast-plugin-py` CLI on your `PATH` for the build/test/serve/package steps, install the SDK. It fetches and caches the host test/serve binaries on first use, so there's nothing else to install by hand. There's no wasm compiler to fetch, because plugins run on the engine the host embeds.
 
 ```sh
-owncast-plugin-py new my-plugin         # drops a working starter into ./my-plugin
+uv tool install owncast-plugin-py      # or:  pip install owncast-plugin-py
 ```
 
 This writes a `my-plugin/` directory with `plugin.manifest.json`, `src/plugin.py`, a sample `__tests__/plugin.test.json`, and docs (README, INSTRUCTIONS.md, AGENTS.md + a `create-owncast-plugin-py` skill) already wired up. A plugin is just a directory:

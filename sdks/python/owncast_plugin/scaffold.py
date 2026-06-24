@@ -68,5 +68,5 @@ def create(target):
     print("  owncast-plugin-py package")
     print("")
     print("(If `owncast-plugin-py` isn't found, install the SDK first with")
-    print(" `uv tool install owncast-plugin-sdk`, or run via `uvx --from <sdk> ...`.)")
+    print(" `uv tool install owncast-plugin-py`, or run via `uvx owncast-plugin-py ...`.)")
     return slug

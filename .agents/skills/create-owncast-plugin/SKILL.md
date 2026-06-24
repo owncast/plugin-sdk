@@ -38,7 +38,7 @@ map**. You don't need to reproduce it here.
 Detect by what's present:
 
 - `package.json` (with `@owncast/plugin-sdk`) or `src/plugin.js` → **JavaScript**
-- `pyproject.toml` (with `owncast-plugin-sdk`) or `src/plugin.py` → **Python**
+- `pyproject.toml` (with `owncast-plugin-py`) or `src/plugin.py` → **Python**
 
 In that case you're editing an existing plugin in place. Carry its slug and
 language forward.
@@ -49,8 +49,8 @@ plugins, so steer by their comfort and toolchain:
 - **JavaScript** scaffolds with `npx create-owncast-plugin@latest <slug>`, then
   builds, tests, and packages through `npm`. Good default for authors already in
   the Node ecosystem.
-- **Python** scaffolds with `owncast-plugin-py new <slug>` (or
-  `uvx --from owncast-plugin-sdk owncast-plugin-py new <slug>`), then builds, tests,
+- **Python** scaffolds with `uvx owncast-plugin-py new <slug>` (no install) or
+  `owncast-plugin-py new <slug>` once installed, then builds, tests,
   and packages through the `owncast-plugin-py` CLI. Good for authors who prefer
   Python. Plugins ship as source (no wasm/compile step for the author).
 

@@ -78,12 +78,14 @@ You should see the chat stream flow through the filter chain (slow-mode, buggy-f
 ## Run all example tests
 
 ```sh
-for ex in examples/js/*/; do tools/owncast-plugin-test "$ex"; done
+for ex in examples/js/*/ examples/python/*/; do tools/owncast-plugin-test "$ex"; done
 ```
 
-Or `cd examples/js/<slug> && npm test` for a single plugin (which also rebuilds it first).
+Or `cd examples/js/<slug> && npm test` (JS) / `owncast-plugin-py test examples/python/<slug>` (Python) for a single plugin, which rebuilds it first.
 
 ## Authoring a plugin
+
+JavaScript:
 
 ```sh
 npx create-owncast-plugin@latest my-plugin
@@ -95,7 +97,19 @@ npm run serve                     # localhost dev server at http://localhost:808
 npm run package                   # produces my-plugin.ocpkg, single-file distributable
 ```
 
-Plugins ship as source and run on a JavaScript engine the host embeds, so there's no wasm compile step or toolchain to install for authoring. Prefer Python? The peer **[Python SDK](./sdks/python)** scaffolds with `owncast-plugin-py new my-plugin` and produces the same `.ocpkg`. Author code goes in `src/plugin.js`. Edit `plugin.manifest.json` to declare permissions (subscriptions are derived from your handler methods). The TypeScript declarations in `@owncast/plugin-sdk` give editor autocomplete. Static assets, HTML pages, images, JS, go in `assets/`; they're served at `/plugins/<slug>/...`.
+Python:
+
+```sh
+uvx owncast-plugin-py new my-plugin    # scaffold ./my-plugin, no install
+cd my-plugin
+uv tool install owncast-plugin-py      # or: pip install owncast-plugin-py
+owncast-plugin-py build my-plugin      # emit src/plugin.py -> <slug>.py
+owncast-plugin-py test my-plugin       # run the __tests__/ scenarios
+owncast-plugin-py serve my-plugin      # local dev server (POST /_dev/chat to drive it)
+owncast-plugin-py package my-plugin    # build + bundle -> <slug>.ocpkg, single-file distributable
+```
+
+Plugins ship as source and run on a language engine the host embeds, so there's no wasm compile step or toolchain to install for authoring. Author code goes in `src/plugin.js` (or `src/plugin.py`). Edit `plugin.manifest.json` to declare permissions (subscriptions are derived from your handler methods). The TypeScript declarations in `@owncast/plugin-sdk` give editor autocomplete. Static assets, HTML pages, images, JS, go in `assets/`; they're served at `/plugins/<slug>/...`. See the **[Python SDK](./sdks/python)** for the Python-specific authoring details.
 
 ## Testing
 
