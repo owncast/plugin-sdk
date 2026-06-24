@@ -40,7 +40,7 @@ One self-contained plugin per directory, authored in Python and compiled to wasm
 Install the SDK to get the `owncast-plugin-py` CLI (see [`sdks/python`](../../sdks/python/) for details). It fetches and caches the wasm toolchain on first use, so there's nothing else to install by hand:
 
 ```sh
-pip install ./sdks/python      # or run without installing: uvx --from ./sdks/python owncast-plugin-py …
+uv tool install owncast-plugin-sdk      # or:  pip install owncast-plugin-sdk
 ```
 
 Then, per example:

@@ -138,7 +138,7 @@ responses:**
   runtime doesn't recognize). This is **not** a bug in your plugin, so don't edit
   handlers to chase it. It means the installed SDK runtime and its bundled
   test-host binary are out of sync. Respond by: (1) ensuring the latest version with
-  `pip install -U owncast-plugin-sdk` (or `uv tool upgrade`) and re-run. (2) If
+  `uv tool upgrade owncast-plugin-sdk` (or `pip install -U owncast-plugin-sdk`) and re-run. (2) If
   it persists, note that the compiled `.ocpkg` is still valid for a current
   Owncast server (the skew is only in the local test harness), proceed to **Step
   5**, and tell the user tests couldn't run locally due to a toolchain version

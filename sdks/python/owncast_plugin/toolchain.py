@@ -56,6 +56,14 @@ def _download(url, dest):
         sys.exit("download failed (%s): %s" % (url, e))
 
 
+def _own_version_tag():
+    try:
+        from importlib.metadata import version
+        return "v" + version("owncast-plugin-sdk")
+    except Exception:  # noqa: BLE001
+        return None
+
+
 def _latest_host_tag():
     pinned = os.environ.get("OWNCAST_PLUGIN_HOST_BINARIES_VERSION")
     if pinned:
@@ -65,6 +73,14 @@ def _latest_host_tag():
         with urllib.request.urlopen(url) as r:
             return json.load(r)["tag_name"]
     except Exception as e:  # noqa: BLE001
+        # Offline or API error: fall back to this package's own version, matching
+        # the JS SDK's postinstall. The download below fails with a clear error
+        # if no matching release exists.
+        own = _own_version_tag()
+        if own:
+            sys.stderr.write("could not resolve latest host-binary release "
+                             "(%s); falling back to %s\n" % (e, own))
+            return own
         sys.exit("could not resolve latest host-binary release (%s). Set "
                  "OWNCAST_PLUGIN_HOST_BINARIES_VERSION or OWNCAST_PLUGIN_HOST_BIN_DIR" % e)
 

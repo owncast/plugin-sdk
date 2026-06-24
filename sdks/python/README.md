@@ -13,7 +13,7 @@ You write ordinary Python with decorators. There is no compile step and no PDK t
 Install the SDK to get the `owncast-plugin-py` CLI. It fetches and caches the host test/serve binaries on first use, so there's nothing else to install by hand. There's no wasm compiler to fetch, because plugins run on the engine the host embeds.
 
 ```sh
-pip install owncast-plugin-sdk          # or:  uv tool install owncast-plugin-sdk
+uv tool install owncast-plugin-sdk      # or:  pip install owncast-plugin-sdk
 ```
 
 Scaffold a new plugin project (the Python peer of `npm create owncast-plugin`):
