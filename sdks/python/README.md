@@ -16,10 +16,6 @@ Install the SDK to get the `owncast-plugin-py` CLI. It fetches and caches the ho
 pip install owncast-plugin-sdk          # or:  uv tool install owncast-plugin-sdk
 ```
 
-> Not on PyPI yet (publishing is the last roadmap item). Until then, install from this repo with `uv tool install ./sdks/python` (or `pip install ./sdks/python`). That puts `owncast-plugin-py` on your PATH so every command below works as written.
->
-> You *can* run it without installing via `uvx --from ./sdks/python owncast-plugin-py …`, but `uvx` is one-shot: the command isn't added to your PATH, so you must repeat the `uvx --from ./sdks/python` prefix on **every** command (`new`, `test`, `package`, …), not just the first. Installing once is simpler.
-
 Scaffold a new plugin project (the Python peer of `npm create owncast-plugin`):
 
 ```sh
