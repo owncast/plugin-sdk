@@ -310,8 +310,6 @@ class _Filter:
     def pass_(self):
         return {"action": "pass"}
 
-    keep = pass_
-
     def drop(self, reason=""):
         return {"action": "drop", "reason": reason}
 
@@ -745,12 +743,22 @@ class _Http:
             opts.get("headers") or {},
         )
         # Surface response headers to match the JS SDK and the documented
-        # {status, headers, body} shape. Read defensively so the SDK still works
-        # on a runtime whose response object doesn't expose them.
-        resp_headers = getattr(resp, "headers", None)
+        # {status, headers, body} shape. The extism PDK exposes headers as a
+        # method, so call it when callable, and read defensively so the SDK
+        # still works on a runtime that shapes them differently.
+        raw_headers = getattr(resp, "headers", None)
+        if callable(raw_headers):
+            try:
+                raw_headers = raw_headers()
+            except Exception:
+                raw_headers = None
+        try:
+            headers = dict(raw_headers) if raw_headers else {}
+        except (TypeError, ValueError):
+            headers = {}
         return _Obj({
             "status": resp.status_code,
-            "headers": dict(resp_headers) if resp_headers else {},
+            "headers": headers,
             "body": resp.data_str(),
         })
 

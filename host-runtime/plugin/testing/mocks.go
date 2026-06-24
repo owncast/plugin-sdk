@@ -293,15 +293,15 @@ func (m *MockHost) HostEnv() *plugin.HostEnv {
 			defer m.mu.Unlock()
 			m.bannedIPs = append(m.bannedIPs, ip)
 		},
-		RegisterUser: func(_, authID, displayName string, scopes []string) (string, error) {
+		RegisterUser: func(_ string, req plugin.UserRegisterRequest) (string, error) {
 			m.mu.Lock()
 			defer m.mu.Unlock()
 			m.userRegistrations = append(m.userRegistrations, RecordedUserRegistration{
-				AuthID: authID, DisplayName: displayName, Scopes: scopes,
+				AuthID: req.AuthID, DisplayName: req.DisplayName, Scopes: req.Scopes,
 			})
 			// Deterministic synthetic user id so scenarios can predict what the
 			// plugin will hand to grantSession.
-			return "u-" + authID, nil
+			return "u-" + req.AuthID, nil
 		},
 		GrantSession: func(_, userID string, ttlSeconds int64) (string, error) {
 			m.mu.Lock()
