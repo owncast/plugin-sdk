@@ -130,7 +130,7 @@ module.exports = definePlugin({
     /* msg: ChatMessage */
   },
   onChatUserJoined(user) {
-    /* user: ChatUser */
+    /* user: User */
   },
   onChatUserParted(user) {},
   onChatUserRenamed(change) {
@@ -199,15 +199,19 @@ Only define the handlers you actually need. Missing handlers = no subscription.
 ```ts
 interface ChatMessage {
   id: string;
-  user?: ChatUser; // full sender identity (see below); absent if no account
+  user?: User; // full sender identity (see below); absent if no account
   clientId?: number; // originating connection; pass to chat.sendTo / replyTo
   body: string; // the raw text the user typed (not HTML-rendered)
   timestamp: string; // ISO-8601, nanosecond precision
 }
 
-interface ChatUser {
+interface User {
   id: string;
   displayName: string;
+  displayColor: number; // index into the instance's user-color palette, not a literal color
+  previousNames?: string[];
+  createdAt?: string; // ISO-8601
+  disabledAt?: string; // ISO-8601 if banned, omitted otherwise
   isBot?: boolean;
   isAuthenticated?: boolean;
   scopes?: string[]; // e.g. ["MODERATOR"]
@@ -220,7 +224,7 @@ Don't match on the display name, which isn't unique or stable. To reply
 privately to whoever sent a message, pass `msg` (or `msg.clientId`) to
 [`owncast.chat.replyTo`](#replying-to-the-sender).
 
-> `user` is always a `ChatUser` object, the same shape on the
+> `user` is always a `User` object, the same shape on the
 > `onChatMessage` event, on the messages returned by
 > [`owncast.chat.history()`](#chat-history), and in the dev server. It is
 > `undefined` only for the rare message with no associated account.
@@ -267,7 +271,7 @@ interface IncomingHttpRequest {
   body: string;
   remoteAddr: string;
   authenticated: boolean; // came from an authenticated Owncast admin
-  user?: ChatUser; // the chat user the request came from, when known
+  user?: User; // the chat user the request came from, when known
 }
 
 interface OutgoingHttpResponse {

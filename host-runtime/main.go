@@ -41,15 +41,15 @@ func isAuthenticatedHeader(r *http.Request) bool {
 
 type ChatMessage struct {
 	ID        string               `json:"id"`
-	User      *plugin.HostChatUser `json:"user,omitempty"`
+	User      *plugin.HostUser `json:"user,omitempty"`
 	Body      string               `json:"body"`
 	Timestamp time.Time            `json:"timestamp"`
 }
 
 // chatUser builds the nested ChatUser object the host sends with every chat
 // message, from a bare display name.
-func chatUser(name string) *plugin.HostChatUser {
-	return &plugin.HostChatUser{ID: name, DisplayName: name, IsAuthenticated: true}
+func chatUser(name string) *plugin.HostUser {
+	return &plugin.HostUser{ID: name, DisplayName: name, IsAuthenticated: true}
 }
 
 func main() {

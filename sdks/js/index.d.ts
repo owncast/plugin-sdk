@@ -11,24 +11,15 @@
  */
 export interface ChatMessage {
   id: string;
-  user?: ChatUser;
+  user?: User;
   clientId?: number;
   body: string;
   timestamp: string;
 }
 
-/** A chat user, payload of join/part/rename events. */
-export interface ChatUser {
-  id: string;
-  displayName: string;
-  isBot?: boolean;
-  isAuthenticated?: boolean;
-  scopes?: string[];
-}
-
 /** Payload of `chat.user.renamed`, the same user changing their name. */
 export interface ChatUserRename {
-  user: ChatUser;
+  user: User;
   previousName: string;
 }
 
@@ -36,7 +27,7 @@ export interface ChatUserRename {
 export interface ChatMessageModeration {
   messageId: string;
   visible: boolean;
-  moderator?: ChatUser;
+  moderator?: User;
 }
 
 /** Stream-lifecycle payloads. */
@@ -247,10 +238,14 @@ export interface FederationInfo {
   isPrivate?: boolean;
 }
 
-/** A user record from owncast.users.list() / .get(). */
+/** A user. The sender identity carried by every chat payload
+ *  (chat.message.received, join/part/rename, moderation) and the record
+ *  returned by owncast.users.list() / .get(). `displayColor` is an index into
+ *  the instance's configured user-color palette, not a literal color. */
 export interface User {
   id: string;
   displayName: string;
+  displayColor: number;
   previousNames?: string[];
   createdAt?: string;
   disabledAt?: string; // ISO-8601 if banned, omitted otherwise
@@ -325,7 +320,7 @@ export interface IncomingHttpRequest {
   authenticated: boolean;
   /** Identity of the user that made the request, when it came with a
    *  user-token. Undefined for anonymous or admin-only requests. */
-  user?: ChatUser;
+  user?: User;
 }
 
 export interface OutgoingHttpResponse {
@@ -340,7 +335,7 @@ export interface ContentRequest {
   slug: string;
   /** The viewing user's chat identity, when available. Undefined for
    *  anonymous viewers or when the host cannot resolve an identity. */
-  user?: ChatUser;
+  user?: User;
 }
 
 /** Payload for the sse.connect / sse.disconnect events. Fired when a browser
@@ -352,7 +347,7 @@ export interface ContentRequest {
 export interface SSEConnectionEvent {
   channel: string;
   connectionId: number;
-  user?: ChatUser;
+  user?: User;
 }
 
 /** Payload for the once-a-second tick event (onTick). `now` is the host
@@ -386,9 +381,9 @@ export interface PluginDef {
   filterChatMessage?(msg: ChatMessage): FilterResult;
 
   /** User connected to chat. */
-  onChatUserJoined?(user: ChatUser): void | Promise<void>;
+  onChatUserJoined?(user: User): void | Promise<void>;
   /** User disconnected from chat. */
-  onChatUserParted?(user: ChatUser): void | Promise<void>;
+  onChatUserParted?(user: User): void | Promise<void>;
   /** User changed their display name. */
   onChatUserRenamed?(change: ChatUserRename): void | Promise<void>;
   /** A chat message was hidden or restored by a moderator. */
@@ -488,7 +483,7 @@ export interface CommandContext {
   /** The originating chat message. */
   msg: ChatMessage;
   /** The sender (same as `msg.user`). */
-  user?: ChatUser;
+  user?: User;
   /** The canonical command name that matched (not the alias used). */
   command: string;
   /** Whitespace-split arguments after the command word. */

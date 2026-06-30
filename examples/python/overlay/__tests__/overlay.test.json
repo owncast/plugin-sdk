@@ -42,7 +42,7 @@
           "path": "/api/messages",
           "expect": {
             "status": 200,
-            "body": "{\"messages\":[{\"id\":\"m1\",\"user\":{\"id\":\"u-alice\",\"displayName\":\"alice\"},\"body\":\"hello\",\"timestamp\":\"2024-01-01T00:00:00Z\"},{\"id\":\"m2\",\"user\":{\"id\":\"u-bob\",\"displayName\":\"bob\"},\"body\":\"world\",\"timestamp\":\"2024-01-01T00:00:01Z\"}]}"
+            "body": "{\"messages\":[{\"id\":\"m1\",\"user\":{\"id\":\"u-alice\",\"displayName\":\"alice\",\"displayColor\":0},\"body\":\"hello\",\"timestamp\":\"2024-01-01T00:00:00Z\"},{\"id\":\"m2\",\"user\":{\"id\":\"u-bob\",\"displayName\":\"bob\",\"displayColor\":0},\"body\":\"world\",\"timestamp\":\"2024-01-01T00:00:01Z\"}]}"
           }
         }
       }

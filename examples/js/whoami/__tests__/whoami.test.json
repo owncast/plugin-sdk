@@ -13,7 +13,7 @@
           },
           "expect": {
             "status": 200,
-            "body": "{\"identified\":true,\"user\":{\"id\":\"u-test\",\"displayName\":\"Tester\",\"isAuthenticated\":true}}"
+            "body": "{\"identified\":true,\"user\":{\"id\":\"u-test\",\"displayName\":\"Tester\",\"displayColor\":0,\"isAuthenticated\":true}}"
           }
         }
       }

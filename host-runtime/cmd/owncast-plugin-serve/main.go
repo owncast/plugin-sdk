@@ -351,26 +351,26 @@ type devState struct {
 // expanded into {id, displayName}. An object is passed through as-is so an
 // author can exercise isBot/isAuthenticated/scopes. Empty defaults to a
 // stand-in dev viewer.
-func devChatUser(raw json.RawMessage) *plugin.HostChatUser {
+func devChatUser(raw json.RawMessage) *plugin.HostUser {
 	if len(raw) == 0 || string(raw) == "null" {
-		return &plugin.HostChatUser{ID: "dev-user", DisplayName: "dev-user", IsAuthenticated: true}
+		return &plugin.HostUser{ID: "dev-user", DisplayName: "dev-user", IsAuthenticated: true}
 	}
 	var name string
 	if err := json.Unmarshal(raw, &name); err == nil {
 		if name == "" {
 			name = "dev-user"
 		}
-		return &plugin.HostChatUser{ID: name, DisplayName: name, IsAuthenticated: true}
+		return &plugin.HostUser{ID: name, DisplayName: name, IsAuthenticated: true}
 	}
-	var u plugin.HostChatUser
+	var u plugin.HostUser
 	if err := json.Unmarshal(raw, &u); err == nil {
 		return &u
 	}
-	return &plugin.HostChatUser{ID: "dev-user", DisplayName: "dev-user", IsAuthenticated: true}
+	return &plugin.HostUser{ID: "dev-user", DisplayName: "dev-user", IsAuthenticated: true}
 }
 
 // record appends a message to the in-memory chat log and returns it.
-func (d *devState) record(user *plugin.HostChatUser, body string) plugin.HostChatMessage {
+func (d *devState) record(user *plugin.HostUser, body string) plugin.HostChatMessage {
 	d.mu.Lock()
 	defer d.mu.Unlock()
 	d.nextID++
@@ -418,7 +418,7 @@ func (d *devState) onPluginChat(req plugin.ChatSendRequest) {
 	default:
 		fmt.Fprintf(os.Stderr, "[chat.send by %s] %s\n", label, req.Text)
 	}
-	d.record(&plugin.HostChatUser{
+	d.record(&plugin.HostUser{
 		ID:          "bot:" + req.PluginSlug,
 		DisplayName: label,
 		IsBot:       true,

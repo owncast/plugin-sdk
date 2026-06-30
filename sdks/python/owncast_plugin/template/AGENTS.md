@@ -85,8 +85,8 @@ declared list, so don't over-declare.
 
 ## Gotchas that bite
 
-- **`msg.user` is an attribute object, or `None`.** Production sends a ChatUser
-  (`msg.user.id`, `msg.user.display_name`, `msg.user.scopes`). A message with no
+- **`msg.user` is an attribute object, or `None`.** Production sends a User
+  (`msg.user.id`, `msg.user.display_name`, `msg.user.display_color`, `msg.user.scopes`). A message with no
   associated account has `msg.user is None`. Guard it: `msg.user.display_name if
   msg.user else "someone"`. For per-user state and mod gating use `msg.user.id`
   and `msg.user.scopes`, never the display name. Use `msg.raw` for the underlying dict.

@@ -220,7 +220,7 @@ from owncast_plugin import plugin, owncast, filter
 @plugin.on_chat_message
 def greet(msg):
     # msg has attributes: id, user, client_id, body, timestamp. msg.user is a
-    # ChatUser (msg.user.id, .display_name, .scopes) in production, or None for
+    # User (msg.user.id, .display_name, .display_color, .scopes) in production, or None for
     # a message with no associated account. Read the name defensively.
     name = msg.user.display_name if msg.user else "there"
     words = msg.body.split()
@@ -241,8 +241,8 @@ HTTP routes (`@plugin.get/post/put/delete/patch(path)`, `@plugin.route`,
 
 Important shape/behavior notes:
 
-- **`msg.user` is an attribute object or `None`.** Production sends a ChatUser
-  (`msg.user.id`, `msg.user.display_name`, `msg.user.scopes`). A message with no
+- **`msg.user` is an attribute object or `None`.** Production sends a User
+  (`msg.user.id`, `msg.user.display_name`, `msg.user.display_color`, `msg.user.scopes`). A message with no
   account is `None`. Read the name defensively: `msg.user.display_name if
   msg.user else "..."`. For stable per-user state and moderator gating use
   `msg.user.id` and `msg.user.scopes`, never the display name. Use

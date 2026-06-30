@@ -8,7 +8,7 @@ from owncast_plugin import plugin, owncast, filter
 def greet(msg):
     words = msg.body.split()
     if words and words[0].lower() == "hi":
-        # msg.user is a ChatUser (id, display_name, scopes), or None for the
+        # msg.user is a User (id, display_name, display_color, scopes), or None for the
         # rare message with no associated account.
         name = msg.user.display_name if msg.user else "there"
         owncast.chat.send(f"hello, {name}!")
