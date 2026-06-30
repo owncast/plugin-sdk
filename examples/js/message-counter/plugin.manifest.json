@@ -2,7 +2,7 @@
   "api": "1",
   "name": "Example Message Counter",
   "slug": "message-counter",
-  "version": "0.3.0",
+  "version": "0.3.1",
   "description": "Counts messages per user (persisted across restarts) and posts the running total back to chat. This example was written in JavaScript.",
   "permissions": [
     "storage.kv",

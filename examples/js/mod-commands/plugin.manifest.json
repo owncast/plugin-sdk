@@ -2,7 +2,7 @@
   "api": "1",
   "name": "Mod Commands",
   "slug": "mod-commands",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Demonstrates a custom command prefix and a moderator-only command with onDenied gating. This example was written in JavaScript.",
   "permissions": [
     "chat.send"
