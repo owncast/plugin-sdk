@@ -25,6 +25,7 @@ How to write, test, and ship a plugin. Aimed at JavaScript developers. Write som
 - [Serving HTTP](#serving-http)
 - [Realtime updates (Server-Sent Events)](#realtime-updates-server-sent-events)
 - [Admin pages](#admin-pages)
+- [Viewer authentication gates](#viewer-authentication-gates)
 - [Action buttons](#action-buttons)
 - [Plugin-to-plugin events](#plugin-to-plugin-events)
 - [Testing](#testing)
@@ -312,6 +313,8 @@ Each method requires the matching permission in your manifest:
 | `owncast.users.list()` / `.get(id)`                                             | `users.read`         |
 | `owncast.users.setEnabled(id, enabled, reason?)`                                | `users.moderate`     |
 | `owncast.users.banIP(ip)`                                                       | `users.moderate`     |
+| `owncast.users.register({authId, displayName})`, find-or-create a viewer identity | `users.register`  |
+| `owncast.auth.grantSession({userId, ttl?})` / `owncast.auth.endSession()`       | `auth.gate`          |
 | `owncast.kv.get(key)` / `.set(key, value)` (+ `.getJSON` / `.setJSON`)          | `storage.kv`         |
 | `owncast.storage.upload(name, bytes)`, returns `{url}`                          | `storage.upload`     |
 | `owncast.fs.read/readText/write/list/delete/exists(...)`, sandboxed disk        | `storage.fs`         |
@@ -461,6 +464,8 @@ every chat message, the router first, then your handler.
 | `chat.filter`        | Subscribe to `filterChatMessage` (read, modify, or drop every chat message). Required for any plugin that declares the handler.                   |
 | `users.read`         | `owncast.users.list`, `.get`                                                                                                                      |
 | `users.moderate`     | `owncast.users.setEnabled`, `.banIP`                                                                                                              |
+| `users.register`     | `owncast.users.register`, find-or-create an authenticated Owncast user for an external identity. The host namespaces `authId` by your slug, so plugins can't collide on or impersonate each other's users. |
+| `auth.gate`          | Be the site's viewer-authentication gate: `owncast.auth.grantSession` / `.endSession` plus the `onAuthCheck` hook. While enabled, the host blocks every route for unauthenticated visitors. Only one gate plugin can be enabled at a time. See [Viewer authentication gates](#viewer-authentication-gates). |
 | `storage.kv`         | Per-plugin namespaced key/value store                                                                                                             |
 | `storage.upload`     | `owncast.storage.upload`, upload files, get a public URL                                                                                          |
 | `storage.fs`         | `owncast.fs.*`, private sandboxed disk under `data/plugin-data/<slug>/` (server-side only, never served over HTTP)                                 |
@@ -684,6 +689,47 @@ Author flow:
 2. Expose admin APIs via `onHttpRequest` at `/admin/api/...`
 3. Declare both globs (or just `"/admin/*"`) in `manifest.admin.pages[].path`
 4. Visit `/admin/plugins/configure?id=<your-slug>` in the admin UI (or `/plugins/<your-slug>/admin/` directly). Owncast uses your existing admin login to gate the page. No extra prompt.
+
+## Viewer authentication gates
+
+A plugin holding the `auth.gate` permission can become the site's login wall: until a visitor authenticates through it, the host blocks the whole server — the watch page, the HLS video, chat, and the API. The plugin renders the login flow and decides who gets in; the host owns the signed session cookie end to end (your code never sees it). Only one `auth.gate` plugin can be enabled at a time.
+
+The flow (see `examples/js/github-auth` for a complete OAuth version):
+
+1. An unauthenticated visitor requests any page. The host redirects them to your plugin's index at `/plugins/<slug>/?return_to=<original path>`.
+2. Your `onHttpRequest` renders a login screen and runs whatever proves the visitor's identity and entitlement: an OAuth round-trip with a provider, a lookup against a webhook-maintained member list, etc.
+3. Once satisfied, name the visitor and grant the session:
+
+```js
+const { userId } = owncast.users.register({ authId: "provider:1234", displayName: "Jo" });
+owncast.auth.grantSession({ userId }); // the host attaches the cookie to this response
+return { status: 302, headers: { Location: returnTo } };
+```
+
+4. For logout, call `owncast.auth.endSession()` and redirect.
+
+`users.register` finds-or-creates an authenticated Owncast user for an external identity (the host namespaces `authId` by your slug). `grantSession`/`endSession` are only meaningful inside `onHttpRequest`, where the host attaches or clears the cookie on the response after your handler returns.
+
+### Re-validating sessions: `onAuthCheck`
+
+Define `onAuthCheck(req)` to re-validate a session whenever a signed-in viewer loads the main page. This is how a gate notices lapsed memberships without needing webhooks:
+
+```js
+onAuthCheck(req) {
+  // req.user is the host-resolved viewer identity (same shape as onHttpRequest's req.user)
+  return stillEntitled(req.user.id) ? authCheck.ok() : authCheck.deny();
+}
+```
+
+Return `authCheck.ok()`, `authCheck.deny()` (the host clears the session and bounces the viewer to your login screen), or `authCheck.refresh({ ttl? })` (keep the session and re-issue the cookie for sliding expiry). Errors fail closed, as a deny.
+
+Gate-specific things to know:
+
+- `req.user` carries no external identity. Store your own mapping at registration time (`owncast.kv.set("member:" + userId, externalId)`) and look it up in `onAuthCheck`.
+- Use a stable external id in `authId` (a numeric account id), never a username or email that can change.
+- Your own routes stay reachable through the gate — visitors must be able to reach the login screen — which also means inbound webhooks to `/plugins/<slug>/...` keep working while the gate is up. `/admin` is likewise exempt, so an admin can always fix or disable a misconfigured gate.
+- Fail closed while unconfigured: refuse to grant sessions until your config values are set.
+- Testing: the `authCheck` scenario step drives `onAuthCheck` directly (see [Step types](#step-types)).
 
 ## Action buttons
 
@@ -960,6 +1006,7 @@ Point your `test` script at that one entry (`node __tests__/index.test.js`) inst
 - `pageContent: { slug, user?, expect: {body?, bodyContains?} }`, calls `onPageContent` directly and asserts on the returned HTML
 - `pageStyles: { expect: {body?, bodyContains?} }`, calls `onPageStyles` directly and asserts on the returned CSS
 - `pageScripts: { expect: {body?, bodyContains?} }`, calls `onPageScripts` directly and asserts on the returned JavaScript
+- `authCheck: { user: {...}, expect: {action: "ok" | "refresh" | "deny", reason?} }`, calls `onAuthCheck` with a resolved viewer identity and asserts the verdict (for `auth.gate` plugins)
 
 ```json
 [
@@ -1004,12 +1051,13 @@ Final-state `expect` (on the whole scenario):
 - `sseSends`, ordered list of `{channel, event?, data?}` pushed via `owncast.sse.send` (omit `event`/`data` to match only on channel)
 - `videoConfigWrites`, list of partial configs applied via `owncast.videoConfig.write()`
 - `emits`, list of `{eventType, payload}` for custom events
-- `kv`, partial map of plugin-config state after the scenario
+- `kv`, partial map of your plugin's key/value store after the scenario
 - `httpRequests`, outbound HTTP made by your plugin
 
 ### Seeding state with `given`
 
-- `given.kv`, pre-populate your plugin's config namespace
+- `given.kv`, pre-populate your plugin's key/value store (what `owncast.kv.get` reads)
+- `given.config`, admin-set overrides for manifest-declared config keys, e.g. `"given": { "config": { "cooldownMs": 500 } }`. `owncast.config.get` returns the override instead of the declared default. Only keys declared under `config` in the manifest are visible to the plugin.
 - `given.stream`, what `owncast.stream.current()` returns
 - `given.broadcaster`, what `owncast.stream.broadcaster()` returns
 - `given.server`, what `owncast.server.info()` returns
@@ -1018,7 +1066,9 @@ Final-state `expect` (on the whole scenario):
 - `given.chatHistory`, what `owncast.chat.history()` returns
 - `given.chatClients`, what `owncast.chat.clients()` returns
 - `given.users`, what `owncast.users.list()` / `.get(id)` returns
-- `given.httpResponses`, canned responses for outbound `owncast.http.fetch` calls
+- `given.httpResponses`, canned responses for outbound `owncast.http.fetch` calls. Each entry's `url` is a glob matched against the full URL (`"https://api.example.com/user*"` covers any query string) and the first matching entry wins. One canned response per pattern: a sequence where the same URL must answer differently across calls (e.g. 401, then 200 after a token refresh) can't be modeled, so unit-test that branch outside the runner.
+
+Without `given.config`, config reads return the manifest-declared defaults (exactly like a production host where the admin hasn't edited the settings). Test both paths: an override scenario and a defaults/unconfigured scenario.
 
 ### Auth in HTTP scenarios
 

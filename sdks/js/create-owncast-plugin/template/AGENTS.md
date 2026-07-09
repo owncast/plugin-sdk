@@ -81,6 +81,7 @@ declared list, so don't over-declare.
 | React to fediverse follows/likes/mentions       | `onFediverse*`                               | —                                         | —                                      |
 | Read/change video config                        | (any)                                        | `owncast.videoConfig.read/write`          | `videoconfig.read` / `videoconfig.write` |
 | Compose with other plugins                      | emit `owncast.events.emit`, receive `on:{}`  | `owncast.events.emit(type, payload)`      | `events.emit` (emitter only)           |
+| Gate the whole site behind a member login (paywall) | `onHttpRequest` (login flow) + `onAuthCheck` (re-validation) | `owncast.users.register` + `owncast.auth.grantSession/endSession` | `auth.gate` + `users.register` (+ `http.serve`) |
 
 ## Gotchas that bite
 
@@ -91,6 +92,8 @@ declared list, so don't over-declare.
 - **`network.fetch` requires `network.allowedHosts`** in the manifest, e.g. `"network": { "allowedHosts": ["api.example.com"] }`. The bare `"*"` is allowed but must be explicit.
 - **Any UI field** (`actions`, `styles`, `scripts`, `extraPageContent`, `tabs`) **requires `ui.modify`**.
 - **Prefer `defineCommands`** over hand-rolled prefix parsing for chat commands. It gives aliases, per-user cooldowns, and `modOnly` gating.
+- **Config in tests:** `owncast.config.get` returns manifest defaults unless the scenario seeds admin overrides via `given.config` (`"given": { "config": { "key": "value" } }`). Test both the override and the default/unconfigured path.
+- **One `given.httpResponses` entry per URL pattern.** The `url` is a glob on the full URL and the first match wins, so same-URL sequences (401, then 200 after a refresh) can't be modeled by fixtures.
 
 ## Testing
 
@@ -106,8 +109,11 @@ runScenarios([
 
 Final-state assertions: `chatSends`, `chatActions`, `chatSystems`, `chatTo`,
 `sseSends`, `emits`, `kv`, `httpRequests`, `videoConfigWrites`. Seed inputs with
-`given` (`given.kv`, `given.stream`, `given.users`, `given.httpResponses`, …).
-Step types: `event`, `filter`, `http`, `tabContent`, `pageContent`.
+`given` (`given.kv`, `given.config`, `given.stream`, `given.users`,
+`given.httpResponses`, …).
+Step types: `event`, `filter`, `http`, `tabContent`, `pageContent`,
+`pageStyles`, `pageScripts`, `authCheck` (drives `onAuthCheck` for
+`auth.gate` plugins).
 
 ## Full reference
 

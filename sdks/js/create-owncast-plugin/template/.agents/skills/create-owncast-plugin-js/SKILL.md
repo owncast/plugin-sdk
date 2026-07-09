@@ -53,7 +53,8 @@ Then map their description to capabilities using the **Capability map** below.
 That tells you which handler(s) to write, which `owncast.*` calls to make, and
 which permissions the manifest must declare. If a request needs a high-trust
 permission (`fediverse.post`, `videoconfig.write`, `users.moderate`,
-`network.fetch` to arbitrary hosts), note it back to the user. The server admin
+`network.fetch` to arbitrary hosts, or `auth.gate`, which locks the whole site
+behind the plugin's login), note it back to the user. The server admin
 will have to approve it.
 
 Keep it small. Build the simplest plugin that does what they asked. You can
@@ -197,6 +198,7 @@ combine for richer plugins.
 | React to fediverse follows/likes/mentions       | `onFediverse*` handlers                       | —                                         | —                                      |
 | Read/change video/transcoding config            | (any)                                        | `owncast.videoConfig.read/write`          | `videoconfig.read` / `videoconfig.write` |
 | Compose with other plugins via custom events    | emit: `owncast.events.emit`, receive: `on:{}`| `owncast.events.emit(type, payload)`      | `events.emit` (emitter only)           |
+| Gate the whole site behind a member login (paywall) | `onHttpRequest` (login flow) + `onAuthCheck` (re-validation) | `owncast.users.register` + `owncast.auth.grantSession/endSession` | `auth.gate` + `users.register` (+ `http.serve`); model on `examples/js/github-auth` |
 
 **Golden rule:** the `permissions` array must contain exactly the permission for
 every `owncast.*` method you call. Missing one = the call throws and/or the host
@@ -308,13 +310,14 @@ runScenarios([
 
 Step types: `event`, `filter` (with `expect: {action, payload?, reason?}`),
 `http` (`{method, path, expect:{status, bodyContains?}}`), `tabContent`,
-`pageContent`. Final-state assertions include `chatSends`, `chatActions`,
+`pageContent`, `pageStyles`, `pageScripts`, and `authCheck` (drives
+`onAuthCheck` for `auth.gate` plugins). Final-state assertions include `chatSends`, `chatActions`,
 `chatSystems`, `chatTo`, `sseSends`, `emits`, `kv`, `httpRequests`,
-`videoConfigWrites`. Seed inputs with `given` (`given.kv`, `given.stream`,
-`given.users`, `given.httpResponses`, etc.). Use `authenticated: true` or a
+`videoConfigWrites`. Seed inputs with `given` (`given.kv`, `given.config`,
+`given.stream`, `given.users`, `given.httpResponses`, etc.). Use `authenticated: true` or a
 `user` object on `http` steps to test admin/user-gated endpoints.
 
-Two shapes that trip people up:
+Shapes that trip people up:
 
 - **A chat event's `user` can be a string or an object.** The scaffolded tests
   use the string shorthand (`payload: { user: "alice", ... }`), while production sends
@@ -322,10 +325,14 @@ Two shapes that trip people up:
   sync: if the handler reads `msg.user.id` / `.scopes` (or `.displayName`), pass
   an object (`user: { id: "u1", displayName: "alice" }`). If it reads a bare
   string, pass a string. The defensive read above works with both.
-- **`config` values come from the manifest defaults** in tests. There is no
-  `given.config`. `owncast.config.get("key")` returns the `default` you declared
-  under `config` in `plugin.manifest.json`, so assert against that default (or
-  change the default if you want to test another value).
+- **`config` values come from the manifest defaults** unless the scenario seeds
+  admin overrides via `given.config` (`"given": { "config": { "key": "value" } }`).
+  `owncast.config.get("key")` returns the override when seeded, otherwise the
+  `default` declared under `config` in `plugin.manifest.json`. Test both paths.
+- **One `given.httpResponses` entry per URL pattern.** The `url` is a glob
+  matched against the full URL (`"https://api.example.com/user*"` covers any
+  query string) and the first match wins, so a sequence where the same URL must
+  answer differently across calls can't be modeled by fixtures.
 
 For interactive iteration, `npm run serve` hosts the plugin on
 `http://localhost:8080/plugins/<slug>/` with `/_dev/*` endpoints to fire events.

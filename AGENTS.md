@@ -29,7 +29,8 @@ skill-aware agents, and pointed to here for those that aren't).
 - `sdks/js/`: `@owncast/plugin-sdk` (the npm package authors use) and the
   `create-owncast-plugin` scaffolder.
 - `host-runtime/`: Go host runtime that loads and runs plugins.
-- `examples/js/`: one example plugin per architectural feature.
+- `examples/js/` and `examples/python/`: one example plugin per architectural
+  feature, mirrored across both languages.
 - `docs/`: `PLUGIN_AUTHOR_GUIDE.md` (exhaustive author reference),
   `ARCHITECTURE.md`, and `WIRE_PROTOCOL.md`.
 
