@@ -23,6 +23,11 @@ type ScenarioGiven struct {
 	// string form (most plugins read them via parseInt/etc., so storing the
 	// stringified value is the most useful default).
 	KV map[string]string `json:"kv,omitempty"`
+	// Config seeds admin-set overrides for manifest-declared config keys:
+	// owncast.config.get returns the override instead of the manifest
+	// default. Keys must still be declared in the manifest; undeclared keys
+	// stay invisible to the plugin regardless of this map.
+	Config map[string]any `json:"config,omitempty"`
 	// HTTPResponses installs canned responses for plugin HTTP requests.
 	// First matching fixture (URL glob + optional method) wins. Tests fail
 	// if a plugin makes a request that no fixture matches.

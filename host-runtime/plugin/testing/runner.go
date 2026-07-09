@@ -86,6 +86,9 @@ func runOne(ctx context.Context, wasmPath, manifestPath, file string, sc Scenari
 	if sc.Given.VideoConfig != nil {
 		mock.SetVideoConfig(*sc.Given.VideoConfig)
 	}
+	if len(sc.Given.Config) > 0 {
+		mock.SetConfig(sc.Given.Config)
+	}
 	http.DefaultClient.Transport = mock.HTTPTransport()
 	defer func() { http.DefaultClient.Transport = origTransport }()
 

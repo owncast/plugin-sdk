@@ -142,6 +142,10 @@ type MockHost struct {
 	chatHistory   []plugin.HostChatMessage
 	chatClients   []plugin.HostChatClient
 	users         []plugin.HostUser
+	// configValues holds given.config admin-override values served through
+	// HostEnv.ConfigValue. Unseeded (nil) → defaults-only, matching a
+	// production host where no admin has edited the plugin's settings.
+	configValues  map[string]any
 	uploadURLBase string // returned URLs become uploadURLBase + name (default "mock://<name>/")
 }
 
@@ -224,6 +228,12 @@ func (m *MockHost) HostEnv() *plugin.HostEnv {
 			m.mu.Lock()
 			defer m.mu.Unlock()
 			return m.videoConfig
+		},
+		ConfigValue: func(_ string, key string) (any, bool) {
+			m.mu.Lock()
+			defer m.mu.Unlock()
+			v, ok := m.configValues[key]
+			return v, ok
 		},
 		Tags: func() []string {
 			m.mu.Lock()
@@ -577,6 +587,12 @@ func (m *MockHost) SetVideoConfig(c plugin.VideoConfig) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	m.videoConfig = c
+}
+
+func (m *MockHost) SetConfig(values map[string]any) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	m.configValues = values
 }
 
 func (m *MockHost) SetTags(t []string) {
