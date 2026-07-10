@@ -47,6 +47,11 @@ file (see [build flow](#toolchain-and-build-flow)).
   the calling plugin's identity (from a per-instance config value) and rejects
   the call if the plugin's manifest didn't grant the permission.
 - Everything crosses the boundary as JSON.
+- Inbound Fediverse hooks are internal notify subscriptions. They are not
+  external HTTP webhooks. Owncast verifies the HTTP signature and actor origin,
+  then sends the raw activity to `onFediverse` / `on_fediverse` and also sends
+  any matching specialized follow, like, repost, quote, mention, or reply event.
+  The `fediverse.inbound` manifest permission gates all seven subscriptions.
 
 ## Repository layout
 

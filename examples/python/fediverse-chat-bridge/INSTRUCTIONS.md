@@ -18,4 +18,5 @@ All remote text is HTML-escaped before display, so a malicious post can't inject
 
 ## Permissions
 
+- **fediverse.inbound**: receiving mention and reply events. These are two of the seven gated subscriptions. This plugin does not handle quote or raw activity events.
 - **chat.send**: posts the system messages under the plugin's bot identity.

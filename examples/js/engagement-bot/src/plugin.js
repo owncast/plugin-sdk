@@ -33,6 +33,30 @@ module.exports = definePlugin({
     });
   },
 
+  onFediverseLike(event) {
+    owncast.notifications.discord(
+      `like from ${event.actor.handle}: ${event.target.url}`,
+    );
+  },
+
+  onFediverseRepost(event) {
+    owncast.notifications.discord(
+      `repost from ${event.actor.handle}: ${event.target.url}`,
+    );
+  },
+
+  onFediverseQuote(event) {
+    owncast.notifications.discord(
+      `quote from ${event.actor.handle}: ${event.target.url}`,
+    );
+  },
+
+  onFediverse(activity) {
+    owncast.notifications.discord(
+      `activity ${activity.type}: ${activity.actor} -> ${activity.object}`,
+    );
+  },
+
   // Mentions and replies carry content, so echo a short summary to Discord
   // so the streamer sees off-platform engagement in their normal channel.
   onFediverseMention(post) {

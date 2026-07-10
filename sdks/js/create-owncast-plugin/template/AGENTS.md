@@ -46,10 +46,10 @@ failing tests. Fix the code or correct the expectation (and say which).
 
 ## The golden rule
 
-**The `permissions` array must contain exactly the permission for every
-`owncast.*` method you call**, no more and no less. A missing permission makes the
-call throw and/or the host refuse to load the plugin. Admins judge trust by the
-declared list, so don't over-declare.
+**The `permissions` array must contain exactly the permissions required by the
+handlers you register and every `owncast.*` method you call**, no more and no
+less. A missing permission makes the call throw and/or the host refuse to load
+the plugin. Admins judge trust by the declared list, so don't over-declare.
 
 ## Capability map (intent → handler + API + permission)
 
@@ -78,7 +78,7 @@ declared list, so don't over-declare.
 | Private server-side files                       | (any)                                        | `owncast.fs.*`                            | `storage.fs`                           |
 | Discord / push / fediverse notification         | (any)                                        | `owncast.notifications.*`                 | `notifications.send`                   |
 | Post publicly to the fediverse (high-trust)     | (any)                                        | `owncast.fediverse.post(text)`            | `fediverse.post`                       |
-| React to fediverse follows/likes/mentions       | `onFediverse*`                               | —                                         | —                                      |
+| React to any verified inbound fediverse activity | `onFediverse(activity)` for raw JSON, plus `onFediverseFollow/Like/Repost/Quote/Mention/Reply` for specialized payloads | none | `fediverse.inbound` |
 | Read/change video config                        | (any)                                        | `owncast.videoConfig.read/write`          | `videoconfig.read` / `videoconfig.write` |
 | Compose with other plugins                      | emit `owncast.events.emit`, receive `on:{}`  | `owncast.events.emit(type, payload)`      | `events.emit` (emitter only)           |
 | Gate the whole site behind a member login (paywall) | `onHttpRequest` (login flow) + `onAuthCheck` (re-validation) | `owncast.users.register` + `owncast.auth.grantSession/endSession` | `auth.gate` + `users.register` (+ `http.serve`) |

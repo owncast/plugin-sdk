@@ -120,9 +120,11 @@ export const Events: {
   readonly SseConnect: "sse.connect";
   readonly SseDisconnect: "sse.disconnect";
   readonly Tick: "tick";
+  readonly FediverseActivity: "fediverse.activity";
   readonly FediverseFollow: "fediverse.follow";
   readonly FediverseLike: "fediverse.like";
   readonly FediverseRepost: "fediverse.repost";
+  readonly FediverseQuote: "fediverse.quote";
   readonly FediverseMention: "fediverse.mention";
   readonly FediverseReply: "fediverse.reply";
 };
@@ -137,8 +139,12 @@ export interface FediverseActor {
 
 export interface FediverseEngagement {
   actor: FediverseActor;
-  /** For likes and reposts: the target object URL. Not set for follows. */
+  /** For likes, reposts, and quotes: the target object URL. Not set for follows. */
   target?: { url: string };
+}
+
+export interface FediverseTargetedEngagement extends FediverseEngagement {
+  target: { url: string };
 }
 
 /** Inbound fediverse post, a mention or reply that contains content the
@@ -177,6 +183,7 @@ export const Permissions: {
   readonly UsersRegister: "users.register";
   readonly AuthGate: "auth.gate";
   readonly FediversePost: "fediverse.post";
+  readonly FediverseInbound: "fediverse.inbound";
   readonly HttpSSE: "http.sse";
   readonly VideoConfigRead: "videoconfig.read";
   readonly VideoConfigWrite: "videoconfig.write";
@@ -407,15 +414,20 @@ export interface PluginDef {
    *  in unix milliseconds. Defining this opts the plugin into the tick. */
   onTick?(event: TickEvent): void | Promise<void>;
 
-  /** Someone on the fediverse followed the streamer's account. */
+  /** A verified inbound ActivityPub activity as its raw JSON object. Requires `fediverse.inbound`. */
+  onFediverse?(activity: Record<string, unknown>): void | Promise<void>;
+
+  /** Someone on the fediverse followed the streamer's account. Requires `fediverse.inbound`. */
   onFediverseFollow?(event: FediverseEngagement): void | Promise<void>;
-  /** Someone on the fediverse liked a streamer post / federated stream announcement. */
-  onFediverseLike?(event: FediverseEngagement): void | Promise<void>;
-  /** Someone on the fediverse boosted (reposted) a streamer post. */
-  onFediverseRepost?(event: FediverseEngagement): void | Promise<void>;
-  /** Someone @-mentioned the streamer in a public post. */
+  /** Someone on the fediverse liked a streamer post / federated stream announcement. Requires `fediverse.inbound`. */
+  onFediverseLike?(event: FediverseTargetedEngagement): void | Promise<void>;
+  /** Someone on the fediverse boosted (reposted) a streamer post. Requires `fediverse.inbound`. */
+  onFediverseRepost?(event: FediverseTargetedEngagement): void | Promise<void>;
+  /** Someone on the fediverse quoted a locally authored post. `target.url` identifies that quoted post. Requires `fediverse.inbound`. */
+  onFediverseQuote?(event: FediverseTargetedEngagement): void | Promise<void>;
+  /** Someone @-mentioned the streamer in a public post. Requires `fediverse.inbound`. */
   onFediverseMention?(post: FediverseInboundPost): void | Promise<void>;
-  /** Someone replied to one of the streamer's federated posts. */
+  /** Someone replied to one of the streamer's federated posts. Requires `fediverse.inbound`. */
   onFediverseReply?(post: FediverseInboundPost): void | Promise<void>;
 
   /** HTTP request handler. Called for any path under /plugins/<name>/ that

@@ -91,7 +91,7 @@ Edit two files based on what you learned in Step 1:
 - **`src/plugin.py`**: register only the handlers the behavior needs. See
   **Writing handlers** and the **Capability map**.
 - **`plugin.manifest.json`**: set `name`, `description`, and the exact
-  `permissions` list for the APIs you call. See **The manifest**.
+  `permissions` required by the handlers you register and APIs you call. See **The manifest**.
 
 If the plugin serves web content, add files under `public/` (web-served) or
 `assets/` (host-read for inlined UI). Replace the scaffolded test in
@@ -201,15 +201,15 @@ Several rows combine for richer plugins.
 | Private server-side files                       | (any)                                               | `owncast.fs.*`                                 | `storage.fs`                           |
 | Send Discord / browser-push / fediverse notice  | (any)                                               | `owncast.notifications.*`                      | `notifications.send`                   |
 | Post publicly to the fediverse (high-trust)     | (any)                                               | `owncast.fediverse.post(text)`                 | `fediverse.post`                       |
-| React to fediverse follows/likes/mentions       | `@plugin.on_fediverse_*` handlers                   | —                                              | —                                      |
+| React to any verified inbound fediverse activity | `@plugin.on_fediverse` for raw JSON, plus `@plugin.on_fediverse_follow/like/repost/quote/mention/reply` for specialized payloads | none | `fediverse.inbound` |
 | Read/change video/transcoding config            | (any)                                               | `owncast.video_config.read/write`              | `videoconfig.read` / `videoconfig.write` |
 | Compose with other plugins via custom events    | emit: `owncast.events.emit`, receive: `@plugin.on(...)` | `owncast.events.emit(type, payload)`       | `events.emit` (emitter only)           |
 | Gate the whole site behind a member login (paywall) | `@plugin.on_http_request` (login flow) + `@plugin.on_auth_check` (re-validation) | `owncast.users.register` + `owncast.auth.grant_session/end_session` | `auth.gate` + `users.register` (+ `http.serve`); model on `examples/python/github-auth` |
 
-**Golden rule:** the `permissions` array must contain exactly the permission for
-every `owncast.*` method you call. Missing one = the call throws and/or the host
-refuses to load the plugin. Don't add permissions you don't use, since admins judge
-trust by the declared list.
+**Golden rule:** the `permissions` array must contain exactly the permissions
+required by the handlers you register and every `owncast.*` method you call.
+Missing one means the call throws and/or the host refuses to load the plugin.
+Don't add permissions you don't use, since admins judge trust by the declared list.
 
 ---
 
@@ -234,8 +234,8 @@ Register **only** the handlers you need. The SDK derives event subscriptions
 from which handlers exist. Decorators: `@plugin.on_chat_message`,
 `@plugin.filter_chat_message`, `@plugin.on_chat_user_joined` / `_parted` /
 `_renamed`, `@plugin.on_message_moderated`, `@plugin.on_stream_started` /
-`_stopped` / `_title_changed`, `@plugin.on_fediverse_follow` / `_like` /
-`_repost` / `_mention` / `_reply`, `@plugin.on_tick`, `@plugin.on_sse_connect` /
+`_stopped` / `_title_changed`, `@plugin.on_fediverse`,
+`@plugin.on_fediverse_follow` / `_like` / `_repost` / `_quote` / `_mention` / `_reply`, `@plugin.on_tick`, `@plugin.on_sse_connect` /
 `_disconnect`, `@plugin.on_tab_content("slug")`, `@plugin.on_page_content("slug")`,
 `@plugin.on_page_styles`, `@plugin.on_page_scripts`,
 HTTP routes (`@plugin.get/post/put/delete/patch(path)`, `@plugin.route`,
