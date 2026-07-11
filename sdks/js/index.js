@@ -43,9 +43,11 @@ const Events = Object.freeze({
   // Once-a-second tick for periodic work (opt in by defining onTick)
   Tick: "tick",
   // Fediverse, engagement (metadata only) + inbound posts (with content)
+  FediverseActivity: "fediverse.activity",
   FediverseFollow: "fediverse.follow",
   FediverseLike: "fediverse.like",
   FediverseRepost: "fediverse.repost",
+  FediverseQuote: "fediverse.quote",
   FediverseMention: "fediverse.mention",
   FediverseReply: "fediverse.reply",
 });
@@ -68,6 +70,7 @@ const Permissions = Object.freeze({
   UsersRegister: "users.register",
   AuthGate: "auth.gate",
   FediversePost: "fediverse.post",
+  FediverseInbound: "fediverse.inbound",
   HttpSSE: "http.sse",
   VideoConfigRead: "videoconfig.read",
   VideoConfigWrite: "videoconfig.write",
@@ -152,6 +155,11 @@ const HANDLERS = Object.freeze({
   onSseDisconnect: { event: Events.SseDisconnect, kind: HandlerKind.Notify },
   // Once-a-second tick
   onTick: { event: Events.Tick, kind: HandlerKind.Notify },
+  // Verified inbound ActivityPub activity (raw JSON object)
+  onFediverse: {
+    event: Events.FediverseActivity,
+    kind: HandlerKind.Notify,
+  },
   // Fediverse engagement (actor + target metadata)
   onFediverseFollow: {
     event: Events.FediverseFollow,
@@ -160,6 +168,10 @@ const HANDLERS = Object.freeze({
   onFediverseLike: { event: Events.FediverseLike, kind: HandlerKind.Notify },
   onFediverseRepost: {
     event: Events.FediverseRepost,
+    kind: HandlerKind.Notify,
+  },
+  onFediverseQuote: {
+    event: Events.FediverseQuote,
     kind: HandlerKind.Notify,
   },
   // Fediverse inbound posts (with content)

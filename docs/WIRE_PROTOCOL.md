@@ -165,6 +165,13 @@ the gate re-validate a session on each `/` page load and return
 - Not a custom host function. Gates the `filter_chat_message` export: a plugin that registers a `filterChatMessage` handler must declare this permission at load time, otherwise the host rejects the manifest.
 - This is deliberately separate from `chat.send`, `chat.history`, and `chat.moderate`: filtering happens inline on every chat message before broadcast (modify the body, drop the message, or pass it through), so the manifest reviewer needs to see it called out explicitly.
 
+### `fediverse.inbound`
+
+- Not a custom host function. Gates notify subscriptions to `fediverse.activity`, `fediverse.follow`, `fediverse.like`, `fediverse.repost`, `fediverse.quote`, `fediverse.mention`, and `fediverse.reply`. If `register` reports any of these subscriptions, the plugin manifest must declare this permission or the host rejects the plugin at load time.
+- `fediverse.activity` carries the verified inbound activity's raw JSON object after HTTP signature and actor-origin checks. It is dispatched in addition to any matching specialized event and is also dispatched for verified activity types with no specialized event.
+- `fediverse.quote` carries `{actor, target}`, where `target` is the locally authored post that the remote actor quoted. `fediverse.mention` and `fediverse.reply` are limited to verified public `Create(Note)` activities that mention the local account or reply to a locally authored post.
+- These are internal plugin notify events, not external HTTP webhooks. `fediverse.post` is separate and permits outbound posts under the streamer's Fediverse identity.
+
 ### ambient (no permission)
 
 These imports are granted to every plugin without a declared permission. A plugin can't `setTimeout` or read its own config without the host, and the acts themselves are benign (a scheduled callback still needs its own permissions to do anything, and reading your own manifest-declared config exposes nothing new).

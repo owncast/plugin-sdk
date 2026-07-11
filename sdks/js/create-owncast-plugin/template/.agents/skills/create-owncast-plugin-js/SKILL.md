@@ -85,7 +85,7 @@ Edit two files based on what you learned in Step 1:
 - **`src/plugin.js`**: define only the handlers the behavior needs. See
   **Writing handlers** and the **Capability map**.
 - **`plugin.manifest.json`**: set `name`, `description`, and the exact
-  `permissions` list for the APIs you call. See **The manifest**.
+  `permissions` required by the handlers you register and APIs you call. See **The manifest**.
 
 If the plugin serves web content, add files under `public/` (web-served) or
 `assets/` (host-read for inlined UI). Replace the scaffolded test in
@@ -195,15 +195,15 @@ combine for richer plugins.
 | Private server-side files                       | (any)                                        | `owncast.fs.*`                            | `storage.fs`                           |
 | Send Discord / browser-push / fediverse notice  | (any)                                        | `owncast.notifications.*`                 | `notifications.send`                   |
 | Post publicly to the fediverse (high-trust)     | (any)                                        | `owncast.fediverse.post(text)`            | `fediverse.post`                       |
-| React to fediverse follows/likes/mentions       | `onFediverse*` handlers                       | —                                         | —                                      |
+| React to any verified inbound fediverse activity | `onFediverse(activity)` for raw JSON, plus `onFediverseFollow/Like/Repost/Quote/Mention/Reply` for specialized payloads | none | `fediverse.inbound` |
 | Read/change video/transcoding config            | (any)                                        | `owncast.videoConfig.read/write`          | `videoconfig.read` / `videoconfig.write` |
 | Compose with other plugins via custom events    | emit: `owncast.events.emit`, receive: `on:{}`| `owncast.events.emit(type, payload)`      | `events.emit` (emitter only)           |
 | Gate the whole site behind a member login (paywall) | `onHttpRequest` (login flow) + `onAuthCheck` (re-validation) | `owncast.users.register` + `owncast.auth.grantSession/endSession` | `auth.gate` + `users.register` (+ `http.serve`); model on `examples/js/github-auth` |
 
-**Golden rule:** the `permissions` array must contain exactly the permission for
-every `owncast.*` method you call. Missing one = the call throws and/or the host
-refuses to load the plugin. Don't add permissions you don't use, since admins judge
-trust by the declared list.
+**Golden rule:** the `permissions` array must contain exactly the permissions
+required by the handlers you register and every `owncast.*` method you call.
+Missing one means the call throws and/or the host refuses to load the plugin.
+Don't add permissions you don't use, since admins judge trust by the declared list.
 
 ---
 
@@ -230,7 +230,7 @@ Define **only** the handlers you need. The SDK derives event subscriptions from
 which handlers exist. Full list of handlers: `onChatMessage`,
 `filterChatMessage`, `onChatUserJoined`, `onChatUserParted`,
 `onChatUserRenamed`, `onMessageModerated`, `onStreamStarted`, `onStreamStopped`,
-`onStreamTitleChanged`, `onFediverseFollow/Like/Repost/Mention/Reply`,
+`onStreamTitleChanged`, `onFediverse`, `onFediverseFollow/Like/Repost/Quote/Mention/Reply`,
 `onHttpRequest`, `onTick`, `onSseConnect/Disconnect`, `onTabContent`,
 `onPageContent`, `onPageStyles`, `onPageScripts`, and
 `on: { "namespace.event"() {} }` for custom events.

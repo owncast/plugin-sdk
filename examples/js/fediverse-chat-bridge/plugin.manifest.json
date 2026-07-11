@@ -5,7 +5,8 @@
   "version": "0.3.1",
   "description": "Surfaces inbound fediverse mentions and replies as system messages in chat, with the poster's avatar. This example was written in JavaScript.",
   "permissions": [
-    "chat.send"
+    "chat.send",
+    "fediverse.inbound"
   ],
   "bot": {
     "displayName": "Example Fediverse"

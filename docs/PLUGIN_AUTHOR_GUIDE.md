@@ -162,6 +162,9 @@ module.exports = definePlugin({
   onFediverseRepost(event) {
     /* {actor, target: {url}} */
   },
+  onFediverseQuote(event) {
+    /* {actor, target: {url}}; target is the locally authored quoted post */
+  },
 
   // Fediverse, inbound posts (with content)
   onFediverseMention(post) {
@@ -169,6 +172,11 @@ module.exports = definePlugin({
   },
   onFediverseReply(post) {
     /* same shape; inReplyTo set */
+  },
+
+  // Every verified inbound activity, including activities handled above
+  onFediverse(activity) {
+    /* raw ActivityPub JSON object */
   },
 
   // Filter chain (sequential, can mutate or drop)
@@ -192,6 +200,8 @@ module.exports = definePlugin({
 ```
 
 Only define the handlers you actually need. Missing handlers = no subscription.
+
+All seven Fediverse handlers require `fediverse.inbound`: `onFediverse`, `onFediverseFollow`, `onFediverseLike`, `onFediverseRepost`, `onFediverseQuote`, `onFediverseMention`, and `onFediverseReply`. These are internal plugin event subscriptions, not external HTTP webhooks. `fediverse.post` is a separate permission for publishing outbound posts.
 
 ### Chat message shape
 
@@ -230,9 +240,17 @@ privately to whoever sent a message, pass `msg` (or `msg.clientId`) to
 > [`owncast.chat.history()`](#chat-history), and in the dev server. It is
 > `undefined` only for the rare message with no associated account.
 
+### Fediverse engagement and raw activity
+
+`onFediverseFollow` receives `{actor}`. `onFediverseLike`, `onFediverseRepost`, and `onFediverseQuote` receive `{actor, target}`. `actor` uses the SDK's `FediverseActor` shape. `target` is `{url: string}`. For a quote, it identifies the locally authored post that the remote actor quoted.
+
+`onFediverse` receives the verified inbound ActivityPub activity after the host validates the HTTP signature and actor origin. In JavaScript, the payload is the raw JSON object. It fires in addition to a specialized handler when one applies. It also fires for verified activity types that have no specialized handler.
+
+Python exposes the same hooks as `@plugin.on_fediverse`, `@plugin.on_fediverse_follow`, `@plugin.on_fediverse_like`, `@plugin.on_fediverse_repost`, `@plugin.on_fediverse_quote`, `@plugin.on_fediverse_mention`, and `@plugin.on_fediverse_reply`. Python notify payloads are non-subscriptable `_Obj` attribute views. Read normal fields as attributes, or use `.raw` for the underlying dictionary and keys that are not valid Python attributes, such as `payload.raw["@context"]`.
+
 ### Fediverse inbound posts
 
-`onFediverseMention` and `onFediverseReply` carry a `FediverseInboundPost`, a post that someone on the fediverse made that's relevant to the streamer:
+`onFediverseMention` and `onFediverseReply` carry a `FediverseInboundPost`. The host accepts these specialized events only from a verified public `Create(Note)` that either mentions the local Fediverse account or replies to a locally authored post:
 
 ```ts
 interface FediverseInboundPost {
@@ -477,6 +495,7 @@ every chat message, the router first, then your handler.
 | `videoconfig.read`   | `owncast.videoConfig.read()`, read the output/transcoding config                                                                                  |
 | `videoconfig.write`  | `owncast.videoConfig.write()`, change video config, high-trust. Changes apply on the next stream start (the host does not restart a live stream). |
 | `notifications.send` | `owncast.notifications.discord`, `.browserPush`                                                                                                   |
+| `fediverse.inbound`  | Subscribe to `fediverse.activity`, `fediverse.follow`, `fediverse.like`, `fediverse.repost`, `fediverse.quote`, `fediverse.mention`, and `fediverse.reply` through `onFediverse` and the six specialized handlers. Required for any plugin that declares one of those handlers. |
 | `fediverse.post`     | `owncast.fediverse.post(text)`, high-trust (posts under the streamer's handle), admin should grant sparingly.                                       |
 | `ui.modify`          | Place UI inside Owncast's own chrome. Required for `manifest.actions`, `manifest.styles`, `manifest.scripts`, and `manifest.extraPageContent`.    |
 

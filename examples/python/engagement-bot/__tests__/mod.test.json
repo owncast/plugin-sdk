@@ -86,6 +86,93 @@
     }
   },
   {
+    "name": "fediverse like is forwarded to Discord",
+    "events": [
+      {
+        "event": "fediverse.like",
+        "payload": {
+          "actor": {
+            "name": "Bob",
+            "handle": "@bob@fediverse.example",
+            "url": "https://fediverse.example/@bob"
+          },
+          "target": {
+            "url": "https://demo.owncast.example/@demo/100"
+          }
+        }
+      }
+    ],
+    "expect": {
+      "discordPosts": [
+        "like from @bob@fediverse.example: https://demo.owncast.example/@demo/100"
+      ]
+    }
+  },
+  {
+    "name": "fediverse repost is forwarded to Discord",
+    "events": [
+      {
+        "event": "fediverse.repost",
+        "payload": {
+          "actor": {
+            "name": "Carol",
+            "handle": "@carol@example.social",
+            "url": "https://example.social/@carol"
+          },
+          "target": {
+            "url": "https://demo.owncast.example/@demo/101"
+          }
+        }
+      }
+    ],
+    "expect": {
+      "discordPosts": [
+        "repost from @carol@example.social: https://demo.owncast.example/@demo/101"
+      ]
+    }
+  },
+  {
+    "name": "fediverse quote is forwarded to Discord",
+    "events": [
+      {
+        "event": "fediverse.quote",
+        "payload": {
+          "actor": {
+            "name": "Dana",
+            "handle": "@dana@social.example",
+            "url": "https://social.example/@dana"
+          },
+          "target": {
+            "url": "https://demo.owncast.example/@demo/102"
+          }
+        }
+      }
+    ],
+    "expect": {
+      "discordPosts": [
+        "quote from @dana@social.example: https://demo.owncast.example/@demo/102"
+      ]
+    }
+  },
+  {
+    "name": "raw fediverse activity exposes arbitrary ActivityPub fields",
+    "events": [
+      {
+        "event": "fediverse.activity",
+        "payload": {
+          "type": "Announce",
+          "actor": "https://fediverse.example/users/erin",
+          "object": "https://demo.owncast.example/@demo/103"
+        }
+      }
+    ],
+    "expect": {
+      "discordPosts": [
+        "activity Announce: https://fediverse.example/users/erin -> https://demo.owncast.example/@demo/103"
+      ]
+    }
+  },
+  {
     "name": "fediverse mention is forwarded to Discord with a snippet",
     "events": [
       {

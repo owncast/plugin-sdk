@@ -47,10 +47,10 @@ tests. Fix the code or correct the expectation (and say which).
 
 ## The golden rule
 
-**The `permissions` array must contain exactly the permission for every
-`owncast.*` method you call**, no more and no less. A missing permission makes the
-call throw and/or the host refuse to load the plugin. Admins judge trust by the
-declared list, so don't over-declare.
+**The `permissions` array must contain exactly the permissions required by the
+handlers you register and every `owncast.*` method you call**, no more and no
+less. A missing permission makes the call throw and/or the host refuse to load
+the plugin. Admins judge trust by the declared list, so don't over-declare.
 
 ## Capability map (intent → handler + API + permission)
 
@@ -79,7 +79,7 @@ declared list, so don't over-declare.
 | Private server-side files                       | (any)                                               | `owncast.fs.*`                                 | `storage.fs`                           |
 | Discord / push / fediverse notification         | (any)                                               | `owncast.notifications.*`                      | `notifications.send`                   |
 | Post publicly to the fediverse (high-trust)     | (any)                                               | `owncast.fediverse.post(text)`                 | `fediverse.post`                       |
-| React to fediverse follows/likes/mentions       | `@plugin.on_fediverse_*`                            | —                                              | —                                      |
+| React to any verified inbound fediverse activity | `@plugin.on_fediverse` gets a non-subscriptable `_Obj` attribute view. Use `payload.raw` for the underlying dictionary and keys like `@context`. Specialized handlers: `@plugin.on_fediverse_follow/like/repost/quote/mention/reply` | none | `fediverse.inbound` |
 | Read/change video config                        | (any)                                               | `owncast.video_config.read/write`              | `videoconfig.read` / `videoconfig.write` |
 | Compose with other plugins                      | emit `owncast.events.emit`, receive `@plugin.on(...)` | `owncast.events.emit(type, payload)`         | `events.emit` (emitter only)           |
 | Gate the whole site behind a member login (paywall) | `@plugin.on_http_request` (login flow) + `@plugin.on_auth_check` (re-validation) | `owncast.users.register` + `owncast.auth.grant_session/end_session` | `auth.gate` + `users.register` (+ `http.serve`) |

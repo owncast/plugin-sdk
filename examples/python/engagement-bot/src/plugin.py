@@ -35,6 +35,34 @@ def on_fediverse_follow(event):
     })
 
 
+@plugin.on_fediverse_like
+def on_fediverse_like(event):
+    owncast.notifications.discord(
+        f"like from {event.actor.handle}: {event.target.url}"
+    )
+
+
+@plugin.on_fediverse_repost
+def on_fediverse_repost(event):
+    owncast.notifications.discord(
+        f"repost from {event.actor.handle}: {event.target.url}"
+    )
+
+
+@plugin.on_fediverse_quote
+def on_fediverse_quote(event):
+    owncast.notifications.discord(
+        f"quote from {event.actor.handle}: {event.target.url}"
+    )
+
+
+@plugin.on_fediverse
+def on_fediverse(activity):
+    owncast.notifications.discord(
+        f"activity {activity.type}: {activity.actor} -> {activity.object}"
+    )
+
+
 def _snippet(text):
     text = text or ""
     return text[:200] + "…" if len(text) > 200 else text
