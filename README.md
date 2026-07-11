@@ -1,6 +1,6 @@
-# owncast-plugin-sdk (PoC)
+# owncast-plugin-sdk
 
-Standalone proof-of-concept exploring an in-process plugin system for [Owncast](https://owncast.online): JavaScript and Python plugins that ship as source and run on language engines embedded inside a Go host via [Extism](https://extism.org) (which uses [Wazero](https://wazero.io), pure Go, no CGo).
+An in-process plugin system for [Owncast](https://owncast.online): JavaScript and Python plugins that ship as source and run on language engines embedded inside a Go host via [Extism](https://extism.org) (which uses [Wazero](https://wazero.io), pure Go, no CGo).
 
 This isn't part of Owncast yet. It's a sandbox to validate the architecture.
 
