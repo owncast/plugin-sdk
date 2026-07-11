@@ -244,9 +244,9 @@ privately to whoever sent a message, pass `msg` (or `msg.clientId`) to
 
 `onFediverseFollow` receives `{actor}`. `onFediverseLike`, `onFediverseRepost`, and `onFediverseQuote` receive `{actor, target}`. `actor` uses the SDK's `FediverseActor` shape. `target` is `{url: string}`. For a quote, it identifies the locally authored post that the remote actor quoted.
 
-`onFediverse` receives the verified inbound ActivityPub activity as its raw JSON object after the host validates the HTTP signature and actor origin. It fires in addition to a specialized handler when one applies. It also fires for verified activity types that have no specialized handler.
+`onFediverse` receives the verified inbound ActivityPub activity after the host validates the HTTP signature and actor origin. In JavaScript, the payload is the raw JSON object. It fires in addition to a specialized handler when one applies. It also fires for verified activity types that have no specialized handler.
 
-Python exposes the same hooks as `@plugin.on_fediverse`, `@plugin.on_fediverse_follow`, `@plugin.on_fediverse_like`, `@plugin.on_fediverse_repost`, `@plugin.on_fediverse_quote`, `@plugin.on_fediverse_mention`, and `@plugin.on_fediverse_reply`. The payload semantics are identical.
+Python exposes the same hooks as `@plugin.on_fediverse`, `@plugin.on_fediverse_follow`, `@plugin.on_fediverse_like`, `@plugin.on_fediverse_repost`, `@plugin.on_fediverse_quote`, `@plugin.on_fediverse_mention`, and `@plugin.on_fediverse_reply`. Python notify payloads are non-subscriptable `_Obj` attribute views. Read normal fields as attributes, or use `.raw` for the underlying dictionary and keys that are not valid Python attributes, such as `payload.raw["@context"]`.
 
 ### Fediverse inbound posts
 
