@@ -58,7 +58,7 @@ the plugin. Admins judge trust by the declared list, so don't over-declare.
 | React to chat messages                          | `onChatMessage(msg)`                         | —                                         | — (`chat.send` to reply)               |
 | Reply / post in chat                            | (any)                                        | `owncast.chat.send(text)` / `.sendAction` | `chat.send`                            |
 | Whisper privately to a sender                   | `onChatMessage`/`filterChatMessage`          | `owncast.chat.replyTo(msg, text)`         | `chat.send`                            |
-| Run chat commands (`!cmd`)                      | `onChatMessage: defineCommands({...})`       | `ctx.reply` / `ctx.replyPrivately`        | `chat.send`                            |
+| Run chat commands (`!cmd`)                      | `commands: { cmd: { run(ctx) {} } }`         | `ctx.reply` / `ctx.replyPrivately`        | `chat.send` to reply                  |
 | Inspect/modify/drop every message (moderate)    | `filterChatMessage(msg)`                     | `filter.pass/modify/drop`                 | `chat.filter` (required for handler)   |
 | Delete a message / kick a client                | (any)                                        | `owncast.chat.deleteMessage` / `.kick`    | `chat.moderate`                        |
 | Read recent chat / list clients                 | (any)                                        | `owncast.chat.history()` / `.clients()`   | `chat.history`                         |
@@ -91,7 +91,7 @@ the plugin. Admins judge trust by the declared list, so don't over-declare.
 - **No global `setTimeout`.** Use `owncast.timer.*` (timers don't survive a host restart). `Date`/`Date.now()` work normally.
 - **`network.fetch` requires `network.allowedHosts`** in the manifest, e.g. `"network": { "allowedHosts": ["api.example.com"] }`. The bare `"*"` is allowed but must be explicit.
 - **Any UI field** (`actions`, `styles`, `scripts`, `extraPageContent`, `tabs`) **requires `ui.modify`**.
-- **Prefer `defineCommands`** over hand-rolled prefix parsing for chat commands. It gives aliases, per-user cooldowns, and `modOnly` gating.
+- **Declare chat commands in `definePlugin({ commands: {...} })`.** Command tables support aliases, moderator gating, and per-user cooldowns. Unknown and gated invocations are silent.
 - **Config in tests:** `owncast.config.get` returns manifest defaults unless the scenario seeds admin overrides via `given.config` (`"given": { "config": { "key": "value" } }`). Test both the override and the default/unconfigured path.
 - **One `given.httpResponses` entry per URL pattern.** The `url` is a glob on the full URL and the first match wins, so same-URL sequences (401, then 200 after a refresh) can't be modeled by fixtures.
 

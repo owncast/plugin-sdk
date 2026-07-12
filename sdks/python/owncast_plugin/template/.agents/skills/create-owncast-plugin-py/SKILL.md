@@ -180,7 +180,7 @@ Several rows combine for richer plugins.
 | React to chat messages                          | `@plugin.on_chat_message`                           | —                                              | — (add `chat.send` to reply)           |
 | Reply / post in chat                            | (any handler)                                       | `owncast.chat.send(text)` / `.send_action`     | `chat.send`                            |
 | Whisper privately to a sender                   | `on_chat_message` / `filter_chat_message`           | `owncast.chat.reply_to(msg, text)`             | `chat.send`                            |
-| Run chat commands (`!uptime`, etc.)             | `define_commands({...})`                            | `ctx.reply` / `ctx.reply_privately`            | `chat.send`                            |
+| Run chat commands (`!uptime`, etc.)             | `plugin.commands({...})`                             | `ctx.reply` / `ctx.reply_privately`            | `chat.send` to reply                  |
 | Inspect/modify/drop every message (moderation)  | `@plugin.filter_chat_message`                       | `filter.pass_/modify/drop`                     | `chat.filter` (required for the handler) |
 | Delete a message / kick a client                | (any)                                               | `owncast.chat.delete_message` / `.kick`        | `chat.moderate`                        |
 | Read recent chat / list clients                 | (any)                                               | `owncast.chat.history()` / `.clients()`        | `chat.history`                         |
@@ -248,7 +248,8 @@ Important shape/behavior notes:
   account is `None`. Read the name defensively: `msg.user.display_name if
   msg.user else "..."`. For stable per-user state and moderator gating use
   `msg.user.id` and `msg.user.scopes`, never the display name. Use
-  `msg.raw` for the underlying dict. (`define_commands` handles this for you.)
+  `msg.raw` for the underlying dict. Declarative command tables handle
+  moderator gating automatically.
 - **Chat text is HTML-escaped on display.** `chat.send`/`send_action` take plain
   text. The exception is `chat.system(body)`, whose body renders as HTML, so escape
   untrusted content yourself.
@@ -258,9 +259,9 @@ Important shape/behavior notes:
 - **`filter.pass_()` has a trailing underscore** (`pass` is a Python keyword).
 - **No `time.sleep` / threads for delays.** Use `owncast.timer.*`. Timers don't
   survive a host restart.
-- **Chat commands:** prefer `define_commands({...})` over hand-rolled parsing. It
-  gives aliases, per-user cooldowns, and `mod_only` gating for free. Wire it with
-  `@plugin.on_chat_message`.
+- **Chat commands:** declare commands with `plugin.commands({...})`. Command
+  tables support prefixes, aliases, parsed arguments, moderator gating, and
+  per-user cooldowns. Unknown and gated invocations are silent.
 
 ## The manifest
 

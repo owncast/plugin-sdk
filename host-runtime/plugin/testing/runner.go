@@ -195,6 +195,19 @@ func runStep(ctx context.Context, d *plugin.Dispatcher, server *plugin.Server, l
 		}
 		return nil
 	}
+	if step.Event == plugin.EventChatMessageReceived {
+		encoded, err := json.Marshal(step.Payload)
+		if err != nil {
+			return fmt.Errorf("marshal chat event: %w", err)
+		}
+		var msg plugin.HostChatMessage
+		if err := json.Unmarshal(encoded, &msg); err != nil {
+			return fmt.Errorf("decode chat event: %w", err)
+		}
+		d.Notify(ctx, step.Event, msg)
+		d.DispatchCommands(ctx, msg)
+		return nil
+	}
 	d.Notify(ctx, step.Event, step.Payload)
 	return nil
 }
@@ -319,37 +332,37 @@ func checkExpectations(res *Result, e *ScenarioExpect, mock *MockHost, pluginNam
 		// Treat nil and empty-slice as equivalent: scenarios commonly write
 		// "chatSends": [] to assert "no chat sends happened" and the recorded
 		// slice may be nil if no callback fired.
-		if !(len(e.ChatSends) == 0 && len(got) == 0) && !reflect.DeepEqual(e.ChatSends, got) {
+		if (len(e.ChatSends) != 0 || len(got) != 0) && !reflect.DeepEqual(e.ChatSends, got) {
 			res.Errors = append(res.Errors, fmt.Sprintf("chatSends mismatch:\n  want %v\n  got  %v", e.ChatSends, got))
 		}
 	}
 	if e.ChatActions != nil {
 		got := mock.ChatActions()
-		if !(len(e.ChatActions) == 0 && len(got) == 0) && !reflect.DeepEqual(e.ChatActions, got) {
+		if (len(e.ChatActions) != 0 || len(got) != 0) && !reflect.DeepEqual(e.ChatActions, got) {
 			res.Errors = append(res.Errors, fmt.Sprintf("chatActions mismatch:\n  want %v\n  got  %v", e.ChatActions, got))
 		}
 	}
 	if e.ChatSystems != nil {
 		got := mock.ChatSystems()
-		if !(len(e.ChatSystems) == 0 && len(got) == 0) && !reflect.DeepEqual(e.ChatSystems, got) {
+		if (len(e.ChatSystems) != 0 || len(got) != 0) && !reflect.DeepEqual(e.ChatSystems, got) {
 			res.Errors = append(res.Errors, fmt.Sprintf("chatSystems mismatch:\n  want %v\n  got  %v", e.ChatSystems, got))
 		}
 	}
 	if e.DeletedMessages != nil {
 		got := mock.DeletedMessages()
-		if !(len(e.DeletedMessages) == 0 && len(got) == 0) && !reflect.DeepEqual(e.DeletedMessages, got) {
+		if (len(e.DeletedMessages) != 0 || len(got) != 0) && !reflect.DeepEqual(e.DeletedMessages, got) {
 			res.Errors = append(res.Errors, fmt.Sprintf("deletedMessages mismatch:\n  want %v\n  got  %v", e.DeletedMessages, got))
 		}
 	}
 	if e.KickedClients != nil {
 		got := mock.KickedClients()
-		if !(len(e.KickedClients) == 0 && len(got) == 0) && !reflect.DeepEqual(e.KickedClients, got) {
+		if (len(e.KickedClients) != 0 || len(got) != 0) && !reflect.DeepEqual(e.KickedClients, got) {
 			res.Errors = append(res.Errors, fmt.Sprintf("kickedClients mismatch:\n  want %v\n  got  %v", e.KickedClients, got))
 		}
 	}
 	if e.DiscordPosts != nil {
 		got := mock.DiscordPosts()
-		if !(len(e.DiscordPosts) == 0 && len(got) == 0) && !reflect.DeepEqual(e.DiscordPosts, got) {
+		if (len(e.DiscordPosts) != 0 || len(got) != 0) && !reflect.DeepEqual(e.DiscordPosts, got) {
 			res.Errors = append(res.Errors, fmt.Sprintf("discordPosts mismatch:\n  want %v\n  got  %v", e.DiscordPosts, got))
 		}
 	}
@@ -380,7 +393,7 @@ func checkExpectations(res *Result, e *ScenarioExpect, mock *MockHost, pluginNam
 	}
 	if e.BannedIPs != nil {
 		got := mock.BannedIPs()
-		if !(len(e.BannedIPs) == 0 && len(got) == 0) && !reflect.DeepEqual(e.BannedIPs, got) {
+		if (len(e.BannedIPs) != 0 || len(got) != 0) && !reflect.DeepEqual(e.BannedIPs, got) {
 			res.Errors = append(res.Errors, fmt.Sprintf("bannedIPs mismatch:\n  want %v\n  got  %v", e.BannedIPs, got))
 		}
 	}
@@ -467,7 +480,7 @@ func checkExpectations(res *Result, e *ScenarioExpect, mock *MockHost, pluginNam
 	}
 	if e.FediverseOutbox != nil {
 		got := mock.FediverseOutbox()
-		if !(len(e.FediverseOutbox) == 0 && len(got) == 0) && !reflect.DeepEqual(e.FediverseOutbox, got) {
+		if (len(e.FediverseOutbox) != 0 || len(got) != 0) && !reflect.DeepEqual(e.FediverseOutbox, got) {
 			res.Errors = append(res.Errors, fmt.Sprintf("fediverseOutbox mismatch:\n  want %v\n  got  %v", e.FediverseOutbox, got))
 		}
 	}
@@ -488,7 +501,7 @@ func checkExpectations(res *Result, e *ScenarioExpect, mock *MockHost, pluginNam
 	}
 	if e.VideoConfigWrites != nil {
 		got := mock.VideoConfigWrites()
-		if !(len(e.VideoConfigWrites) == 0 && len(got) == 0) && !reflect.DeepEqual(e.VideoConfigWrites, got) {
+		if (len(e.VideoConfigWrites) != 0 || len(got) != 0) && !reflect.DeepEqual(e.VideoConfigWrites, got) {
 			res.Errors = append(res.Errors, fmt.Sprintf("videoConfigWrites mismatch:\n  want %v\n  got  %v", e.VideoConfigWrites, got))
 		}
 	}
@@ -563,6 +576,12 @@ func checkExpectations(res *Result, e *ScenarioExpect, mock *MockHost, pluginNam
 			}
 			if want.ModOnly != got.ModOnly {
 				res.Errors = append(res.Errors, fmt.Sprintf("commands[%q].modOnly: want %v got %v", want.Name, want.ModOnly, got.ModOnly))
+			}
+			if want.CaseSensitive != got.CaseSensitive {
+				res.Errors = append(res.Errors, fmt.Sprintf("commands[%q].caseSensitive: want %v got %v", want.Name, want.CaseSensitive, got.CaseSensitive))
+			}
+			if want.CooldownMs != got.CooldownMs {
+				res.Errors = append(res.Errors, fmt.Sprintf("commands[%q].cooldownMs: want %d got %d", want.Name, want.CooldownMs, got.CooldownMs))
 			}
 		}
 	}

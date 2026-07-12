@@ -12,7 +12,7 @@ Every plugin must export these functions:
 
 | Function          | Input                      | Output                      | Purpose                                                                                               |
 | ----------------- | -------------------------- | --------------------------- | ----------------------------------------------------------------------------------------------------- |
-| `register`        | none                       | JSON `Manifest`             | Returns the plugin's derived `subscriptions` (compared against the static `plugin.manifest.json`) and its chat `commands` metadata (aggregated by the host for `!help`). |
+| `register`        | none                       | JSON `Manifest`             | Returns derived subscriptions and command declarations.                                               |
 | `on_event`        | JSON `Envelope`            | none                        | Notification dispatch. Fire-and-forget.                                                               |
 | `on_filter`       | JSON `Envelope`            | JSON `FilterResult`         | Filter chain entry point.                                                                             |
 | `on_http_request` | JSON `IncomingHttpRequest` | JSON `OutgoingHttpResponse` | HTTP request handler for `/plugins/<name>/*`.                                                         |
@@ -29,10 +29,31 @@ Every plugin must export these functions:
 ### `register` output
 
 `register` returns the static manifest echoed back, plus two fields the SDK
-derives at runtime (so authors maintain neither by hand):
+derives at runtime:
 
-- **`subscriptions`**: `{ notify: [{event}], filter: [{event, priority?}] }`, derived from which handlers the plugin defined. The host validates these against the sidecar manifest's permissions.
-- **`commands`**: `[{ name, prefix, description?, usage?, aliases?, modOnly? }]`, derived from the plugin's `defineCommands`/`commands` table. Purely informational: the host aggregates it across all loaded plugins to answer the host-owned `!help` (the plugin's own router does the matching). Empty when the plugin declares no commands.
+- **`subscriptions`**: `{ notify: [{event}], filter: [{event, priority?}] }`,
+  derived from the plugin's ordinary handlers. The host validates these against
+  the sidecar manifest's permissions.
+- **`commands`**:
+  `[{ name, prefix, description?, usage?, aliases?, modOnly?, caseSensitive?, cooldownMs? }]`.
+  The host matches accepted human chat messages against every loaded plugin's
+  declarations. Duplicate commands all run. Moderator failures, cooldown
+  rejections, and unknown commands are silent. The same metadata builds the
+  built-in `!help` response.
+
+Matched declarations receive an internal `chat.command` envelope through
+`on_event`. Its payload is
+`{ message, command, invokedAs, args, argString }`. `message` is the original
+`ChatMessage`, `command` is the canonical declaration, and `invokedAs` preserves
+the name or alias the sender typed. The SDK maps this event to the declared
+handler. Plugins do not subscribe to `chat.command`, cannot emit it, and need no
+permission to receive it. Permissions still apply to actions taken by the
+handler.
+
+Command matching runs after chat filters and ordinary chat notification.
+Filtered messages cannot execute commands. Command messages, including
+`!help`, remain ordinary chat messages. Owncast's built-in help response does
+not prevent plugins from also responding.
 
 ## Imports (host → plugin)
 

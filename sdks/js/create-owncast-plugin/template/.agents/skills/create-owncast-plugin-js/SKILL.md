@@ -174,7 +174,7 @@ combine for richer plugins.
 | React to chat messages                          | `onChatMessage(msg)`                         | —                                         | — (add `chat.send` to reply)           |
 | Reply / post in chat                            | (any handler)                                | `owncast.chat.send(text)` / `.sendAction` | `chat.send`                            |
 | Whisper privately to a sender                   | `onChatMessage`/`filterChatMessage`          | `owncast.chat.replyTo(msg, text)`         | `chat.send`                            |
-| Run chat commands (`!uptime`, etc.)             | `onChatMessage: defineCommands({...})`       | `ctx.reply` / `ctx.replyPrivately`        | `chat.send`                            |
+| Run chat commands (`!uptime`, etc.)             | `commands: { uptime: { run(ctx) {} } }`      | `ctx.reply` / `ctx.replyPrivately`        | `chat.send` to reply                  |
 | Inspect/modify/drop every message (moderation)  | `filterChatMessage(msg)`                     | `filter.pass/modify/drop`                 | `chat.filter` (required for the handler) |
 | Delete a message / kick a client                | (any)                                        | `owncast.chat.deleteMessage` / `.kick`    | `chat.moderate`                        |
 | Read recent chat / list clients                 | (any)                                        | `owncast.chat.history()` / `.clients()`   | `chat.history`                         |
@@ -243,8 +243,8 @@ Important shape/behavior notes:
   `typeof msg.user === "string" ? msg.user : msg.user?.displayName`. For stable
   per-user state and moderator gating use the object form (`msg.user?.id`,
   `msg.user?.scopes?.includes("MODERATOR")`), never match on display name, and
-  treat a string or absent user as having no id/scopes. (`defineCommands` handles
-  this for you.)
+  treat a string or absent user as having no id/scopes. Declarative command
+  tables handle moderator gating automatically.
 - **Chat text is HTML-escaped on display.** `chat.send`/`sendAction` take plain
   text. The exception is `chat.system(body)`, whose body renders as HTML, so escape
   untrusted content yourself.
@@ -253,9 +253,9 @@ Important shape/behavior notes:
   failures auto-disable the plugin for the session.
 - **`Date`/`Date.now()` work**, but there is no global `setTimeout`. Use
   `owncast.timer.*`. Timers don't survive a host restart.
-- **Chat commands:** prefer `defineCommands({ prefix:"!", commands:{...} })` over
-  hand-rolled parsing. It gives aliases, per-user cooldowns, and `modOnly`
-  gating for free. Wire it as `onChatMessage: commands`.
+- **Chat commands:** declare a `commands` table in `definePlugin`. Command
+  tables support prefixes, aliases, parsed arguments, moderator gating, and
+  per-user cooldowns. Unknown and gated invocations are silent.
 
 ## The manifest
 

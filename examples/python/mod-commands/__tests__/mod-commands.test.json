@@ -40,27 +40,27 @@
     "expect": { "chatSends": ["Announcement: going live in 5"] }
   },
   {
-    "name": "?announce is denied for non-moderators",
+    "name": "?announce is silent for non-moderators",
     "events": [
       {
         "event": "chat.message.received",
         "payload": { "id": "m3", "user": { "id": "u-viewer", "displayName": "viewer" }, "body": "?announce let me in", "timestamp": "2026-01-01T00:00:02Z" }
       }
     ],
-    "expect": { "chatSends": ["Only moderators can use ?announce."] }
+    "expect": { "chatSends": [] }
   },
   {
-    "name": "an unknown ?command hits onUnknownCommand",
+    "name": "an unknown ?command is silent",
     "events": [
       {
         "event": "chat.message.received",
         "payload": { "id": "m4", "user": { "id": "u-viewer", "displayName": "viewer" }, "body": "?bogus", "timestamp": "2026-01-01T00:00:03Z" }
       }
     ],
-    "expect": { "chatSends": ["Unknown command \"?bogus\". Try ?ping."] }
+    "expect": { "chatSends": [] }
   },
   {
-    "name": "the command router and onChatMessage both run on one message",
+    "name": "command and ordinary chat handlers both run",
     "events": [
       {
         "event": "chat.message.received",
@@ -68,6 +68,20 @@
       }
     ],
     "expect": { "chatSends": ["pong"], "chatSystems": ["(command: ?ping)"] }
+  },
+  {
+    "name": "core enforces per-user cooldowns",
+    "events": [
+      {
+        "event": "chat.message.received",
+        "payload": { "id": "m4c", "user": { "id": "u-viewer", "displayName": "viewer" }, "body": "?ping", "timestamp": "2026-01-01T00:00:10Z" }
+      },
+      {
+        "event": "chat.message.received",
+        "payload": { "id": "m4d", "user": { "id": "u-viewer", "displayName": "viewer" }, "body": "?ping", "timestamp": "2026-01-01T00:00:11Z" }
+      }
+    ],
+    "expect": { "chatSends": ["pong"] }
   },
   {
     "name": "commands are advertised for the unified !help",
@@ -80,7 +94,7 @@
     "expect": {
       "chatSends": [],
       "commands": [
-        { "name": "ping", "prefix": "?", "description": "Check the bot is alive", "aliases": ["p"] },
+        { "name": "ping", "prefix": "?", "description": "Check the bot is alive", "aliases": ["p"], "cooldownMs": 30000 },
         { "name": "announce", "prefix": "?", "usage": "?announce <message>", "modOnly": true }
       ]
     }
