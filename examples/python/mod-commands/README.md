@@ -1,35 +1,30 @@
 # Mod Commands
 
-Demonstrates the declarative command table:
+Demonstrates a declarative command table:
 
 - **A custom prefix.** `prefix="?"` makes the bot answer `?ping` instead of the
   default `!ping`.
 - **Aliases.** `"aliases": ["p"]` lets `?p` run the same command as `?ping`.
 - **Case-insensitive matching.** Names match case-insensitively by default, so
   `?PING` reaches `ping` too.
-- **A moderator-only command.** `mod_only: True` tells the host to run the command
-  only when the sender is a moderator. Everyone else is routed to `on_denied`.
-- **An unknown-command fallback.** `on_unknown` catches a `?`-prefixed message
-  that matches no command in the table.
-- **Composition with `@plugin.on_chat_message`.** A plain handler runs alongside
-  the table (the router runs first, then your handler), here posting a system
-  audit line for each command.
+- **A per-user cooldown.** `"cooldown_ms": 30000` allows one `?ping` response
+  per sender every 30 seconds.
+- **A moderator-only command.** `"mod_only": True` limits the command to
+  moderators. Other invocations are silent.
+- **Composition with `@plugin.on_chat_message`.** A regular chat handler still
+  receives command messages independently, here posting a system audit line.
 
-Moderator gating uses the sender identity the host attaches to each message, so
-it is reliable and never trusts a display name. Each command's metadata (name,
-description, usage, aliases) is reported to the host so it can build a unified
-`!help` across all installed plugins.
-
-For the lower-level router, per-user cooldowns, private replies, and dropping
-command messages from chat with a filter, see the `command-router` example.
+Command declarations support argument parsing, moderator gating, and cooldowns.
+Unknown commands are silent. Descriptions and usage appear in the built-in
+`!help`. Plugins may still receive and respond to `!help` as ordinary chat.
 
 ## Chat commands
 
 | Command | Who can use it | What it does |
 | --- | --- | --- |
 | `?ping` (or `?p`) | anyone | Replies `pong`. |
-| `?announce <message>` | moderators | Posts `Announcement: <message>`. Non-moderators get a polite refusal. |
-| any other `?command` | anyone | Routed to `on_unknown`, which suggests `?ping`. |
+| `?announce <message>` | moderators | Posts `Announcement: <message>`. Non-moderator invocations are silent. |
+| any other `?command` | anyone | No response. |
 
 ## Run it
 

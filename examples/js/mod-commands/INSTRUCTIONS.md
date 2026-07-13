@@ -1,7 +1,7 @@
 # Mod Commands
 
-A small bot showing a custom command prefix, an alias, and a moderator-only
-command.
+A bot showing a custom command prefix, an alias, a per-user cooldown, and a
+moderator-only command.
 
 ## Commands
 
@@ -10,9 +10,9 @@ prefix instead of the usual `!`.
 
 | Command | Who can use it | What it does |
 | --- | --- | --- |
-| `?ping` (or `?p`) | anyone | The bot replies `pong`. `?PING` works too. |
-| `?announce <message>` | moderators only | The bot posts `Announcement: <message>`. A non-moderator who tries it gets told it is moderators only. |
-| any other `?command` | anyone | The bot replies that the command is unknown and suggests `?ping`. |
+| `?ping` (or `?p`) | anyone | The bot replies `pong`. `?PING` works too. Limited to once every 30 seconds per sender. |
+| `?announce <message>` | moderators only | The bot posts `Announcement: <message>`. Non-moderator invocations are silent. |
+| any other `?command` | anyone | No response. |
 
 ## Permissions
 

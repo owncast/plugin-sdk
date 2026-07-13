@@ -61,7 +61,7 @@ host-runtime/            Go module: imports the runtime + builds the two Go CLIs
   cmd/owncast-plugin-test/    scenario test runner
   main.go                a demo host that simulates a stream
 sdks/js/                 @owncast/plugin-sdk, the npm package
-  index.js               definePlugin()/defineCommands() + the owncast.* wrappers
+  index.js               definePlugin(), command handlers + owncast.* wrappers
   index.d.ts             TypeScript types (the author-facing contract)
   bin/owncast-plugin.js  the build/package/test/serve CLI
   scripts/postinstall.js fetches the test/serve binaries
@@ -86,8 +86,8 @@ the exact production code. Key files:
   _discovered_ vs _enabled_, and handles enable/disable/reload. The enabled set
   persists through a pluggable `EnabledStore` (a JSON file by default. Owncast
   swaps in a datastore-backed store).
-- **`dispatcher.go`**, fans events out to subscribed plugins' `on_event`
-  handlers and runs `on_filter` chains (used for chat filtering).
+- **`dispatcher.go`**, fans ordinary events out to subscribed plugins, delivers
+  targeted internal events, and runs `on_filter` chains.
 - **`server.go`** + **`sse.go`**, serve `/plugins/<name>/*` (static assets +
   the plugin's `on_http_request`) and a host-owned Server-Sent-Events endpoint
   the plugin pushes to.
@@ -101,6 +101,9 @@ the exact production code. Key files:
 - **`registry.go`**, the per-plugin identity registry shared host functions look
   up to scope a call (slug, granted permissions, kv namespace, assets). It is the
   call-time replacement for the old per-plugin closures.
+- **`commands.go`**, matches accepted chat messages against every plugin's
+  command declarations, applies moderator gates and cooldowns, and dispatches
+  the internal `chat.command` event to every match.
 - **`help.go`**, the host-owned unified `!help`: aggregates each plugin's
   reported command metadata and renders the listing.
 - **`kv/`**, the key/value store interface plugins get (memory + bolt

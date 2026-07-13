@@ -33,7 +33,7 @@ _IMPORT_RE = re.compile(r"^\s*(from\s+owncast_plugin\s+import\b|import\s+owncast
 # Public SDK names the engine injects as globals. The bundle re-exposes these
 # through a synthetic in-memory `owncast_plugin` module so bundled author files
 # can `from owncast_plugin import ...` like normal Python.
-_SDK_EXPORTS = ("plugin", "owncast", "filter", "define_commands", "CommandContext", "ChatMessage")
+_SDK_EXPORTS = ("plugin", "owncast", "filter", "CommandContext", "ChatMessage")
 
 # Top-level module names that must never be treated as local (and thus shadowed),
 # even if a same-named file sits next to the plugin. Mirrors the engine's stdlib.

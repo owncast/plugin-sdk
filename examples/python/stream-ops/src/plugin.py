@@ -1,7 +1,5 @@
 # stream-ops: exercises read-only broadcast telemetry, the video config
-# read/write pair, and the permission split between them. Commands are declared
-# with plugin.commands(...), so the SDK wires the chat subscription and prefix
-# parsing and there's no on_chat_message to write.
+# read/write pair, the permission split between them, and declarative commands.
 #
 #   !broadcaster   - the inbound encode (resolution + codecs). Read-only
 #                    telemetry under the plain `server.read` permission.

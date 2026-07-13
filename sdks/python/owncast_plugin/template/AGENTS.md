@@ -59,7 +59,7 @@ the plugin. Admins judge trust by the declared list, so don't over-declare.
 | React to chat messages                          | `@plugin.on_chat_message`                           | —                                              | — (`chat.send` to reply)               |
 | Reply / post in chat                            | (any)                                               | `owncast.chat.send(text)` / `.send_action`     | `chat.send`                            |
 | Whisper privately to a sender                   | `on_chat_message` / `filter_chat_message`           | `owncast.chat.reply_to(msg, text)`             | `chat.send`                            |
-| Run chat commands (`!cmd`)                      | `define_commands({...})`                            | `ctx.reply` / `ctx.reply_privately`            | `chat.send`                            |
+| Run chat commands (`!cmd`)                      | `plugin.commands({...})`                             | `ctx.reply` / `ctx.reply_privately`            | `chat.send` to reply                  |
 | Inspect/modify/drop every message (moderate)    | `@plugin.filter_chat_message`                       | `filter.pass_/modify/drop`                     | `chat.filter` (required for handler)   |
 | Delete a message / kick a client                | (any)                                               | `owncast.chat.delete_message` / `.kick`        | `chat.moderate`                        |
 | Read recent chat / list clients                 | (any)                                               | `owncast.chat.history()` / `.clients()`        | `chat.history`                         |
@@ -107,8 +107,9 @@ the plugin. Admins judge trust by the declared list, so don't over-declare.
 - **Pure-Python only.** Dependencies with C extensions (numpy, pandas, …) won't
   load on the embedded engine. Don't shadow stdlib names (e.g. a top-level
   `def json(...)`): your code runs in the same global scope as the runtime.
-- **Prefer `define_commands`** over hand-rolled prefix parsing for chat commands.
-  It gives aliases, per-user cooldowns, and `mod_only` gating.
+- **Declare chat commands with `plugin.commands({...})`.** Command tables support
+  aliases, moderator gating, and per-user cooldowns. Unknown and gated
+  invocations are silent.
 - **Config in tests:** `owncast.config.get` returns manifest defaults unless the
   scenario seeds admin overrides via `given.config`
   (`"given": { "config": { "key": "value" } }`). Test both the override and the

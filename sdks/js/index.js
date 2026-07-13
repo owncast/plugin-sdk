@@ -7,9 +7,7 @@
 
 let registered = null;
 
-// Command metadata recorded by defineCommands, reported to the host via
-// register() so it can build a unified `!help` across all plugins. One entry
-// per command: { name, prefix, description, usage, aliases, modOnly }.
+// Command registrations used for matching, dispatch, and the unified `!help`.
 const commandManifest = [];
 
 // Host-driven timers. The sandbox has no setTimeout, so owncast.timer.* asks
@@ -51,6 +49,13 @@ const Events = Object.freeze({
   FediverseMention: "fediverse.mention",
   FediverseReply: "fediverse.reply",
 });
+
+const InternalEvents = Object.freeze({
+  ChatCommand: "chat.command",
+  TimerFire: "timer.fire",
+});
+
+const DefaultCommandPrefix = "!";
 
 const Permissions = Object.freeze({
   ChatSend: "chat.send",
@@ -186,146 +191,66 @@ const isFn = (x) => typeof x === "function";
 const isObj = (x) => x !== null && typeof x === "object";
 
 function definePlugin(def) {
-  // `commands` is declarative sugar: give definePlugin a command table (and an
-  // optional commandPrefix) and the SDK wires the chat subscription for you —
-  // no onChatMessage needed. It expands into an onChatMessage handler here, so
-  // subscription derivation and dispatch treat it like any chat handler. If you
-  // also pass onChatMessage, the command router runs first, then your handler.
-  // For advanced composition (e.g. dropping command messages from chat via a
-  // filter), use the lower-level defineCommands() router directly instead.
-  if (def && isObj(def.commands)) {
-    const router = defineCommands({
-      prefix: def.commandPrefix,
-      caseSensitive: def.commandsCaseSensitive,
-      commands: def.commands,
-      onUnknown: def.onUnknownCommand,
-    });
-    const userHandler = def.onChatMessage;
-    def.onChatMessage = isFn(userHandler)
-      ? (msg) => {
-          router(msg);
-          userHandler(msg);
-        }
-      : router;
-  }
   registered = def;
-  return def;
-}
+  commandManifest.length = 0;
+  if (!def || !isObj(def.commands)) return def;
 
-// defineCommands builds a chat-command router so plugins stop reimplementing
-// prefix parsing, aliases, per-user cooldowns, and moderator gating. It returns
-// a function you feed a ChatMessage (from onChatMessage or filterChatMessage).
-// It parses the command and invokes the matching handler's run(ctx). The return
-// value is true when the message was a command (even if gated), false when it
-// wasn't — so a filter can drop command messages from chat:
-//
-//   const commands = defineCommands({
-//     prefix: "!",
-//     commands: {
-//       uptime: { run: (ctx) => ctx.reply("up!") },
-//       ban: { modOnly: true, cooldownMs: 5000, run: (ctx) => ctx.reply(`bye ${ctx.args[0]}`) },
-//     },
-//   });
-//   module.exports = definePlugin({
-//     onChatMessage: commands,
-//     // or, to hide command messages from chat:
-//     // filterChatMessage: (msg) => (commands(msg) ? filter.drop("command") : filter.pass()),
-//   });
-//
-// run(ctx) receives { msg, user, command, args, argString, reply, replyPrivately }.
-// reply posts publicly. replyPrivately whispers to the sender (falling back to a
-// public post if their connection is unknown). Optional hooks: per-command or
-// top-level onCooldown(ctx) / onDenied(ctx), and a top-level onUnknown(ctx).
-function defineCommands(config) {
-  config = config || {};
-  const prefix = config.prefix || "!";
-  const caseSensitive = !!config.caseSensitive;
-  const norm = (s) => (caseSensitive ? s : s.toLowerCase());
-
-  // Resolve every name and alias to its canonical command definition, and
-  // record metadata so the host can build a unified `!help` (see
-  // describeCommands). Metadata is reported via register() and never affects
-  // routing.
-  const table = new Map();
-  const defs = config.commands || {};
-  for (const name of Object.keys(defs)) {
-    const def = defs[name];
-    table.set(norm(name), { name, def });
-    for (const alias of def.aliases || []) table.set(norm(alias), { name, def });
+  const prefix =
+    def.commandPrefix == null ? DefaultCommandPrefix : def.commandPrefix;
+  if (typeof prefix !== "string" || prefix.length === 0) {
+    throw new TypeError("commandPrefix must be a non-empty string");
+  }
+  const caseSensitive = !!def.commandsCaseSensitive;
+  for (const name of Object.keys(def.commands)) {
+    const command = def.commands[name];
+    if (!isObj(command)) {
+      throw new TypeError(`command "${name}" must be an object`);
+    }
+    const aliases = command.aliases == null ? [] : command.aliases;
+    if (
+      !Array.isArray(aliases) ||
+      !aliases.every((alias) => typeof alias === "string")
+    ) {
+      throw new TypeError(`command "${name}" aliases must be an array of strings`);
+    }
+    const cooldownMs =
+      command.cooldownMs == null ? 0 : command.cooldownMs;
+    if (!Number.isSafeInteger(cooldownMs) || cooldownMs < 0) {
+      throw new TypeError(`command "${name}" cooldownMs must be a non-negative integer`);
+    }
     commandManifest.push({
       name,
       prefix,
-      description: def.description || "",
-      usage: def.usage || "",
-      aliases: def.aliases || [],
-      modOnly: !!def.modOnly,
+      description: command.description || "",
+      usage: command.usage || "",
+      aliases,
+      modOnly: !!command.modOnly,
+      caseSensitive,
+      cooldownMs,
     });
   }
+  return def;
+}
 
-  // Per-(command,user) cooldown clock, in memory for the plugin's lifetime.
-  const lastRun = new Map();
+function dispatchCommand(event) {
+  if (!isObj(event)) return;
+  if (!registered || !isObj(registered.commands)) return;
+  const command = registered.commands[event.command];
+  if (!command || !isFn(command.run)) return;
 
-  return function handle(msg) {
-    const body = (msg && msg.body) || "";
-    if (!body.startsWith(prefix)) return false;
-    const rest = body.slice(prefix.length);
-    const parts = rest.split(/\s+/).filter(Boolean);
-    if (parts.length === 0) return false;
-    const called = parts[0];
-    const args = parts.slice(1);
-    const argString = rest.slice(called.length).trim();
-
-    const ctx = {
-      msg,
-      user: msg && msg.user,
-      command: norm(called),
-      args,
-      argString,
-      reply: (text) => owncast.chat.send(text),
-      replyPrivately: (text) => {
-        if (!owncast.chat.replyTo(msg, text)) owncast.chat.send(text);
-      },
-    };
-
-    const entry = table.get(norm(called));
-    if (!entry) {
-      if (isFn(config.onUnknown)) config.onUnknown(ctx);
-      return false;
-    }
-    const { name, def } = entry;
-    ctx.command = name;
-
-    // Moderator gating: the sender's scopes must include MODERATOR.
-    if (def.modOnly) {
-      const scopes = (msg.user && msg.user.scopes) || [];
-      if (!scopes.includes("MODERATOR")) {
-        if (isFn(def.onDenied)) def.onDenied(ctx);
-        else if (isFn(config.onDenied)) config.onDenied(ctx);
-        return true; // matched a command, but the caller wasn't allowed
-      }
-    }
-
-    // Per-user cooldown, clocked off msg.timestamp so it's deterministic in
-    // tests and independent of any sandbox clock quirks.
-    const cooldownMs = def.cooldownMs || 0;
-    if (cooldownMs > 0) {
-      const userId =
-        (msg.user && msg.user.id) ||
-        (msg.clientId != null ? `c${msg.clientId}` : "anon");
-      const key = `${name} ${userId}`;
-      const now = msg.timestamp ? new Date(msg.timestamp).getTime() : 0;
-      const prev = lastRun.get(key);
-      if (now && prev && now - prev < cooldownMs) {
-        if (isFn(def.onCooldown)) def.onCooldown(ctx);
-        else if (isFn(config.onCooldown)) config.onCooldown(ctx);
-        return true;
-      }
-      if (now) lastRun.set(key, now);
-    }
-
-    if (isFn(def.run)) def.run(ctx);
-    return true;
-  };
+  const msg = event.message;
+  command.run({
+    msg,
+    user: msg && msg.user,
+    command: event.command,
+    invokedAs: event.invokedAs || event.command,
+    args: event.args || [],
+    argString: event.argString || "",
+    reply: (text) => owncast.chat.send(text),
+    replyPrivately: (text) => {
+      if (!owncast.chat.replyTo(msg, text)) owncast.chat.send(text);
+    },
+  });
 }
 
 // Used by the build-generated entry to compute subscriptions for register().
@@ -356,9 +281,8 @@ function describeSubscriptions() {
   return { notify, filter: filterSubs };
 }
 
-// Used by the build-generated entry to report the plugin's chat commands in
-// register(), so the host can answer a unified `!help`. Empty when the plugin
-// declares no commands.
+// Used by the build-generated entry to report command registrations to the
+// host for matching, dispatch, and the unified `!help`.
 function describeCommands() {
   return commandManifest;
 }
@@ -368,13 +292,17 @@ function dispatchEvent(envelope) {
   // Internal: a host-scheduled timer elapsed. Run the author's callback,
   // dropping one-shot entries first so a throw still cleans up. Not routed to
   // user handlers or the `on` map.
-  if (eventType === "timer.fire") {
+  if (eventType === InternalEvents.TimerFire) {
     const id = payload && payload.id;
     const entry = timerCallbacks.get(id);
     if (entry) {
       if (!entry.repeat) timerCallbacks.delete(id);
       entry.fn();
     }
+    return;
+  }
+  if (eventType === InternalEvents.ChatCommand) {
+    dispatchCommand(payload);
     return;
   }
   if (!registered) return;
@@ -949,7 +877,6 @@ function dispatchPageScripts() {
 
 module.exports = {
   definePlugin,
-  defineCommands,
   owncast,
   filter,
   authCheck,

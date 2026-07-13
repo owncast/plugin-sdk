@@ -7,8 +7,7 @@ One self-contained npm project per directory. Each has its own `README.md` with 
 | [hello-world](./hello-world/)                     | Minimum viable plugin, proves the load + `register()` path works.                                       |
 | [chat-logger](./chat-logger/)                     | Logs every chat message. The simplest notification handler.                                             |
 | [echo-bot](./echo-bot/)                           | Posts a reply to every chat message via `owncast.chat.send`.                                            |
-| [mod-commands](./mod-commands/)                   | Declarative `commands` table: custom prefix, aliases, mod-only + `onDenied`, `onUnknownCommand`, `onChatMessage` composition, `!help` metadata. |
-| [command-router](./command-router/)              | Low-level `defineCommands` + `filterChatMessage`: case-sensitive matching, per-user cooldowns, private replies, drops commands from chat. |
+| [mod-commands](./mod-commands/)                   | Declarative `commands` table: custom prefix, aliases, moderator gating, cooldowns, ordinary chat-handler composition, and `!help` metadata. |
 | [message-counter](./message-counter/)             | Per-user message counter persisted in the plugin's namespaced config.                                   |
 | [profanity-filter](./profanity-filter/)           | `filter.modify(payload)`, rewrites flagged words to asterisks.                                          |
 | [slow-mode](./slow-mode/)                         | `filter.drop(reason)`, rate-limits per user, with plugin-config-backed state.                           |

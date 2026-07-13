@@ -2,11 +2,9 @@
 #
 # On stream lifecycle / chat user activity, it persists a small running
 # state in plugin config (when the stream started, who's currently in
-# chat). Interactive commands (!uptime, !who, !server) are declared with
-# plugin.commands(...), so the SDK wires the chat subscription and there's no
-# on_chat_message. They're answered via owncast.chat.send, posting as the
-# plugin's own bot ("stream-tracker") which the host provisions automatically.
-# Action-style messages announce stream start / title changes.
+# chat). Interactive commands include !uptime, !who, and !server. Replies use
+# owncast.chat.send and post as the plugin's own bot. Action-style messages
+# announce stream start and title changes.
 import json
 from datetime import datetime, timezone
 

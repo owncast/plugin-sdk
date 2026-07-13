@@ -210,19 +210,19 @@ type ScenarioExpect struct {
 	Commands          []ScenarioCommandExpect          `json:"commands,omitempty"`
 }
 
-// ScenarioCommandExpect asserts on one entry of the chat-command manifest the
-// plugin reports in register() — the metadata the host aggregates into the
-// unified `!help`. The plugin's own router does the matching; this only checks
-// what it advertises. Entries are matched by Name (in any order). Prefix,
-// Description, Usage, and Aliases are checked only when set; ModOnly is always
-// checked (so an omitted modOnly asserts a non-moderator command).
+// ScenarioCommandExpect asserts on one core-routed command registration.
+// Entries are matched by Name in any order. Prefix, Description, Usage, and
+// Aliases are checked only when set. ModOnly, CaseSensitive, and CooldownMs are
+// always checked.
 type ScenarioCommandExpect struct {
-	Name        string   `json:"name"`
-	Prefix      string   `json:"prefix,omitempty"`
-	Description string   `json:"description,omitempty"`
-	Usage       string   `json:"usage,omitempty"`
-	Aliases     []string `json:"aliases,omitempty"`
-	ModOnly     bool     `json:"modOnly,omitempty"`
+	Name          string   `json:"name"`
+	Prefix        string   `json:"prefix,omitempty"`
+	Description   string   `json:"description,omitempty"`
+	Usage         string   `json:"usage,omitempty"`
+	Aliases       []string `json:"aliases,omitempty"`
+	ModOnly       bool     `json:"modOnly,omitempty"`
+	CaseSensitive bool     `json:"caseSensitive,omitempty"`
+	CooldownMs    int64    `json:"cooldownMs,omitempty"`
 }
 
 type ScenarioBrowserPushExpect struct {

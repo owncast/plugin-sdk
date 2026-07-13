@@ -390,10 +390,9 @@ filterChatMessage(msg) {
 
 ### Commands and `!help`
 
-Rather than hand-rolling prefix parsing, aliases, cooldowns, and moderator
-gating, declare a **command table** and the SDK wires the chat subscription and
-prefix parsing for you, so there's no `onChatMessage` to write. Give each command
-a `description` so it appears in the built-in `!help`:
+Declare a command table instead of parsing every chat message yourself. Command
+tables support aliases, parsed arguments, moderator gates, and per-user
+cooldowns:
 
 ```js
 const { definePlugin } = require("@owncast/plugin-sdk");
@@ -409,68 +408,70 @@ module.exports = definePlugin({
       description: "Shout out a viewer",
       usage: "!so <name>",
       aliases: ["shoutout"],
-      cooldownMs: 10_000, // per user, clocked off msg.timestamp
+      cooldownMs: 10_000,
       run: (ctx) => ctx.reply(`go follow ${ctx.args[0] || "someone cool"}`),
     },
     clear: {
       description: "Clear the chat",
-      modOnly: true, // requires the sender's scopes to include "MODERATOR"
+      modOnly: true,
       run: (ctx) => ctx.replyPrivately("done"),
-      onDenied: (ctx) => ctx.replyPrivately("mods only"),
     },
   },
-  onUnknownCommand: (ctx) => ctx.replyPrivately(`unknown command: ${ctx.command}`),
 });
 ```
 
-Each `run(ctx)` gets `{ msg, user, command, args, argString, reply, replyPrivately }`.
-`reply` posts publicly, `replyPrivately` whispers to the sender. Gating uses
-the sender identity on the message (`user.scopes`, `user.id`), so it's reliable,
-not a display-name guess.
+Each `run(ctx)` receives
+`{ msg, user, command, invokedAs, args, argString, reply, replyPrivately }`.
+`command` is the canonical declaration. `invokedAs` is the name or alias the
+sender typed. `reply` posts publicly and `replyPrivately` whispers to the
+sender.
 
-**Python** is identical via `plugin.commands(...)` (snake_case fields):
+Python uses the same core behavior through `plugin.commands(...)`:
 
 ```python
-from owncast_plugin import plugin, owncast
+from owncast_plugin import plugin
 
 plugin.commands({
-    "uptime": {"description": "How long we've been live",
-               "run": lambda ctx: ctx.reply("we've been live a while!")},
+    "uptime": {
+        "description": "How long we've been live",
+        "run": lambda ctx: ctx.reply("we've been live a while!"),
+    },
+    "so": {
+        "aliases": ["shoutout"],
+        "cooldown_ms": 10_000,
+        "run": lambda ctx: ctx.reply(
+            f"go follow {ctx.args[0] if ctx.args else 'someone cool'}"
+        ),
+    },
 })
 ```
 
-#### `!help` is automatic
+Command behavior:
 
-The **host** owns `!help`. Type it in chat and the host lists every command's
-`description` across all enabled plugins, posted as a system message. You don't
-implement it, and it works even if your plugin holds no `chat.send` permission.
-`modOnly` commands are hidden from non-moderators. The only thing you do to take
-part is declare a command table with descriptions.
+- Duplicate commands are allowed. Every matching plugin runs.
+- Unknown commands produce no response.
+- Non-moderators do not invoke `modOnly` commands.
+- Cooldown-limited invocations produce no response.
+- Command messages remain ordinary chat messages. A separate
+  `onChatMessage` or `@plugin.on_chat_message` handler still receives them.
+- Chat filters run first. A filtered-out message cannot execute a command.
 
-#### Hand-rolling is fine too
+No permission is required to declare or receive a command. The handler still
+needs the permission for each action it performs, such as `chat.send`,
+`chat.moderate`, or `network.fetch`.
 
-For a single fixed command you can just check `msg.body` in `onChatMessage` (see
-the `ip-bot` and `relay` examples), but you won't show up in `!help` unless
-you declare a command table.
+#### `!help` is automatic but not reserved
 
-#### Low-level router (`defineCommands`)
+Owncast posts an aggregated command list for `!help` and its `!commands` alias.
+The message remains ordinary chat, and plugins may also declare or respond to
+either command. The built-in response does not block additional plugin
+responses. `modOnly` commands are hidden from non-moderators.
 
-The `commands` field is sugar over `defineCommands`, which returns a router you
-feed messages yourself. Reach for it when you want to compose, for example to drop
-command messages from chat via a filter:
+#### Hand-rolling a fixed command
 
-```js
-const { definePlugin, defineCommands, filter } = require("@owncast/plugin-sdk");
-const commands = defineCommands({ commands: { /* same shape as above */ } });
-module.exports = definePlugin({
-  filterChatMessage: (msg) => (commands(msg) ? filter.drop("command") : filter.pass()),
-});
-```
-
-`commands(msg)` returns `true` when the message was a command (even if gated by
-`modOnly`/cooldown), `false` otherwise (Python: `define_commands(...)`). You can
-also combine the `commands` field with your own `onChatMessage`: both run on
-every chat message, the router first, then your handler.
+For a single fixed command, checking `msg.body` in `onChatMessage` is still
+valid. See the `ip-bot` and `relay` examples. Hand-rolled commands do not appear
+in the built-in help listing.
 
 ## Permissions
 

@@ -27,7 +27,11 @@ except ImportError:  # pragma: no cover - dev machine, not wasm
 
 import json
 
-__all__ = ["plugin", "owncast", "filter", "auth_check", "define_commands", "CommandContext"]
+__all__ = ["plugin", "owncast", "filter", "auth_check", "CommandContext"]
+
+_EVENT_CHAT_COMMAND = "chat.command"
+_EVENT_TIMER_FIRE = "timer.fire"
+_DEFAULT_COMMAND_PREFIX = "!"
 
 # Host function table, populated by the build-injected import block (only the
 # host functions the manifest's permissions grant, plus the ambient ones).
@@ -130,30 +134,10 @@ _PAGE_STYLES = [None]   # on_page_styles handler (global, no slug)
 _PAGE_SCRIPTS = [None]  # on_page_scripts handler (global, no slug)
 _FILTER_PRIORITY = [100]  # filter-chain priority for this plugin (lower runs earlier); default matches the JS SDK
 
-# A plugin may use plugin.commands(...) AND @plugin.on_chat_message together. On
-# each chat message the command router runs first, then the on_chat_message
-# handler (which sees every message, so guard with a prefix check if you only want
-# non-command chatter). These hold the two pieces, and _chat_dispatch composes them.
-_COMMANDS_ROUTER = [None]  # the define_commands router, if plugin.commands() used
-_CHAT_HANDLER = [None]     # the @plugin.on_chat_message handler, if registered
-# Command metadata recorded by define_commands, reported to the host via
-# register() so it can build a unified !help. One entry per command:
-# {name, prefix, description, usage, aliases, modOnly}.
+# Command declarations reported to the host and their local handlers. Core
+# matches chat messages and delivers chat.command directly to this plugin.
 _COMMAND_META = []
-
-
-def _chat_dispatch(msg):
-    if _COMMANDS_ROUTER[0] is not None:
-        _COMMANDS_ROUTER[0](msg)
-    if _CHAT_HANDLER[0] is not None:
-        _CHAT_HANDLER[0](msg)
-
-
-def _install_chat_dispatch():
-    # Wired whenever either a command table or an on_chat_message handler is
-    # registered, so registration order doesn't matter and both compose.
-    _NOTIFY["chat.message.received"] = (_chat_dispatch, ChatMessage)
-
+_COMMAND_HANDLERS = {}
 
 def _add_route(methods, path, fn):
     if methods is None:
@@ -170,13 +154,7 @@ class _Plugin:
         event, kind, wrap = _HANDLERS[handler_name]
 
         def deco(fn):
-            # on_chat_message composes with plugin.commands (see _chat_dispatch)
-            # rather than owning the chat.message.received slot outright.
-            if event == "chat.message.received" and kind == "notify":
-                _CHAT_HANDLER[0] = fn
-                _install_chat_dispatch()
-            else:
-                (_FILTER if kind == "filter" else _NOTIFY)[event] = (fn, wrap)
+            (_FILTER if kind == "filter" else _NOTIFY)[event] = (fn, wrap)
             return fn
 
         return deco
@@ -272,27 +250,47 @@ class _Plugin:
         _PAGE_SCRIPTS[0] = fn
         return fn
 
-    def commands(self, table, *, prefix="!", case_sensitive=False, on_unknown=None):
-        """Declare a chat-command table. The SDK wires the chat subscription for
-        you, so no @plugin.on_chat_message is needed:
-
-            plugin.commands({
-                "uptime": {"description": "Stream uptime", "run": lambda ctx: ctx.reply("up!")},
+    def commands(self, table, *, prefix=_DEFAULT_COMMAND_PREFIX, case_sensitive=False):
+        """Declare chat commands."""
+        if not isinstance(table, dict):
+            raise TypeError("commands table must be a dict")
+        if not isinstance(prefix, str) or not prefix:
+            raise TypeError("command prefix must be a non-empty string")
+        for name, command in table.items():
+            if not isinstance(command, dict):
+                raise TypeError(f'command "{name}" must be a dict')
+            aliases = command.get("aliases")
+            if aliases is None:
+                aliases = []
+            if not isinstance(aliases, list) or not all(
+                isinstance(alias, str) for alias in aliases
+            ):
+                raise TypeError(
+                    f'command "{name}" aliases must be a list of strings'
+                )
+            cooldown_ms = command.get("cooldown_ms")
+            if cooldown_ms is None:
+                cooldown_ms = 0
+            if (
+                isinstance(cooldown_ms, bool)
+                or not isinstance(cooldown_ms, int)
+                or cooldown_ms < 0
+            ):
+                raise TypeError(
+                    f'command "{name}" cooldown_ms must be a non-negative integer'
+                )
+            _COMMAND_HANDLERS[name] = command
+            _COMMAND_META.append({
+                "name": name,
+                "prefix": prefix,
+                "description": command.get("description", "") or "",
+                "usage": command.get("usage", "") or "",
+                "aliases": aliases,
+                "modOnly": bool(command.get("mod_only", False)),
+                "caseSensitive": bool(case_sensitive),
+                "cooldownMs": cooldown_ms,
             })
-
-        `table` maps command name -> def (run/description/usage/aliases/
-        mod_only/cooldown_ms/...). See define_commands. For advanced composition
-        (e.g. dropping command messages from chat via a filter) use
-        define_commands() directly inside your own handler instead."""
-        router = define_commands({
-            "prefix": prefix,
-            "case_sensitive": case_sensitive,
-            "commands": table,
-            "on_unknown": on_unknown,
-        })
-        _COMMANDS_ROUTER[0] = router
-        _install_chat_dispatch()
-        return router
+        return table
 
 
 def _make_plugin():
@@ -342,18 +340,15 @@ class _AuthCheck:
 auth_check = _AuthCheck()
 
 
-# ---------------------------------------------------------------------------
-# Chat command router (mirror of the JS SDK's defineCommands).
-# ---------------------------------------------------------------------------
+# Chat commands.
 class CommandContext:
-    """What a command's run() receives: the message, parsed args, and reply
-    helpers. ``reply`` posts publicly, and ``reply_privately`` whispers to the
-    sender (falling back to a public post if their connection is unknown)."""
+    """What a command's run() receives."""
 
-    def __init__(self, msg, command, args, arg_string):
+    def __init__(self, msg, command, invoked_as, args, arg_string):
         self.msg = msg
         self.user = msg.user if isinstance(msg, _Obj) else None
         self.command = command
+        self.invoked_as = invoked_as
         self.args = args
         self.arg_string = arg_string
 
@@ -365,123 +360,24 @@ class CommandContext:
             owncast.chat.send(text)
 
 
-def _ts_millis(msg):
-    """Parse a chat message's ISO-8601 timestamp to epoch millis, or 0 when
-    absent/unparseable, matching the JS router, which clocks cooldowns off
-    msg.timestamp so they're deterministic in tests and free of sandbox-clock
-    quirks."""
-    ts = msg.timestamp if isinstance(msg, _Obj) else None
-    if not ts:
-        return 0
-    try:
-        from datetime import datetime
-        return int(datetime.fromisoformat(str(ts).replace("Z", "+00:00")).timestamp() * 1000)
-    except Exception:
-        return 0
-
-
-def define_commands(config):
-    """Build a chat-command router so plugins stop reimplementing prefix
-    parsing, aliases, per-user cooldowns, and moderator gating. Returns a
-    callable you feed a ChatMessage (from on_chat_message or
-    filter_chat_message). It returns True when the message was a command (even
-    if gated), False otherwise, so a filter can drop command messages:
-
-        commands = define_commands({
-            "prefix": "!",
-            "commands": {
-                "uptime": {"description": "Stream uptime", "run": lambda ctx: ctx.reply("up!")},
-                "ban": {"mod_only": True, "cooldown_ms": 5000,
-                        "run": lambda ctx: ctx.reply("bye " + (ctx.args[0] if ctx.args else ""))},
-            },
-        })
-
-        @plugin.on_chat_message
-        def _(msg):
-            commands(msg)
-
-    Each command def supports: run(ctx), aliases, mod_only, cooldown_ms,
-    description, on_denied(ctx), on_cooldown(ctx). Top-level config supports:
-    prefix (default "!"), case_sensitive (default False), commands, on_unknown,
-    on_denied, on_cooldown.
-    """
-    config = config or {}
-    prefix = config.get("prefix", "!")
-    case_sensitive = bool(config.get("case_sensitive", False))
-    norm = (lambda s: s) if case_sensitive else (lambda s: s.lower())
-
-    # Resolve every name and alias to its canonical command definition, and
-    # record metadata so the host can build a unified !help (see
-    # _describe_commands). Metadata is reported via register() and never
-    # affects routing.
-    table = {}
-    defs = config.get("commands", {})
-    for name, d in defs.items():
-        table[norm(name)] = (name, d)
-        for alias in d.get("aliases", []) or []:
-            table[norm(alias)] = (name, d)
-        _COMMAND_META.append({
-            "name": name,
-            "prefix": prefix,
-            "description": d.get("description", "") or "",
-            "usage": d.get("usage", "") or "",
-            "aliases": d.get("aliases", []) or [],
-            "modOnly": bool(d.get("mod_only", False)),
-        })
-
-    last_run = {}  # (command, user) -> epoch millis of last run
-
-    def _maybe(fn, ctx):
-        if callable(fn):
-            fn(ctx)
-
-    def handle(msg):
-        body = (msg.body if isinstance(msg, _Obj) else "") or ""
-        if not body.startswith(prefix):
-            return False
-        rest = body[len(prefix):]
-        parts = rest.split()
-        if not parts:
-            return False
-        called = parts[0]
-        args = parts[1:]
-        arg_string = rest[len(called):].strip()
-        ctx = CommandContext(msg, norm(called), args, arg_string)
-
-        entry = table.get(norm(called))
-        if entry is None:
-            _maybe(config.get("on_unknown"), ctx)
-            return False
-        name, d = entry
-        ctx.command = name
-
-        # Moderator gating: the sender's scopes must include MODERATOR.
-        if d.get("mod_only"):
-            scopes = (ctx.user.scopes if ctx.user else None) or []
-            if "MODERATOR" not in scopes:
-                _maybe(d.get("on_denied") or config.get("on_denied"), ctx)
-                return True  # matched a command, but the caller wasn't allowed
-
-        # Per-user cooldown, clocked off msg.timestamp.
-        cooldown_ms = d.get("cooldown_ms", 0) or 0
-        if cooldown_ms > 0:
-            uid = (ctx.user.id if ctx.user else None)
-            if uid is None:
-                cid = msg.client_id if isinstance(msg, _Obj) else None
-                uid = ("c%s" % cid) if cid is not None else "anon"
-            key = "%s %s" % (name, uid)
-            now = _ts_millis(msg)
-            prev = last_run.get(key)
-            if now and prev and now - prev < cooldown_ms:
-                _maybe(d.get("on_cooldown") or config.get("on_cooldown"), ctx)
-                return True
-            if now:
-                last_run[key] = now
-
-        _maybe(d.get("run"), ctx)
-        return True
-
-    return handle
+def _dispatch_command(event):
+    if not isinstance(event, dict):
+        return
+    command_name = event.get("command")
+    command = _COMMAND_HANDLERS.get(command_name)
+    if not command:
+        return
+    run = command.get("run")
+    if not callable(run):
+        return
+    msg = ChatMessage(event.get("message") or {})
+    run(CommandContext(
+        msg,
+        event.get("command"),
+        event.get("invokedAs") or command_name,
+        event.get("args") or [],
+        event.get("argString") or "",
+    ))
 
 
 # ---------------------------------------------------------------------------
@@ -793,8 +689,7 @@ owncast = _Owncast()
 # Dispatch: called by the build-generated wasm exports.
 # ---------------------------------------------------------------------------
 def _describe_commands():
-    """Report the plugin's chat commands to the host for a unified !help.
-    Empty when no commands are declared."""
+    """Report command registrations to the host for matching and dispatch."""
     return _COMMAND_META
 
 
@@ -811,7 +706,7 @@ def _describe_subscriptions():
 def _dispatch_event(envelope):
     event = envelope.get("eventType")
     payload = envelope.get("payload")
-    if event == "timer.fire":
+    if event == _EVENT_TIMER_FIRE:
         tid = (payload or {}).get("id")
         entry = _TIMERS.get(tid)
         if entry:
@@ -819,6 +714,9 @@ def _dispatch_event(envelope):
             if not repeat:
                 _TIMERS.pop(tid, None)
             fn()
+        return
+    if event == _EVENT_CHAT_COMMAND:
+        _dispatch_command(payload)
         return
     entry = _NOTIFY.get(event)
     if entry is not None:

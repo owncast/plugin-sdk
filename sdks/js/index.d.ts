@@ -364,21 +364,13 @@ export interface TickEvent {
 }
 
 export interface PluginDef {
-  /** Declarative chat-command table. When set, the SDK wires the chat
-   *  subscription and prefix parsing for you, so no onChatMessage is needed. Maps
-   *  canonical command name → definition (run/description/usage/aliases/
-   *  modOnly/cooldownMs/...). See {@link CommandDefinition}. For advanced
-   *  composition (e.g. dropping command messages via a filter) use the
-   *  lower-level {@link defineCommands} router instead. If you also provide
-   *  onChatMessage, the router runs first and then onChatMessage runs for every
-   *  message. */
+  /** Declarative chat commands with aliases, moderator gates, and per-user
+   *  cooldowns. Command messages also remain available to onChatMessage. */
   commands?: Record<string, CommandDefinition>;
   /** Command prefix for the `commands` table. Default "!". */
   commandPrefix?: string;
   /** Match command names case-sensitively. Default false. */
   commandsCaseSensitive?: boolean;
-  /** Called when a prefixed message matched no command in `commands`. */
-  onUnknownCommand?(ctx: CommandContext): void;
 
   /** Notification handler for chat messages. Fire-and-forget. */
   onChatMessage?(msg: ChatMessage): void | Promise<void>;
@@ -498,6 +490,8 @@ export interface CommandContext {
   user?: User;
   /** The canonical command name that matched (not the alias used). */
   command: string;
+  /** The command name or alias exactly as the sender typed it. */
+  invokedAs: string;
   /** Whitespace-split arguments after the command word. */
   args: string[];
   /** The raw argument string (everything after the command word, trimmed). */
@@ -509,47 +503,30 @@ export interface CommandContext {
   replyPrivately(text: string): void;
 }
 
-/** One command in a {@link defineCommands} table. */
+/** One command in a declarative command table. */
 export interface CommandDefinition {
-  /** Short, human-readable summary of what the command does. Surfaced in
-   *  command listings (e.g. a future `!help`), and ignored by the router itself. */
+  /** Short, human-readable summary shown in command listings. */
   description?: string;
   /** Optional usage/example string, e.g. "!latency <0-4>". */
   usage?: string;
   /** Alternate names that invoke this command. */
   aliases?: string[];
-  /** Only allow senders whose scopes include "MODERATOR". */
+  /** Dispatch only for senders whose scopes include "MODERATOR". */
   modOnly?: boolean;
-  /** Minimum milliseconds between invocations per user (clocked off
-   *  `msg.timestamp`). */
+  /** Non-negative integer milliseconds between invocations per user. */
   cooldownMs?: number;
   /** Invoked when the command runs. */
   run(ctx: CommandContext): void;
-  /** Invoked instead of `run` when a non-moderator calls a `modOnly` command. */
-  onDenied?(ctx: CommandContext): void;
-  /** Invoked instead of `run` when the per-user cooldown hasn't elapsed. */
-  onCooldown?(ctx: CommandContext): void;
 }
 
-export interface CommandsConfig {
-  /** Command prefix. Default `"!"`. */
-  prefix?: string;
-  /** Match command names case-sensitively. Default false. */
-  caseSensitive?: boolean;
-  commands: Record<string, CommandDefinition>;
-  /** Fallback when a prefixed message matches no command. */
-  onUnknown?(ctx: CommandContext): void;
-  /** Default denied/cooldown handlers, used when a command omits its own. */
-  onDenied?(ctx: CommandContext): void;
-  onCooldown?(ctx: CommandContext): void;
+/** Internal payload for a matched command declaration. */
+export interface CommandEvent {
+  message: ChatMessage;
+  command: string;
+  invokedAs: string;
+  args: string[];
+  argString: string;
 }
-
-/** Build a chat-command router (prefix parsing, aliases, per-user cooldowns,
- *  moderator gating). Feed the returned function a `ChatMessage`, and it returns
- *  true when the message was a command (even if gated), false otherwise. */
-export function defineCommands(
-  config: CommandsConfig,
-): (msg: ChatMessage) => boolean;
 
 /** Typed wrappers around the Owncast host. Each method throws if the
  *  corresponding permission was not declared in plugin.manifest.json. */
