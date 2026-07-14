@@ -2,7 +2,7 @@
   "api": "1",
   "name": "OAuth Gate Test",
   "slug": "oauth-gate-test",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "description": "Test-only viewer-auth gate that signs viewers in against an internal OAuth2/OIDC provider using the standard authorization-code flow. Used by the OAuth auth-plugin integration test; not for production.",
   "permissions": [
     "auth.gate",

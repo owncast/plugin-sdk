@@ -2,7 +2,7 @@
   "api": "1",
   "name": "Mod Commands",
   "slug": "mod-commands",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "description": "Demonstrates declarative commands with a custom prefix, aliases, cooldowns, and moderator gating. This example was written in JavaScript.",
   "permissions": [
     "chat.send"

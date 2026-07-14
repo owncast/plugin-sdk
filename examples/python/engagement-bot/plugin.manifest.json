@@ -2,7 +2,7 @@
   "api": "1",
   "name": "Example Engagement Bot",
   "slug": "engagement-bot",
-  "version": "0.3.1",
+  "version": "0.3.2",
   "description": "Cross-platform notifier: pings Discord on stream start, posts a fediverse announcement, browser-pushes on new fediverse followers, and forwards fediverse mentions/replies to Discord. Also deletes obvious spam from chat. This example was written in Python.",
   "permissions": [
     "chat.moderate",

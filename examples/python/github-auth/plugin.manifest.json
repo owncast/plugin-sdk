@@ -2,7 +2,7 @@
   "api": "1",
   "name": "GitHub Auth",
   "slug": "github-auth",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "description": "Viewer authentication gate: requires visitors to sign in with GitHub before they can access the site. Demonstrates the auth.gate + users.register host functions. This example was written in Python.",
   "permissions": [
     "auth.gate",

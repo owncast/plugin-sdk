@@ -2,7 +2,7 @@
   "api": "1",
   "name": "Example Message Counter",
   "slug": "message-counter",
-  "version": "0.3.1",
+  "version": "0.3.2",
   "description": "Counts messages per user (persisted across restarts) and posts the running total back to chat. This example was written in Python.",
   "permissions": [
     "storage.kv",

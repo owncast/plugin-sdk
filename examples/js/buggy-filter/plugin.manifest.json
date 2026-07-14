@@ -2,7 +2,7 @@
   "api": "1",
   "name": "Example Buggy Filter (demo)",
   "slug": "buggy-filter",
-  "version": "0.3.1",
+  "version": "0.3.2",
   "description": "Always throws, exercises fail-open behavior. This example was written in JavaScript.",
   "permissions": [
     "chat.filter"

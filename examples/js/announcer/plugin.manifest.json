@@ -2,7 +2,7 @@
   "api": "1",
   "name": "Example Announcer",
   "slug": "announcer",
-  "version": "0.3.1",
+  "version": "0.3.2",
   "description": "Handles announcement.broadcast events. This example was written in JavaScript.",
   "permissions": []
 }
