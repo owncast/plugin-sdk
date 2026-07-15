@@ -1,0 +1,34 @@
+{
+  "api": "1",
+  "name": "All Permissions Test",
+  "slug": "all-permissions-test",
+  "version": "0.1.0",
+  "description": "Build/load canary: declares every available permission and registers a no-op handler for every subscription. Exists to fail CI when the host's permission catalog or load-time gates change. Not a real plugin. This example was written in JavaScript.",
+  "permissions": [
+    "storage.kv",
+    "storage.upload",
+    "storage.fs",
+    "chat.send",
+    "chat.history",
+    "chat.moderate",
+    "chat.filter",
+    "network.fetch",
+    "events.emit",
+    "http.serve",
+    "http.sse",
+    "server.read",
+    "notifications.send",
+    "users.read",
+    "users.moderate",
+    "users.register",
+    "auth.gate",
+    "fediverse.inbound",
+    "fediverse.post",
+    "videoconfig.read",
+    "videoconfig.write",
+    "ui.modify"
+  ],
+  "network": {
+    "allowedHosts": ["example.com"]
+  }
+}
