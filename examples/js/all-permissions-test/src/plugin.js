@@ -1,12 +1,19 @@
 // all-permissions-test: a build/load canary, not a real plugin. It declares
 // every permission the host offers and registers a no-op handler for every
-// subscription, so the install-time load check (owncast-plugin-test, which CI
-// builds from owncast@develop) fails the moment the host adds, renames, or
-// re-gates a permission or subscription.
+// subscription, then relies on the install-time load check (owncast-plugin-test,
+// which CI builds from owncast@develop) to catch drift against the host:
+//   - a subscription gaining a permission gate (like chat.filter or
+//     fediverse.inbound) that this manifest doesn't satisfy,
+//   - a new load-time manifest validation rule,
+//   - a registration-semantics change (register() output, manifest/runtime
+//     agreement, an engine handler mapping core stops accepting).
 //
+// It does NOT catch call-time permission changes: those permissions are
+// silent no-ops at call time and their manifest strings aren't validated
+// against a catalog at load, so a rename there leaves this canary green.
 // When the host's permission catalog changes, update this plugin's manifest,
 // its Python twin, and the permission table in docs/PLUGIN_AUTHOR_GUIDE.md
-// together.
+// together — by hand.
 const { definePlugin, filter, authCheck } = require("@owncast/plugin-sdk");
 
 module.exports = definePlugin({

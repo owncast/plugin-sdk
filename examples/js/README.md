@@ -25,7 +25,7 @@ One self-contained npm project per directory. Each has its own `README.md` with 
 | [action-buttons](./action-buttons/)               | `manifest.actions` + runtime `owncast.actions.add` (ui.modify), with an admin page that adds buttons.   |
 | [fediverse-chat-bridge](./fediverse-chat-bridge/) | Inbound fediverse mentions → HTML chat system messages with avatars.                                    |
 | [safeguard-stress](./safeguard-stress/)           | Test fixture, misbehaves on demand to verify host sandbox caps.                                         |
-| [all-permissions-test](./all-permissions-test/)   | Build/load canary: every permission + every handler as no-ops, fails CI when the host catalog changes. |
+| [all-permissions-test](./all-permissions-test/)   | Build/load canary: every permission + every handler as no-ops, trips on subscription-gate / load-rule drift. |
 | [styles-demo](./styles-demo/)                     | `manifest.styles[]`, CSS inlined into the viewer page's customStyles.                                   |
 | [scripts-demo](./scripts-demo/)                   | `manifest.scripts[]`, JS inlined into the viewer page's customJavascript.                               |
 | [page-content-demo](./page-content-demo/)         | `manifest.extraPageContent`, HTML prepended to the viewer's extra-content block.                        |
