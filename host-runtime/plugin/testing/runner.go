@@ -38,6 +38,26 @@ func RunFile(ctx context.Context, wasmPath, manifestPath, path string) ([]Result
 	return out, nil
 }
 
+// LoadCheck loads the plugin against a fresh mock host and immediately closes
+// it, verifying everything the production install path enforces at load time:
+// manifest validity, a healthy register() call, manifest/runtime agreement,
+// and permission-gated subscriptions (e.g. chat.filter, fediverse.inbound).
+// Run it even when a plugin ships no scenario tests — a plugin that fails
+// here fails to install on a real Owncast server.
+func LoadCheck(ctx context.Context, wasmPath, manifestPath string) error {
+	mock := NewMockHost()
+	origTransport := http.DefaultClient.Transport
+	http.DefaultClient.Transport = mock.HTTPTransport()
+	defer func() { http.DefaultClient.Transport = origTransport }()
+
+	loaded, err := plugin.LoadPlugin(ctx, mock.HostEnv(), wasmPath, manifestPath)
+	if err != nil {
+		return err
+	}
+	loaded.Close(ctx)
+	return nil
+}
+
 func runOne(ctx context.Context, wasmPath, manifestPath, file string, sc Scenario) Result {
 	res := Result{File: file, Scenario: sc.Name}
 

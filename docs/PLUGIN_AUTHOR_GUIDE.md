@@ -984,6 +984,14 @@ Use `<your-plugin>.<event>` namespacing. Event names are arbitrary strings.
 
 Tests live in `__tests__/*.test.js`. They drive your built plugin through the real Owncast plugin runtime with mocked side effects, passing tests guarantee the same behavior in production.
 
+Before any scenario runs, the test runner load-checks the plugin: the same
+install-time path a real Owncast server runs, covering manifest validity, a
+healthy `register()`, and permission-gated subscriptions (a chat filter
+without `chat.filter`, or a fediverse handler without `fediverse.inbound`,
+fails right there with the same error the server gives at install). The check
+runs even when a plugin ships no tests, and `package` runs it too — a plugin
+that would be rejected at install refuses to package.
+
 ```js
 const { runScenarios } = require("@owncast/plugin-sdk/testing");
 

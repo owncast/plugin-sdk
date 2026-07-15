@@ -87,9 +87,11 @@ jobs:
           echo "examples=$examples" >> "$GITHUB_OUTPUT"
           echo "matrix: $examples"
 
-  # One job per example: build it, and run its scenario tests when it ships a
-  # __tests__/. Isolating each example means a failure names the exact plugin
-  # and the others still run.
+  # One job per example: build it, run its scenario tests when it ships a
+  # __tests__/, and always run the install-time load check so a plugin a real
+  # server would reject at install (e.g. an undeclared permission-gated
+  # subscription) fails CI even without tests. Isolating each example means a
+  # failure names the exact plugin and the others still run.
   example:
     needs: toolchain
     runs-on: ubuntu-latest
@@ -136,7 +138,8 @@ jobs:
           if [ -d __tests__ ]; then
             npx --no-install owncast-plugin test
           else
-            echo "(no __tests__ — build-only)"
+            echo "(no __tests__ — load check only)"
+            npx --no-install owncast-plugin test --load-only
           fi
 
   # Smoke-test the dev server: load echo-bot, drive a chat message through

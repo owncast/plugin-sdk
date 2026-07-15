@@ -3,7 +3,13 @@
 // production Owncast app uses, with mocked host functions injected, so
 // passing tests here means the same plugin code path passes in production.
 //
-// Usage: owncast-plugin-test [<project-dir>]
+// Usage: owncast-plugin-test [--load-only] [<project-dir>]
+//
+// The plugin is always load-checked first — the same install-time path a real
+// Owncast server runs (register(), manifest/runtime agreement, and
+// permission-gated subscriptions such as chat.filter and fediverse.inbound) —
+// so a plugin that would be rejected at install fails here even without
+// scenario tests. --load-only stops after that check.
 //
 // Auto-discovers plugin.manifest.json, matching <slug>.wasm, and
 // __tests__/*.test.json files in the project directory (default: cwd).
@@ -16,8 +22,8 @@ import (
 	"path/filepath"
 
 	extism "github.com/extism/go-sdk"
-	plugin "github.com/owncast/owncast/services/plugins"
 	"github.com/owncast/owncast-plugin-sdk/host-runtime/plugin/testing"
+	plugin "github.com/owncast/owncast/services/plugins"
 )
 
 // version is stamped at release time via -ldflags "-X main.version=v1.2.3".
@@ -25,12 +31,17 @@ var version = "dev"
 
 func main() {
 	projectDir := "."
-	if len(os.Args) > 1 {
-		if isVersionArg(os.Args[1]) {
+	loadOnly := false
+	for _, arg := range os.Args[1:] {
+		switch {
+		case isVersionArg(arg):
 			fmt.Println("owncast-plugin-test", version)
 			return
+		case arg == "--load-only":
+			loadOnly = true
+		default:
+			projectDir = arg
 		}
-		projectDir = os.Args[1]
 	}
 	abs, err := filepath.Abs(projectDir)
 	if err != nil {
@@ -53,23 +64,37 @@ func main() {
 	if !ok {
 		fatal("no %s.{js,py,wasm} in %s, run `owncast-plugin package` first", m.Slug, abs)
 	}
+
+	// Quiet extism's internal logging; only plugin console.log gets routed
+	// via SetLogger inside LoadPlugin.
+	extism.SetLogLevel(extism.LogLevelError)
+	ctx := context.Background()
+
+	// Load-check first, tests or not: this runs the same load path a real
+	// Owncast server runs at install time (register(), manifest/runtime
+	// agreement, permission-gated subscriptions), so a plugin that would be
+	// rejected at install fails here even when it ships no scenario tests.
+	if err := testing.LoadCheck(ctx, artifactPath, manifestPath); err != nil {
+		fmt.Printf("FAIL  load: %v\n", err)
+		os.Exit(1)
+	}
+	if loadOnly {
+		fmt.Println("ok    plugin loads cleanly")
+		return
+	}
+
 	testsDir := filepath.Join(abs, "__tests__")
 	if !exists(testsDir) {
-		fatal("no __tests__ directory in %s", abs)
+		fatal("no __tests__ directory in %s (plugin loads cleanly)", abs)
 	}
 	files, err := filepath.Glob(filepath.Join(testsDir, "*.test.json"))
 	if err != nil {
 		fatal("scan tests dir: %v", err)
 	}
 	if len(files) == 0 {
-		fatal("no *.test.json files in %s", testsDir)
+		fatal("no *.test.json files in %s (plugin loads cleanly)", testsDir)
 	}
 
-	// Quiet extism's internal logging during tests; only plugin console.log
-	// gets routed via SetLogger inside LoadPlugin.
-	extism.SetLogLevel(extism.LogLevelError)
-
-	ctx := context.Background()
 	pass, total := 0, 0
 	for _, f := range files {
 		rel, _ := filepath.Rel(abs, f)

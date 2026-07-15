@@ -149,6 +149,12 @@ can run `npm install && npm test && npm run package` themselves.)
 npm run package
 ```
 
+`package` first load-checks the plugin — the same install-time path a real
+Owncast server runs. A handler whose gating permission isn't declared in the
+manifest (a chat filter without `chat.filter`, a fediverse handler without
+`fediverse.inbound`) aborts packaging with the exact error the server would
+give at install. Fix the manifest, don't work around the check.
+
 This produces **`<slug>.ocpkg`** in the project directory, a single self-contained
 file bundling the manifest, your plugin source (`<slug>.js`), and any `public/`/
 `assets/`/`icon.png`/`INSTRUCTIONS.md`. Give the user the path to that file and tell them

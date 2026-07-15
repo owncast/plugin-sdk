@@ -91,6 +91,26 @@ function runBinary(name, args) {
   }
 }
 
+// loadCheck runs `owncast-plugin-test --load-only <dir>` and aborts the
+// current command when the plugin fails the install-time load check.
+function loadCheck(dir) {
+  const cache = findCacheDir();
+  const bin = path.join(cache, "owncast-plugin-test");
+  if (!fs.existsSync(bin)) {
+    console.error(
+      `owncast-plugin-test not found at ${bin} — cannot verify the plugin ` +
+        `loads. Run npm install so the SDK postinstall fetches the host binaries.`,
+    );
+    process.exit(1);
+  }
+  try {
+    execFileSync(bin, ["--load-only", dir], { stdio: "inherit" });
+  } catch (e) {
+    console.error("package aborted: plugin failed the install-time load check");
+    process.exit(typeof e.status === "number" ? e.status : 1);
+  }
+}
+
 async function buildMain() {
   const cwd = process.cwd();
   const manifestPath = path.join(cwd, "plugin.manifest.json");
@@ -159,6 +179,12 @@ async function packageMain() {
   if (!fs.existsSync(scriptPath)) {
     await buildMain();
   }
+
+  // Refuse to package a plugin a real Owncast server would refuse to load.
+  // owncast-plugin-test --load-only runs the same install-time load path the
+  // host runs: register(), manifest/runtime agreement, and permission-gated
+  // subscriptions (e.g. a fediverse handler without "fediverse.inbound").
+  loadCheck(cwd);
 
   // The code entry's name (plugin.js) is what tells the host this is a
   // JavaScript plugin, so there is no "type" field in the manifest. The

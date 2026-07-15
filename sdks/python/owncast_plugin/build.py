@@ -24,6 +24,7 @@ import ast
 import json
 import os
 import re
+import subprocess
 import sys
 import zipfile
 
@@ -265,6 +266,19 @@ def build(project):
     return slug
 
 
+def _load_check(project):
+    """Refuse to package a plugin a real Owncast server would refuse to load.
+
+    Runs `owncast-plugin-test --load-only`, the same install-time load path the
+    host runs: register(), manifest/runtime agreement, and permission-gated
+    subscriptions (e.g. a fediverse handler without "fediverse.inbound")."""
+    from . import toolchain
+
+    exe = toolchain.ensure_host_binary("owncast-plugin-test")
+    if subprocess.run([exe, "--load-only", project]).returncode != 0:
+        sys.exit("package aborted: plugin failed the install-time load check")
+
+
 def package(project):
     """Build, then zip the manifest + plugin.py + public/ + assets/ (+ icon.png,
     INSTRUCTIONS.md) into <slug>.ocpkg, the single distributable file. The code
@@ -272,6 +286,7 @@ def package(project):
     no "type" field is needed in the manifest, and it ships verbatim. Matches the JS
     SDK's `owncast-plugin package` layout so the host loads both identically."""
     slug = build(project)
+    _load_check(project)
     script = os.path.join(project, slug + ".py")
     out = os.path.join(project, slug + ".ocpkg")
 
