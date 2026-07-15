@@ -1,6 +1,6 @@
 {
   "name": "create-owncast-plugin",
-  "version": "0.7.0",
+  "version": "0.10.1",
   "description": "Scaffold a new Owncast plugin, `npm create owncast-plugin <name>`",
   "license": "MIT",
   "author": "Owncast",
