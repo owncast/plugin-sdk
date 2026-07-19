@@ -2,14 +2,9 @@
   "api": "1",
   "name": "Mod Commands",
   "slug": "mod-commands",
-<<<<<<< HEAD
   "version": "0.1.2",
   "description": "Demonstrates declarative commands with a custom prefix, aliases, cooldowns, and moderator gating. This example was written in Python.",
-=======
-  "version": "0.1.1",
-  "description": "Demonstrates a custom command prefix and a moderator-only command with on_denied gating. This example was written in Python.",
   "category": "moderation",
->>>>>>> 2ee90d6 (feat(manifest): add optional category field)
   "permissions": [
     "chat.send"
   ]
