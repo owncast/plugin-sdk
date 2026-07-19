@@ -31,6 +31,14 @@ function fail(e) {
 // Same shape the host + SDK + registry all validate against.
 const slugPattern = /^[a-z][a-z0-9-]{0,63}$/;
 
+// Canonical registry browse categories for the optional manifest
+// `category` field. Shared taxonomy with the registry and the admin UI.
+const categories = new Set([
+  "chat-bots", "chat-filters", "moderation", "authentication", "themes",
+  "overlays", "notifications", "integrations", "video", "analytics",
+  "games", "admin-utilities", "examples", "other",
+]);
+
 // readAndResolveManifest loads plugin.manifest.json, validates the
 // required fields, and returns a manifest object with `slug` filled
 // in: either the author's explicit `slug`, or one auto-derived from
@@ -57,6 +65,13 @@ function readAndResolveManifest(manifestPath) {
   if (!slugPattern.test(slug)) {
     throw new Error(
       `manifest.slug ${JSON.stringify(slug)} must match ${slugPattern} (lowercase letters/digits/hyphens, starting with a letter, max 64 chars)`,
+    );
+  }
+  if (manifest.category !== undefined && !categories.has(manifest.category)) {
+    // Warn only: the host and registry tolerate unknown categories, they
+    // just won't match any browse filter.
+    console.warn(
+      `warning: manifest.category ${JSON.stringify(manifest.category)} is not a known category (${[...categories].join(", ")})`,
     );
   }
   manifest.slug = slug;

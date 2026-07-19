@@ -4,6 +4,7 @@
   "slug": "whoami",
   "version": "0.3.2",
   "description": "Adds a viewer action button that opens a page showing the chat user's identity (req.user), proving the host passes the logged-in chat user to plugin HTTP handlers end to end. This example was written in JavaScript.",
+  "category": "examples",
   "permissions": [
     "ui.modify",
     "http.serve"

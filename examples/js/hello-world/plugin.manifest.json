@@ -4,5 +4,6 @@
   "slug": "hello-world",
   "version": "0.3.2",
   "description": "Minimal plugin proving the load path works. This example was written in JavaScript.",
+  "category": "examples",
   "permissions": []
 }

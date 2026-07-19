@@ -44,6 +44,14 @@ _STDLIB = set(getattr(sys, "stdlib_module_names", ())) | set(sys.builtin_module_
     "decimal", "fractions", "string", "textwrap", "enum", "abc", "copy", "io",
 }
 
+# Canonical registry browse categories for the optional manifest `category`
+# field. Shared taxonomy with the registry and the admin UI.
+_CATEGORIES = {
+    "chat-bots", "chat-filters", "moderation", "authentication", "themes",
+    "overlays", "notifications", "integrations", "video", "analytics",
+    "games", "admin-utilities", "examples", "other",
+}
+
 
 def slugify(name):
     return re.sub(r"[^a-z0-9]+", "-", name.lower()).strip("-")
@@ -69,6 +77,14 @@ def _read_manifest(project):
     slug = manifest.get("slug") or slugify(manifest.get("name", ""))
     if not slug:
         sys.exit("manifest needs a slug or name")
+    category = manifest.get("category")
+    if category is not None and category not in _CATEGORIES:
+        # Warn only: the host and registry tolerate unknown categories, they
+        # just won't match any browse filter.
+        sys.stderr.write(
+            "warning: manifest.category %r is not a known category (%s)\n"
+            % (category, ", ".join(sorted(_CATEGORIES)))
+        )
     return manifest, slug
 
 

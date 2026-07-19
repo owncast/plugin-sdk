@@ -778,3 +778,38 @@ export interface NetworkConfig {
    *  host but must be written explicitly. */
   allowedHosts: string[];
 }
+
+/** `manifest.category` (optional), the plugin's registry browse category.
+ *  One of the canonical slugs below. The plugin registry uses it to filter
+ *  the browse listing; unknown values are tolerated but won't match any
+ *  filter.
+ *
+ *  - `chat-bots`: Chat bots
+ *  - `chat-filters`: Chat filters
+ *  - `moderation`: Moderation
+ *  - `authentication`: Authentication
+ *  - `themes`: Themes
+ *  - `overlays`: Overlays & widgets
+ *  - `notifications`: Notifications
+ *  - `integrations`: Integrations
+ *  - `video`: Video & streaming
+ *  - `analytics`: Analytics & stats
+ *  - `games`: Games & fun
+ *  - `admin-utilities`: Admin utilities
+ *  - `examples`: Examples
+ *  - `other`: Other */
+export type PluginCategory =
+  | "chat-bots"
+  | "chat-filters"
+  | "moderation"
+  | "authentication"
+  | "themes"
+  | "overlays"
+  | "notifications"
+  | "integrations"
+  | "video"
+  | "analytics"
+  | "games"
+  | "admin-utilities"
+  | "examples"
+  | "other";

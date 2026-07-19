@@ -4,6 +4,7 @@
   "slug": "stream-ops",
   "version": "0.3.2",
   "description": "Reports broadcast telemetry (!broadcaster, server.read) and video config (!videoconfig, videoconfig.read), and tunes latency (!latency <n>, videoconfig.write). This example was written in Python.",
+  "category": "video",
   "permissions": [
     "chat.send",
     "server.read",

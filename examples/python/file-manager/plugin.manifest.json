@@ -4,6 +4,7 @@
   "slug": "file-manager",
   "version": "0.3.3",
   "description": "Browse, upload, and delete files in the plugin's own private sandboxed storage (storage.fs), from an admin page. This example was written in Python.",
+  "category": "admin-utilities",
   "permissions": [
     "http.serve",
     "storage.fs"

@@ -4,6 +4,7 @@
   "slug": "overlay",
   "version": "0.3.2",
   "description": "Ships a static HTML overlay page and a JSON API at /plugins/overlay/api/messages backed by owncast.chat.history(). This example was written in JavaScript.",
+  "category": "overlays",
   "permissions": [
     "http.serve",
     "chat.history",

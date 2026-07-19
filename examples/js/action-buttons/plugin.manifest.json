@@ -4,6 +4,7 @@
   "slug": "action-buttons",
   "version": "0.3.2",
   "description": "Manifest-declared action buttons plus an admin page that renames them at runtime via a custom API backed by plugin config. This example was written in JavaScript.",
+  "category": "overlays",
   "permissions": [
     "ui.modify",
     "http.serve",

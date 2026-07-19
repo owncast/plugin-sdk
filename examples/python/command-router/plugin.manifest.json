@@ -1,0 +1,12 @@
+{
+  "api": "1",
+  "name": "Command Router",
+  "slug": "command-router",
+  "version": "0.1.1",
+  "description": "Demonstrates the low-level define_commands router: case-sensitive matching, per-user cooldowns, private replies, and dropping command messages from chat with a filter. This example was written in Python.",
+  "category": "chat-bots",
+  "permissions": [
+    "chat.send",
+    "chat.filter"
+  ]
+}

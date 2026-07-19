@@ -4,6 +4,7 @@
   "slug": "slow-mode",
   "version": "0.3.2",
   "description": "Drops messages from users posting faster than 2s apart. Rate-limit state lives in plugin memory. This example was written in JavaScript.",
+  "category": "chat-filters",
   "permissions": [
     "chat.filter"
   ]

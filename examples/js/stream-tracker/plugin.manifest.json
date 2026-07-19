@@ -4,6 +4,7 @@
   "slug": "stream-tracker",
   "version": "0.3.2",
   "description": "Tracks stream lifecycle + chat user activity, and responds to !uptime and !who. This example was written in JavaScript.",
+  "category": "analytics",
   "permissions": [
     "chat.send",
     "storage.kv",

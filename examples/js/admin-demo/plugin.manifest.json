@@ -4,6 +4,7 @@
   "slug": "admin-demo",
   "version": "0.3.2",
   "description": "Demonstrates admin UI integration, a public landing page plus an admin-gated settings panel and API. This example was written in JavaScript.",
+  "category": "examples",
   "permissions": [
     "http.serve",
     "storage.kv"

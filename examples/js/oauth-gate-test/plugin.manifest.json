@@ -4,6 +4,7 @@
   "slug": "oauth-gate-test",
   "version": "0.1.2",
   "description": "Test-only viewer-auth gate that signs viewers in against an internal OAuth2/OIDC provider using the standard authorization-code flow. Used by the OAuth auth-plugin integration test; not for production.",
+  "category": "authentication",
   "permissions": [
     "auth.gate",
     "users.register",

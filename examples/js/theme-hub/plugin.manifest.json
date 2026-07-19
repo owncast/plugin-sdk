@@ -4,6 +4,7 @@
   "slug": "theme-hub",
   "version": "0.1.2",
   "description": "A hub of selectable viewer themes. Ships a catalog of three themes, lets the admin pick one from a panel, and applies the selected theme to the whole viewer UI through Owncast's core theming via the dynamic onPageStyles hook (no manifest styles file). A small onPageScripts hook tags the page with the active theme id. Built as a template for a plugin that fetches a remote theme catalog. This example was written in JavaScript.",
+  "category": "themes",
   "permissions": [
     "ui.modify",
     "http.serve",

@@ -4,6 +4,7 @@
   "slug": "manual-video-settings",
   "version": "0.3.2",
   "description": "Admin form to manually edit transcoding output: latency level, codec, and per-variant resolution / framerate / bitrate. This example was written in JavaScript.",
+  "category": "video",
   "permissions": [
     "http.serve",
     "videoconfig.read",

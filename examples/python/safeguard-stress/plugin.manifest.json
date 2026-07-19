@@ -4,6 +4,7 @@
   "slug": "safeguard-stress",
   "version": "0.3.2",
   "description": "Misbehaves on demand, exists only to exercise host sandbox safeguards. This example was written in Python.",
+  "category": "examples",
   "permissions": [
     "http.serve",
     "chat.filter"

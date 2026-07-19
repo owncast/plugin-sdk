@@ -4,6 +4,7 @@
   "slug": "profanity-filter",
   "version": "0.3.2",
   "description": "Redacts a hardcoded wordlist from chat. This example was written in JavaScript.",
+  "category": "chat-filters",
   "permissions": [
     "chat.filter"
   ]

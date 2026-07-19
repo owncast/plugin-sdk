@@ -115,10 +115,34 @@ Drop an `INSTRUCTIONS.md` at the root of your project (alongside `plugin.manifes
 - `slug` is the canonical identifier: URL prefix (`/plugins/<slug>/`), plugin-config namespace, on-disk filename, registry primary key. Lowercase letters, digits, and hyphens, starting with a letter, max 64 chars. Optional, the SDK auto-derives one from `name` when you omit it.
 - `bot.displayName` (optional) overrides the chat-bot name when the plugin posts to chat. Defaults to `name`.
 - `permissions` is the list of capabilities your plugin needs (see below)
+- `category` (optional) is the plugin's browse category in the plugin registry. One canonical slug from the table below. See [Category](#category).
 - `actions` (optional) declares action buttons that appear under the viewer's stream. Requires `ui.modify`. See [Action buttons](#action-buttons).
 - `admin.pages` (optional) declares admin-only routes the host auth-gates. See [Admin pages](#admin-pages).
 - `styles`, `scripts`, `extraPageContent` (optional) inline plugin CSS, JavaScript, and HTML into the viewer page. All three require `ui.modify` (no `http.serve` needed, the host reads from `assets/` and inlines into existing responses). See [Viewer-page injection](#viewer-page-injection).
 - `tabs` (optional) adds tabs to the viewer page's tab row, each with its own HTML body. Requires `ui.modify`. See [Viewer-page tabs](#viewer-page-tabs).
+
+### Category
+
+The optional `category` field tells the plugin registry (and the admin's plugin browser) how to file your plugin for browse filtering. Pick the one canonical slug that best describes what the plugin does:
+
+| Slug              | Display name        |
+| ----------------- | ------------------- |
+| `chat-bots`       | Chat bots           |
+| `chat-filters`    | Chat filters        |
+| `moderation`      | Moderation          |
+| `authentication`  | Authentication      |
+| `themes`          | Themes              |
+| `overlays`        | Overlays & widgets  |
+| `notifications`   | Notifications       |
+| `integrations`    | Integrations        |
+| `video`           | Video & streaming   |
+| `analytics`       | Analytics & stats   |
+| `games`           | Games & fun         |
+| `admin-utilities` | Admin utilities     |
+| `examples`        | Examples            |
+| `other`           | Other               |
+
+Unknown values don't fail the build or the host load, the SDK packagers just warn, and the registry won't match the plugin to any category filter.
 
 ## Writing handlers
 

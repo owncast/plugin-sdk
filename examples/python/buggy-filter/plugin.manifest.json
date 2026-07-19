@@ -4,6 +4,7 @@
   "slug": "buggy-filter",
   "version": "0.3.2",
   "description": "Always throws, exercises fail-open behavior. This example was written in Python.",
+  "category": "examples",
   "permissions": [
     "chat.filter"
   ]

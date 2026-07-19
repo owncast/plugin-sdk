@@ -4,6 +4,7 @@
   "slug": "fediverse-chat-bridge",
   "version": "0.3.2",
   "description": "Surfaces inbound fediverse mentions and replies as system messages in chat, with the poster's avatar. This example was written in Python.",
+  "category": "integrations",
   "permissions": [
     "chat.send",
     "fediverse.inbound"

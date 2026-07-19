@@ -4,6 +4,7 @@
   "slug": "ip-bot",
   "version": "0.3.2",
   "description": "Responds to !ip in chat by fetching the server's public IP. This example was written in Python.",
+  "category": "chat-bots",
   "permissions": [
     "chat.send",
     "network.fetch"
