@@ -4,6 +4,7 @@
   "slug": "all-permissions-test",
   "version": "0.1.0",
   "description": "Build/load canary: declares every available permission and registers a no-op handler for every subscription. Exists to fail CI when the host's permission catalog or load-time gates change. Not a real plugin. This example was written in Python.",
+  "category": "examples",
   "permissions": [
     "storage.kv",
     "storage.upload",
