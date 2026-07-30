@@ -33,8 +33,8 @@ import (
 	"time"
 
 	extism "github.com/extism/go-sdk"
-	"github.com/owncast/owncast/services/plugins/kv"
 	plugin "github.com/owncast/owncast/services/plugins"
+	"github.com/owncast/owncast/services/plugins/kv"
 )
 
 const defaultPort = "8080"
@@ -277,7 +277,7 @@ func main() {
 		GetRequestUser: devRequestUser,
 	}
 
-	loaded, name, assetsDescription := loadTarget(ctx, env, abs)
+	loaded, name, staticDescription := loadTarget(ctx, env, abs)
 	defer loaded.Close(ctx)
 
 	dispatcher := plugin.NewDispatcher([]*plugin.Loaded{loaded})
@@ -308,6 +308,16 @@ func main() {
 
 	server := plugin.NewServer([]*plugin.Loaded{loaded})
 	server.IsAuthenticated = env.IsAuthenticated
+	// Manifest-declared admin paths are served without credentials by this
+	// dev server, which is why it binds loopback only.
+	// The URL this dev server prints is the plugin's own root, and for a
+	// plugin whose only page is an admin page (file-manager, admin-demo,
+	// theme-hub) that URL *is* an admin path, so demanding a header would
+	// make the advertised URL unopenable in a browser. Production wires
+	// this to Owncast's admin Basic Auth middleware, so the same paths are
+	// gated by the real admin password there.
+	server.RequireAdmin = func(h http.HandlerFunc) http.HandlerFunc { return h }
+	server.GetRequestUser = env.GetRequestUser
 	server.SSE = sseHub
 
 	mux := http.NewServeMux()
@@ -323,13 +333,20 @@ func main() {
 	})
 
 	fmt.Printf("owncast-plugin-serve: %s @ http://localhost:%s/plugins/%s/\n", name, port, name)
-	if assetsDescription != "" {
-		fmt.Printf("  static assets: %s\n", assetsDescription)
+	if staticDescription != "" {
+		fmt.Printf("  static files: %s\n", staticDescription)
+	}
+	if len(loaded.Manifest.Admin.Pages) > 0 {
+		fmt.Println("  admin pages: served with no password here, Owncast requires the admin password")
 	}
 	fmt.Printf("  drive chat:  curl -XPOST localhost:%s/_dev/chat -d '{\"user\":\"alice\",\"body\":\"hi\"}'\n", port)
 	fmt.Printf("  drive event: curl -XPOST localhost:%s/_dev/event -d '{\"type\":\"stream.started\",\"payload\":{}}'\n", port)
 	fmt.Println("  Ctrl-C to stop")
-	if err := http.ListenAndServe(":"+port, mux); err != nil {
+	// Loopback only. This is a localhost dev server, and the admin paths below
+	// are served with no credential, which for a plugin like file-manager means
+	// an open file read, write and delete API. Binding every interface would
+	// hand that to anyone on the same network.
+	if err := http.ListenAndServe("127.0.0.1:"+port, mux); err != nil {
 		fatal("listen: %v", err)
 	}
 }
@@ -559,9 +576,9 @@ Drive event:  POST /_dev/event  {"type":"stream.started","payload":{}}
 }
 
 // loadTarget loads the plugin from either a project directory (loose files:
-// plugin.manifest.json + <name>.wasm + optional assets/) or a packaged
-// .ocpkg file. Returns the loaded plugin, its declared name, and a
-// human-readable description of where assets came from.
+// plugin.manifest.json + <name>.wasm + optional public/ and assets/) or a
+// packaged .ocpkg file. Returns the loaded plugin, its declared name, and a
+// human-readable description of where static files came from.
 func loadTarget(ctx context.Context, env *plugin.HostEnv, target string) (*plugin.Loaded, string, string) {
 	info, err := os.Stat(target)
 	if err != nil {
@@ -573,11 +590,13 @@ func loadTarget(ctx context.Context, env *plugin.HostEnv, target string) (*plugi
 		if err != nil {
 			fatal("load package: %v", err)
 		}
-		assets := ""
-		if loaded.AssetsFS != nil {
-			assets = "embedded in " + filepath.Base(target)
+		// LoadPackage mounts public/ and assets/ from inside the archive,
+		// so there is nothing to wire up here.
+		staticDescription := ""
+		if loaded.PublicFS != nil || loaded.AssetsFS != nil {
+			staticDescription = "embedded in " + filepath.Base(target)
 		}
-		return loaded, loaded.Manifest.Slug, assets
+		return loaded, loaded.Manifest.Slug, staticDescription
 	}
 
 	manifestPath := filepath.Join(target, "plugin.manifest.json")
@@ -601,13 +620,22 @@ func loadTarget(ctx context.Context, env *plugin.HostEnv, target string) (*plugi
 	if err != nil {
 		fatal("load plugin: %v", err)
 	}
+	// Mount public/ as the web-served root and assets/ as the internal-only
+	// root the host inlines from, the same pair the manager's loadByPath
+	// wires in production. Without PublicFS the plugin's own pages and
+	// directory indexes 404, which makes http.serve plugins untestable here.
+	var staticDirs []string
+	publicDir := filepath.Join(target, "public")
+	if info, err := os.Stat(publicDir); err == nil && info.IsDir() {
+		loaded.PublicFS = os.DirFS(publicDir)
+		staticDirs = append(staticDirs, publicDir)
+	}
 	assetsDir := filepath.Join(target, "assets")
-	assetsDescription := ""
 	if info, err := os.Stat(assetsDir); err == nil && info.IsDir() {
 		loaded.AssetsFS = os.DirFS(assetsDir)
-		assetsDescription = assetsDir
+		staticDirs = append(staticDirs, assetsDir)
 	}
-	return loaded, m.Slug, assetsDescription
+	return loaded, m.Slug, strings.Join(staticDirs, ", ")
 }
 
 func logging(h http.Handler) http.Handler {
