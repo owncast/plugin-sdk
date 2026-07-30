@@ -40,6 +40,11 @@ so you can exercise the gating without a running Owncast:
 ```bash
 # against `npm run serve`
 curl -XPOST localhost:8080/_dev/chat -d '{"user":"alice","body":"?ping"}'
+
+# a bare `user` string is an ordinary viewer. Pass an object to grant the
+# MODERATOR scope that `?announce` requires.
+curl -XPOST localhost:8080/_dev/chat \
+  -d '{"user":{"id":"mod","displayName":"mod","scopes":["MODERATOR"]},"body":"?announce hello"}'
 ```
 
 ## Permissions
