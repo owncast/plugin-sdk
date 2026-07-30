@@ -1,14 +1,16 @@
 # owncast-plugin-sdk
 
-An in-process plugin system for [Owncast](https://owncast.online): JavaScript and Python plugins that ship as source and run on language engines embedded inside a Go host via [Extism](https://extism.org) (which uses [Wazero](https://wazero.io), pure Go, no CGo).
-
-This isn't part of Owncast yet. It's a sandbox to validate the architecture.
+Owncast plugins can run JavaScript or Python source on language engines embedded
+in the host, or run as self-contained WebAssembly modules built with Rust,
+TinyGo, AssemblyScript, Zig, or another compiled language. All three paths use
+[Extism](https://extism.org) on [Wazero](https://wazero.io), so plugins run
+in-process without CGo.
 
 ## Documentation
 
 - **[SDK Architecture](./docs/ARCHITECTURE.md)**, system-level tour of the runtime, toolchain, contract, and how the pieces fit together
 - **[Plugin Author Guide](./docs/PLUGIN_AUTHOR_GUIDE.md)**, start-to-finish guide for writing, testing, and shipping a plugin
-- **[Wire Protocol](./docs/WIRE_PROTOCOL.md)**, the contract between the Owncast host and any language SDK; future SDKs and the eventual server-side host runtime both implement this
+- **[Wire Protocol](./docs/WIRE_PROTOCOL.md)**, the contract implemented by the Owncast host, each language SDK, and self-contained WebAssembly modules
 
 ## What's here
 
@@ -34,8 +36,10 @@ Layout mirrors the planned future repo split: `sdks/<lang>/` for author-facing S
 │   └── main.go            demo: simulated chat stream against the runtime
 │
 ├── examples/
-│   └── js/                one JS example per architectural feature (see below)
-├── plugins/               .ocpkg packages the demo host loads (build artifacts, gitignored)
+│   ├── js/                JavaScript examples
+│   ├── python/            matching Python examples
+│   └── wasm/              self-contained WebAssembly examples
+├── plugins/               local build artifacts, gitignored
 ├── tools/                 prebuilt extism-js, wasm-merge, wasm-opt, Go binaries
 └── docs/                  guides + wire protocol + roadmap
 ```
@@ -109,7 +113,15 @@ owncast-plugin-py serve my-plugin      # local dev server (POST /_dev/chat to dr
 owncast-plugin-py package my-plugin    # build + bundle -> <slug>.ocpkg, single-file distributable
 ```
 
-Plugins ship as source and run on a language engine the host embeds, so there's no wasm compile step or toolchain to install for authoring. Author code goes in `src/plugin.js` (or `src/plugin.py`). Edit `plugin.manifest.json` to declare permissions (subscriptions are derived from your handler methods). The TypeScript declarations in `@owncast/plugin-sdk` give editor autocomplete. Static assets, HTML pages, images, JS, go in `assets/`; they're served at `/plugins/<slug>/...`. See the **[Python SDK](./sdks/python)** for the Python-specific authoring details.
+JavaScript and Python plugins ship as source and run on a language engine the
+host embeds, so those paths need no WebAssembly toolchain. Author code goes in
+`src/plugin.js` or `src/plugin.py`. The SDK derives subscriptions from handlers
+and provides wrappers for the host APIs.
+
+A self-contained WebAssembly plugin uses its own compiler and implements the
+[wire protocol](./docs/WIRE_PROTOCOL.md) directly. Start with the
+[Rust example](./examples/wasm/hello-wasm), which builds both a loose `.wasm`
+module and an installable `.ocpkg`.
 
 ## Testing
 
