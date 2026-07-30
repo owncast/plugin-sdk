@@ -13,9 +13,9 @@
 //     chat.send posts feed into.
 //   - A small dev-only API drives the plugin's event and filter handlers,
 //     which a pure HTTP server can't otherwise reach. See the /_dev/ routes
-//     registered in main: POST /_dev/chat runs the filter chain then fires
-//     chat.message.received, GET /_dev/chat returns the log, and
-//     POST /_dev/event dispatches an arbitrary event.
+//     registered in main: POST /_dev/chat runs the filter chain, fires
+//     chat.message.received then dispatches chat commands, GET /_dev/chat
+//     returns the log, and POST /_dev/event dispatches an arbitrary event.
 //
 // Usage: owncast-plugin-serve [<project-dir-or-ocpkg>]
 package main
@@ -444,8 +444,9 @@ func (d *devState) onPluginChat(req plugin.ChatSendRequest) {
 
 // handleChat drives the loaded plugin's chat handling end to end: it runs the
 // filter chain (on_filter) and, if the message is allowed, records the
-// (possibly rewritten) message and fires the chat.message.received event
-// (on_event). The JSON response shows the author exactly what their filter did.
+// (possibly rewritten) message, fires the chat.message.received event
+// (on_event), then matches the message against the plugin's declared commands.
+// The JSON response shows the author exactly what their filter did.
 func (d *devState) handleChat(w http.ResponseWriter, r *http.Request) {
 	if r.Method == http.MethodGet {
 		writeJSON(w, http.StatusOK, map[string]any{"messages": d.history(0)})
@@ -475,15 +476,31 @@ func (d *devState) handleChat(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// The filter may have rewritten the body; persist and dispatch that.
-	finalBody := body.Body
+	// The filter may have rewritten the message, so persist and dispatch what
+	// it returned, user included. Owncast hands the notification and the
+	// command dispatch the same payload, so reading only the body back here
+	// would let the two disagree: a filter that grants a scope would reach
+	// onChatMessage while command gating still saw the original user.
+	finalUser, finalBody := user, body.Body
 	if m, ok := final.(map[string]any); ok {
 		if b, ok := m["body"].(string); ok {
 			finalBody = b
 		}
+		if u, ok := m["user"]; ok {
+			if raw, err := json.Marshal(u); err == nil {
+				finalUser = devChatUser(raw)
+			}
+		}
 	}
-	msg := d.record(user, finalBody)
+	msg := d.record(finalUser, finalBody)
 	d.dispatcher.Dispatch(r.Context(), plugin.EventChatMessageReceived, final)
+
+	// Command matching is host-side work: for real servers Owncast calls this
+	// right after notifying subscribers of the same accepted message, so the
+	// dev server has to make the call itself or a declarative `commands` table
+	// never runs locally. Both fire because a plugin's onChatMessage handler
+	// and a command's run() are independent handlers for one message.
+	d.dispatcher.DispatchCommands(r.Context(), msg)
 
 	writeJSON(w, http.StatusOK, map[string]any{
 		"allowed": true,
