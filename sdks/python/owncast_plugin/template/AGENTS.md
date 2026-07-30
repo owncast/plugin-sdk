@@ -66,6 +66,7 @@ the plugin. Admins judge trust by the declared list, so don't over-declare.
 | React to stream live / stop                     | `@plugin.on_stream_started` / `_stopped`            | —                                              | —                                      |
 | Read live stream / server state                 | (any)                                               | `owncast.stream.current()` / `server.*()`      | `server.read`                          |
 | Store state                                     | (any)                                               | `owncast.kv.get/set` (+ `get_json/set_json`)   | `storage.kv`                           |
+| Rank or aggregate data (private SQL database)   | (any)                                               | `owncast.sql.exec/query/query_row`             | `storage.sql`                          |
 | Admin-configurable settings                     | (read at runtime)                                   | `owncast.config.get(key, fallback=None)`       | — (declare under `config`)             |
 | Call an external API                            | (any)                                               | `owncast.http.fetch(url, opts=None)`           | `network.fetch` + `network.allowedHosts` |
 | Delayed / periodic work                         | `@plugin.on_tick` / `owncast.timer.*`               | `owncast.timer.set_timeout/set_interval`       | — (ambient)                            |
@@ -99,6 +100,12 @@ the plugin. Admins judge trust by the declared list, so don't over-declare.
 - **`filter.pass_()` has a trailing underscore** because `pass` is a Python keyword.
 - **No `time.sleep` / threads for delays.** Use `owncast.timer.*` (timers don't
   survive a host restart).
+- **`owncast.sql.*` is one private SQLite database per plugin.** Each `exec` is a
+  single atomic transaction, so a multi-statement schema setup lands whole or not
+  at all. An unbounded `query` that overruns the host's row or result budget is
+  an error, not a truncated result: write a `LIMIT`, or use `query_row` for a
+  single row. Plugin databases are not included in Owncast's backups. The SDK's
+  `examples/python/chat-leaderboard` is a worked example.
 - **`network.fetch` requires `network.allowedHosts`** in the manifest, e.g.
   `"network": { "allowedHosts": ["api.example.com"] }`. The bare `"*"` is allowed
   but must be explicit.

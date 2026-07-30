@@ -65,6 +65,7 @@ the plugin. Admins judge trust by the declared list, so don't over-declare.
 | React to stream live / stop                     | `onStreamStarted` / `onStreamStopped`        | —                                         | —                                      |
 | Read live stream / server state                 | (any)                                        | `owncast.stream.current()` / `server.*()` | `server.read`                          |
 | Store state                                     | (any)                                        | `owncast.kv.get/set` (+ `getJSON/setJSON`)| `storage.kv`                           |
+| Rank or aggregate data (private SQL database)   | (any)                                        | `owncast.sql.exec/query/queryRow`         | `storage.sql`                          |
 | Admin-configurable settings                     | (read at runtime)                            | `owncast.config.get(key, fallback?)`      | — (declare under `config`)             |
 | Call an external API                            | (any)                                        | `owncast.http.fetch(url, opts?)`          | `network.fetch` + `network.allowedHosts` |
 | Delayed / periodic work                         | `onTick({now})` / `owncast.timer.*`          | `owncast.timer.setTimeout/setInterval`    | — (ambient, no global setTimeout)      |
@@ -89,6 +90,7 @@ the plugin. Admins judge trust by the declared list, so don't over-declare.
 - **Chat text is HTML-escaped on display.** `chat.send`/`sendAction` take plain text. Only `chat.system(body)` renders HTML, so escape untrusted content yourself.
 - **Filters are time-capped (50 ms) and fail open.** Keep `filterChatMessage` fast. An erroring filter is treated as `filter.pass()`. Five consecutive failures auto-disable the plugin for the session.
 - **No global `setTimeout`.** Use `owncast.timer.*` (timers don't survive a host restart). `Date`/`Date.now()` work normally.
+- **`owncast.sql.*` is one private SQLite database per plugin.** Each `exec` is a single atomic transaction, so a multi-statement schema setup lands whole or not at all. An unbounded `query` that overruns the host's row or result budget is an error, not a truncated result: write a `LIMIT`, or use `queryRow` for a single row. Plugin databases are not included in Owncast's backups. The SDK's `examples/js/chat-leaderboard` is a worked example.
 - **`network.fetch` requires `network.allowedHosts`** in the manifest, e.g. `"network": { "allowedHosts": ["api.example.com"] }`. The bare `"*"` is allowed but must be explicit.
 - **Any UI field** (`actions`, `styles`, `scripts`, `extraPageContent`, `tabs`) **requires `ui.modify`**.
 - **Declare chat commands in `definePlugin({ commands: {...} })`.** Command tables support aliases, moderator gating, and per-user cooldowns. Unknown and gated invocations are silent.

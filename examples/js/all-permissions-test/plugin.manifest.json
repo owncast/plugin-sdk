@@ -9,6 +9,7 @@
     "storage.kv",
     "storage.upload",
     "storage.fs",
+    "storage.sql",
     "chat.send",
     "chat.history",
     "chat.moderate",

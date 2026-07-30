@@ -1,7 +1,7 @@
 # file-manager
 
 An admin page that browses, uploads, and deletes files in the plugin's own
-private sandbox at `data/plugin-data/file-manager/`, all through the
+private sandbox at `data/plugin-storage/file-manager/files/`, all through the
 `owncast.fs.*` API. The admin routes are gated by the host before the plugin
 sees them, so the handler never checks auth itself.
 

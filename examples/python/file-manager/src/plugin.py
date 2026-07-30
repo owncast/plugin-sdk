@@ -1,9 +1,10 @@
 # file-manager, a worked example of the storage.fs permission.
 #
 # It serves an admin-only page that lists the files in this plugin's
-# private sandbox (data/plugin-data/file-manager/), lets you upload new
-# ones, and delete existing ones. Everything goes through the owncast.fs.*
-# API, so the host confines every path to the plugin's own directory.
+# private sandbox (data/plugin-storage/file-manager/files/), lets you
+# upload new ones, and delete existing ones. Everything goes through the
+# owncast.fs.* API, so the host confines every path to the plugin's own
+# directory.
 #
 # Routes (all the /admin/* ones are auth-gated by the host before the
 # plugin ever sees them, so the handler never checks auth itself):

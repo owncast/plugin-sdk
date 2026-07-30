@@ -65,6 +65,7 @@ const Permissions = Object.freeze({
   StorageKV: "storage.kv",
   StorageUpload: "storage.upload",
   StorageFS: "storage.fs",
+  StorageSQL: "storage.sql",
   EventsEmit: "events.emit",
   NetworkFetch: "network.fetch",
   HttpServe: "http.serve",
@@ -392,6 +393,29 @@ function hostFns(name, perm) {
   return fns;
 }
 
+function sqlResult(offset) {
+  if (offset == 0) throw new Error("SQL host call failed");
+  const result = JSON.parse(Memory.find(offset).readString());
+  if (!result.ok) throw new Error(result.error || "SQL operation failed");
+  return result;
+}
+
+function sqlRows(result) {
+  return result.rows.map((values) =>
+    Object.fromEntries(result.columns.map((column, i) => [column, values[i]])),
+  );
+}
+
+// sqlQuery issues one query request. maxRows is deliberately not an author
+// parameter: it exists so queryRow can ask the host for a single row.
+function sqlQuery(sql, params, maxRows) {
+  const fns = hostFns("owncast_sql_query", Permissions.StorageSQL);
+  const payload = { sql, params };
+  if (maxRows) payload.maxRows = maxRows;
+  const request = Memory.fromString(JSON.stringify(payload));
+  return sqlResult(fns.owncast_sql_query(request.offset));
+}
+
 const owncast = {
   chat: {
     send(text) {
@@ -537,7 +561,7 @@ const owncast = {
       return JSON.parse(Memory.find(offset).readString());
     },
   },
-  // Private, sandboxed filesystem under data/plugin-data/<slug>/. Unlike
+  // Private, sandboxed filesystem under data/plugin-storage/<slug>/files/. Unlike
   // storage.upload (which publishes browser-accessible files), these bytes
   // stay server-side. The host confines every path to this plugin's own
   // directory. All methods require the 'storage.fs' permission.
@@ -597,6 +621,21 @@ const owncast = {
     exists(path) {
       const fns = hostFns("owncast_fs_exists", Permissions.StorageFS);
       return fns.owncast_fs_exists(Memory.fromString(path).offset) === 1;
+    },
+  },
+  sql: {
+    exec(sql, params = []) {
+      const fns = hostFns("owncast_sql_exec", Permissions.StorageSQL);
+      const request = Memory.fromString(JSON.stringify({ sql, params }));
+      return sqlResult(fns.owncast_sql_exec(request.offset));
+    },
+    query(sql, params = []) {
+      return sqlRows(sqlQuery(sql, params));
+    },
+    queryRow(sql, params = []) {
+      // Asking the host for one row keeps a first-row read off the result
+      // budget, so this works against a table `query` would be too big for.
+      return sqlRows(sqlQuery(sql, params, 1))[0] || null;
     },
   },
   fediverse: {

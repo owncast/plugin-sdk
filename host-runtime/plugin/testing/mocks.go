@@ -11,6 +11,7 @@ import (
 	"sync"
 
 	"github.com/gobwas/glob"
+	"github.com/owncast/owncast-plugin-sdk/host-runtime/sqlstore"
 	plugin "github.com/owncast/owncast/services/plugins"
 	"github.com/owncast/owncast/services/plugins/kv"
 )
@@ -122,7 +123,10 @@ type MockHost struct {
 	// plugin slug then by cleaned relative path. Lets scenario tests
 	// exercise owncast.fs.* round-trips (write then read/list/delete)
 	// without touching the real disk.
-	fsFiles           map[string]map[string][]byte
+	fsFiles map[string]map[string][]byte
+	// sql holds the scenario's per-plugin SQLite databases, opened on first use
+	// so a scenario that never touches storage.sql pays nothing for it.
+	sql               *sqlstore.Store
 	fediversePosts    []RecordedFediverse
 	fediverseOutbox   []string
 	chatTo            []RecordedChatTo
@@ -440,6 +444,12 @@ func (m *MockHost) HostEnv() *plugin.HostEnv {
 			defer m.mu.Unlock()
 			_, ok := m.fsFiles[pluginName][mockFSClean(p)]
 			return ok, nil
+		},
+		SQLExec: func(ctx context.Context, pluginName string, req plugin.SQLRequest) plugin.SQLExecResult {
+			return m.sqlExec(ctx, pluginName, req)
+		},
+		SQLQuery: func(ctx context.Context, pluginName string, req plugin.SQLRequest) plugin.SQLQueryResult {
+			return m.sqlQuery(ctx, pluginName, req)
 		},
 	}
 }

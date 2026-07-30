@@ -1,0 +1,15 @@
+{
+  "api": "1",
+  "name": "Example Chat Leaderboard",
+  "slug": "chat-leaderboard",
+  "version": "0.1.0",
+  "description": "Ranks chatters by message count in the plugin's own SQL database. This example was written in JavaScript.",
+  "category": "analytics",
+  "permissions": [
+    "storage.sql",
+    "chat.send"
+  ],
+  "bot": {
+    "displayName": "Example Leaderboard"
+  }
+}

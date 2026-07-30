@@ -45,6 +45,8 @@ declare module 'extism:host' {
     owncast_fs_list(dirPtr: PTR): PTR;
     owncast_fs_delete(pathPtr: PTR): PTR;
     owncast_fs_exists(pathPtr: PTR): I64;
+    owncast_sql_exec(requestPtr: PTR): PTR;
+    owncast_sql_query(requestPtr: PTR): PTR;
     owncast_fediverse_post(textPtr: PTR): PTR;
     owncast_kv_get(keyPtr: PTR): PTR;
     owncast_kv_set(keyPtr: PTR, valPtr: PTR): void;

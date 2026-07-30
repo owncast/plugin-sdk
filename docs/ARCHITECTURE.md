@@ -130,6 +130,24 @@ All four expose the _same_ host functions and types. Only the data behind
 `HostEnv` differs. That's what lets a plugin built once run identically in tests,
 the dev server, and production.
 
+`storage.sql` is the one place where the host, not just the data behind it,
+differs. The three non-production hosts share `host-runtime/sqlstore`, which
+gives each plugin a private in-memory SQLite database and runs every request
+through the same `plugins.SQLRunner` Owncast uses, so request validation,
+parameter typing, the call timeout, atomic `exec`, and the row, value, result,
+and database-size limits all match. It uses `modernc.org/sqlite` rather than the
+cgo `mattn/go-sqlite3` driver Owncast uses, because these binaries are
+cross-compiled for every release target with `CGO_ENABLED=0`.
+
+Owncast additionally installs a SQLite authorizer to deny `ATTACH`, `DETACH`,
+every `PRAGMA`, and temp-schema DDL, and the pure-Go driver has no equivalent.
+That difference is not left visible to plugins: those statements are refused
+above the driver by `plugins.DeniedSQLReason`, which every host applies at the
+host-function boundary, so a plugin gets the same refusal locally that it gets
+on a real server. `plugins.DeniedSQLStatementExamples` is the fixture both
+repositories test against, this one through the Go check and Owncast through
+the authorizer, which is what keeps the two in step.
+
 ## The plugin API contract
 
 The plugin-facing API exists in three representations that must agree:

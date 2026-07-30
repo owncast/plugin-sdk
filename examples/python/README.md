@@ -9,6 +9,7 @@ One self-contained plugin per directory, authored in Python and compiled to wasm
 | [echo-bot](./echo-bot/)                           | Posts a reply to every chat message via `owncast.chat.send`. |
 | [mod-commands](./mod-commands/)                   | Declarative `plugin.commands()` table: custom prefix, aliases, moderator gating, cooldowns, ordinary chat-handler composition, and `!help` metadata. |
 | [message-counter](./message-counter/)             | Per-user message counter persisted in the plugin's namespaced config.                                   |
+| [chat-leaderboard](./chat-leaderboard/)         | `storage.sql`, a private SQLite database: schema in one atomic `exec`, an `ON CONFLICT` upsert, a bounded ranked `query`, and `query_row` for a single row. |
 | [profanity-filter](./profanity-filter/)           | `filter.modify(payload)`, rewrites flagged words to asterisks.                                          |
 | [slow-mode](./slow-mode/)                         | `filter.drop(reason)`, rate-limits per user, with in-memory state.                                      |
 | [buggy-filter](./buggy-filter/)                   | Always raises, exercises the host's fail-open + strike system.                                          |

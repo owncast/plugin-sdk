@@ -1,0 +1,126 @@
+[
+  {
+    "name": "!top reports an empty leaderboard before anyone has chatted",
+    "events": [
+      {
+        "event": "chat.message.received",
+        "payload": { "id": "m1", "user": { "id": "u-alice", "displayName": "alice" }, "body": "!top", "timestamp": "2026-01-01T00:00:00Z" }
+      }
+    ],
+    "expect": { "chatSends": ["No messages counted yet."] }
+  },
+  {
+    "name": "counting is silent, and !top ranks chatters by message count",
+    "events": [
+      {
+        "event": "chat.message.received",
+        "payload": { "id": "m1", "user": { "id": "u-alice", "displayName": "alice" }, "body": "hello", "timestamp": "2026-01-01T00:00:00Z" }
+      },
+      {
+        "event": "chat.message.received",
+        "payload": { "id": "m2", "user": { "id": "u-bob", "displayName": "bob" }, "body": "hi", "timestamp": "2026-01-01T00:00:01Z" }
+      },
+      {
+        "event": "chat.message.received",
+        "payload": { "id": "m3", "user": { "id": "u-alice", "displayName": "alice" }, "body": "again", "timestamp": "2026-01-01T00:00:02Z" }
+      },
+      {
+        "event": "chat.message.received",
+        "payload": { "id": "m4", "user": { "id": "u-bob", "displayName": "bob" }, "body": "!top", "timestamp": "2026-01-01T00:00:03Z" }
+      }
+    ],
+    "expect": { "chatSends": ["Top chatters: 1. alice (2), 2. bob (1)"] }
+  },
+  {
+    "name": "a rename follows the same row instead of splitting the history",
+    "events": [
+      {
+        "event": "chat.message.received",
+        "payload": { "id": "m1", "user": { "id": "u-alice", "displayName": "alice" }, "body": "first", "timestamp": "2026-01-01T00:00:00Z" }
+      },
+      {
+        "event": "chat.message.received",
+        "payload": { "id": "m2", "user": { "id": "u-alice", "displayName": "alice-renamed" }, "body": "second", "timestamp": "2026-01-01T00:00:01Z" }
+      },
+      {
+        "event": "chat.message.received",
+        "payload": { "id": "m3", "user": { "id": "u-alice", "displayName": "alice-renamed" }, "body": "!top", "timestamp": "2026-01-01T00:00:02Z" }
+      }
+    ],
+    "expect": { "chatSends": ["Top chatters: 1. alice-renamed (2)"] }
+  },
+  {
+    "name": "!rank uses the same tie ordering as !top",
+    "events": [
+      {
+        "event": "chat.message.received",
+        "payload": { "id": "m1", "user": { "id": "u-alice", "displayName": "alice" }, "body": "one", "timestamp": "2026-01-01T00:00:00Z" }
+      },
+      {
+        "event": "chat.message.received",
+        "payload": { "id": "m2", "user": { "id": "u-bob", "displayName": "bob" }, "body": "one", "timestamp": "2026-01-01T00:00:01Z" }
+      },
+      {
+        "event": "chat.message.received",
+        "payload": { "id": "m3", "user": { "id": "u-bob", "displayName": "bob" }, "body": "!rank", "timestamp": "2026-01-01T00:00:02Z" }
+      }
+    ],
+    "expect": { "chatSends": ["bob is #2 with 1 message(s)."] }
+  },
+  {
+    "name": "!rank says so when the sender has not been counted yet",
+    "events": [
+      {
+        "event": "chat.message.received",
+        "payload": { "id": "m1", "user": { "id": "u-newcomer", "displayName": "newcomer" }, "body": "!rank", "timestamp": "2026-01-01T00:00:00Z" }
+      }
+    ],
+    "expect": { "chatSends": ["You have not sent any messages yet."] }
+  },
+  {
+    "name": "a moderator can clear the leaderboard, and the audit row commits with it",
+    "events": [
+      {
+        "event": "chat.message.received",
+        "payload": { "id": "m1", "user": { "id": "u-alice", "displayName": "alice" }, "body": "hello", "timestamp": "2026-01-01T00:00:00Z" }
+      },
+      {
+        "event": "chat.message.received",
+        "payload": { "id": "m2", "user": { "id": "u-mod", "displayName": "mod", "scopes": ["MODERATOR"] }, "body": "!resetleaderboard", "timestamp": "2026-01-01T00:00:01Z" }
+      },
+      {
+        "event": "chat.message.received",
+        "payload": { "id": "m3", "user": { "id": "u-mod", "displayName": "mod", "scopes": ["MODERATOR"] }, "body": "!top", "timestamp": "2026-01-01T00:00:02Z" }
+      },
+      {
+        "event": "chat.message.received",
+        "payload": { "id": "m4", "user": { "id": "u-mod", "displayName": "mod", "scopes": ["MODERATOR"] }, "body": "!resetleaderboard", "timestamp": "2026-01-01T00:00:03Z" }
+      }
+    ],
+    "expect": {
+      "chatSends": [
+        "Leaderboard cleared. Times reset: 1.",
+        "No messages counted yet.",
+        "Leaderboard cleared. Times reset: 2."
+      ]
+    }
+  },
+  {
+    "name": "!resetleaderboard is silent for a non-moderator",
+    "events": [
+      {
+        "event": "chat.message.received",
+        "payload": { "id": "m1", "user": { "id": "u-alice", "displayName": "alice" }, "body": "hello", "timestamp": "2026-01-01T00:00:00Z" }
+      },
+      {
+        "event": "chat.message.received",
+        "payload": { "id": "m2", "user": { "id": "u-alice", "displayName": "alice" }, "body": "!resetleaderboard", "timestamp": "2026-01-01T00:00:01Z" }
+      },
+      {
+        "event": "chat.message.received",
+        "payload": { "id": "m3", "user": { "id": "u-alice", "displayName": "alice" }, "body": "!top", "timestamp": "2026-01-01T00:00:02Z" }
+      }
+    ],
+    "expect": { "chatSends": ["Top chatters: 1. alice (1)"] }
+  }
+]
