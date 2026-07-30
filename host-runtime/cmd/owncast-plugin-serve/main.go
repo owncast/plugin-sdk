@@ -308,7 +308,8 @@ func main() {
 
 	server := plugin.NewServer([]*plugin.Loaded{loaded})
 	server.IsAuthenticated = env.IsAuthenticated
-	// Manifest-declared admin paths are served without credentials locally.
+	// Manifest-declared admin paths are served without credentials by this
+	// dev server, which is why it binds loopback only.
 	// The URL this dev server prints is the plugin's own root, and for a
 	// plugin whose only page is an admin page (file-manager, admin-demo,
 	// theme-hub) that URL *is* an admin path, so demanding a header would
@@ -336,12 +337,16 @@ func main() {
 		fmt.Printf("  static files: %s\n", staticDescription)
 	}
 	if len(loaded.Manifest.Admin.Pages) > 0 {
-		fmt.Println("  admin pages: open to anyone locally, admin password required in Owncast")
+		fmt.Println("  admin pages: served with no password here, Owncast requires the admin password")
 	}
 	fmt.Printf("  drive chat:  curl -XPOST localhost:%s/_dev/chat -d '{\"user\":\"alice\",\"body\":\"hi\"}'\n", port)
 	fmt.Printf("  drive event: curl -XPOST localhost:%s/_dev/event -d '{\"type\":\"stream.started\",\"payload\":{}}'\n", port)
 	fmt.Println("  Ctrl-C to stop")
-	if err := http.ListenAndServe(":"+port, mux); err != nil {
+	// Loopback only. This is a localhost dev server, and the admin paths below
+	// are served with no credential, which for a plugin like file-manager means
+	// an open file read, write and delete API. Binding every interface would
+	// hand that to anyone on the same network.
+	if err := http.ListenAndServe("127.0.0.1:"+port, mux); err != nil {
 		fatal("listen: %v", err)
 	}
 }
@@ -587,11 +592,11 @@ func loadTarget(ctx context.Context, env *plugin.HostEnv, target string) (*plugi
 		}
 		// LoadPackage mounts public/ and assets/ from inside the archive,
 		// so there is nothing to wire up here.
-		assets := ""
+		staticDescription := ""
 		if loaded.PublicFS != nil || loaded.AssetsFS != nil {
-			assets = "embedded in " + filepath.Base(target)
+			staticDescription = "embedded in " + filepath.Base(target)
 		}
-		return loaded, loaded.Manifest.Slug, assets
+		return loaded, loaded.Manifest.Slug, staticDescription
 	}
 
 	manifestPath := filepath.Join(target, "plugin.manifest.json")
