@@ -6,6 +6,18 @@ The contract between the Owncast host runtime and a plugin. This document is the
 
 At the wasm ABI a plugin is a module exposing a fixed set of well-known exports and importing a fixed set of host functions. For interpreted plugins (JavaScript, Python) that module is the host-embedded **shared engine** (one per language, compiled once and instantiated per plugin) running the plugin's source, which the host injects via Extism config at load. A plugin authored directly as a self-contained wasm module presents the same ABI itself. Either way the protocol below is identical. Communication is single-buffer in / single-buffer out: the host writes a JSON or text body before the call, the plugin reads it via the Extism `Host.input*()` helpers, and any return value is written via `Host.output*()`.
 
+## Reserved Extism config keys
+
+The host sets these on a plugin instance before its first call. They belong to the host/guest ABI, not to the author-declared `manifest.config` namespace served by `owncast_config_get`. Manifest validation also rejects author config keys starting with `__`.
+
+| Key        | Set for                      | Contents                                                                                                                                                                                                                                                                                                                           |
+| ---------- | ---------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `__slug`   | every runtime                | The plugin's canonical slug as the host resolved it (declared in the manifest, or derived from `name`). This is the authoritative identity. Prefer it over the manifest's own `slug`, which is absent when the author let the host derive it. The host reads the same value back to resolve the caller inside every host function. |
+| `manifest` | every runtime                | The packaged `plugin.manifest.json`, verbatim.                                                                                                                                                                                                                                                                                      |
+| `script`   | `javascript` / `python` only | The plugin's source, which the shared engine's bootstrap evaluates. A self-contained wasm module already is its code, so it gets no `script`.                                                                                                                                                                                        |
+
+A self-contained module reads these through its Extism PDK's config helper (`config::get("manifest")` in Rust). Authors of interpreted plugins never touch them. Their SDK's engine bootstrap does it.
+
 ## Exports (plugin → host)
 
 Every plugin must export these functions:
@@ -28,18 +40,34 @@ Every plugin must export these functions:
 
 ### `register` output
 
-`register` returns the static manifest echoed back, plus two fields the SDK
-derives at runtime:
+`register` returns the manifest as JSON, with two fields filled in from the
+runtime:
 
-- **`subscriptions`**: `{ notify: [{event}], filter: [{event, priority?}] }`,
-  derived from the plugin's ordinary handlers. The host validates these against
-  the sidecar manifest's permissions.
+- **`subscriptions`**: `{ notify: [{event}], filter: [{event, priority?}] }`.
+  What the plugin reports here is what the host installs. Subscriptions that
+  carry a permission (`chat.filter`, and the `fediverse.*` inbound events) are
+  validated against the sidecar manifest's permissions and rejected at load
+  when undeclared.
 - **`commands`**:
   `[{ name, prefix, description?, usage?, aliases?, modOnly?, caseSensitive?, cooldownMs? }]`.
   The host matches accepted human chat messages against every loaded plugin's
   declarations. Duplicate commands all run. Moderator failures, cooldown
   rejections, and unknown commands are silent. The same metadata builds the
   built-in `!help` response.
+
+The host consumes exactly three things from this output: identity (`slug`, or
+`name` when `slug` is omitted), `subscriptions`, and `commands`. It rejects the
+plugin when the identity disagrees with the sidecar manifest it parsed, or when
+the output claims a permission the sidecar didn't declare. Every other field is
+ignored, including `version`. The SDK bakes the version in at build time, so a
+mismatch only ever means a stale build.
+
+A language SDK derives subscriptions and commands from the handlers the author
+registered, then echoes the injected `manifest` config value with those two
+fields replaced. A self-contained wasm module has no SDK to derive anything:
+declare `subscriptions` (and `commands`, if it has any) in
+`plugin.manifest.json` and echo the `manifest` config value straight back. See
+`examples/wasm/hello-wasm`.
 
 Matched declarations receive an internal `chat.command` envelope through
 `on_event`. Its payload is
@@ -57,7 +85,7 @@ not prevent plugins from also responding.
 
 ## Imports (host → plugin)
 
-Because all plugins of a language share one engine, the engine imports the **full** set of host functions and the host enforces **permissions at call time**: every host function resolves the calling plugin's identity (from a per-instance config value the host sets at load) and rejects the call (returning a zero/empty result and logging) when the plugin's manifest didn't grant the matching permission. The SDK wrappers still map one-to-one to these imports, so an author only ever calls the ones their permissions allow. (A self-contained wasm plugin that imports an ungranted host function instead fails to link at instantiation, the older structural enforcement.)
+The host links the **full** set of host functions into every plugin. The shared engine imports all of them, and a self-contained module gets the same set. Permissions are enforced **at call time**: every host function resolves the calling plugin's identity (from the `__slug` config value the host sets at load) and rejects the call (returning a zero/empty result and logging) when the plugin's manifest didn't grant the matching permission. The SDK wrappers still map one-to-one to these imports, so an author only calls the ones their permissions allow. A hand-authored module can import whatever it likes and is refused the same way at call time.
 
 ### `chat.send`
 

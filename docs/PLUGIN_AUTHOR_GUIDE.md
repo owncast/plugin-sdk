@@ -9,6 +9,16 @@ How to write, test, and ship a plugin. Aimed at JavaScript developers. Write som
 > shared, embedded interpreter engine, so plugins don't bundle a runtime and
 > packages are a few KB.
 
+> Compiled languages work too: a plugin can be a **self-contained wasm module**
+> (Rust, TinyGo, AssemblyScript, Zig, …) that implements the
+> [wire protocol](./WIRE_PROTOCOL.md) directly, with no SDK. That's a lower-level
+> path. You handle the exports, the JSON envelopes, and the host imports
+> yourself, so prefer a language SDK unless you specifically want a compiled
+> language or an existing library. The public
+> [Native WebAssembly guide](https://owncast.online/docs/plugins/sdks/native-wasm)
+> has minimal Rust, TinyGo, and AssemblyScript examples. The complete Rust
+> example in this repository is `examples/wasm/hello-wasm`.
+
 ## Contents
 
 - [Quick start](#quick-start)

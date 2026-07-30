@@ -1,0 +1,48 @@
+[
+  {
+    "name": "replies with the identity it read from the host-injected manifest",
+    "events": [
+      {
+        "event": "chat.message.received",
+        "payload": {
+          "id": "1",
+          "user": { "id": "u1", "displayName": "alice" },
+          "clientId": 7,
+          "body": "hi",
+          "timestamp": "2024-01-01T00:00:00Z"
+        }
+      }
+    ],
+    "expect": {
+      "chatSends": ["Hello Wasm v0.1.0 heard alice say: hi"]
+    }
+  },
+  {
+    "name": "falls back to a placeholder when the message has no account",
+    "events": [
+      {
+        "event": "chat.message.received",
+        "payload": {
+          "id": "2",
+          "body": "anonymous hello",
+          "timestamp": "2024-01-01T00:00:01Z"
+        }
+      }
+    ],
+    "expect": {
+      "chatSends": ["Hello Wasm v0.1.0 heard someone say: anonymous hello"]
+    }
+  },
+  {
+    "name": "stays quiet for events the echoed manifest did not subscribe to",
+    "events": [
+      {
+        "event": "chat.user.joined",
+        "payload": { "user": { "id": "u3", "displayName": "carol" } }
+      }
+    ],
+    "expect": {
+      "chatSends": []
+    }
+  }
+]

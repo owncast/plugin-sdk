@@ -1,0 +1,68 @@
+# Self-contained wasm example CI. Builds every examples/wasm/* plugin with its
+# own language toolchain and runs it through owncast-plugin-test, built from
+# host-runtime against the current owncast runtime like the JS and Python
+# matrices do. Nothing here needs the SDK toolchain cache or the shared engines:
+# a native module is the whole artifact.
+#
+# Note: these examples read their manifest from the reserved `manifest` Extism
+# config key, which the host injects for self-contained wasm plugins as of
+# owncast's manager.go instantiate(). This job fails at load against an older
+# develop, with the plugin saying so.
+name: Wasm Examples
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: examples-wasm-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  examples:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: host-runtime/go.mod
+          cache-dependency-path: host-runtime/go.sum
+
+      # The runtime lives in owncast (services/plugins). GOPRIVATE + @develop
+      # matches the other example workflows.
+      - name: Build owncast-plugin-test from source
+        working-directory: host-runtime
+        env:
+          GOPRIVATE: github.com/owncast/owncast
+        run: |
+          go get github.com/owncast/owncast@develop
+          go build -o "$RUNNER_TEMP/owncast-plugin-test" ./cmd/owncast-plugin-test
+
+      # Rust ships preinstalled on the runner. Only the wasm target is missing.
+      - name: Add the wasm target
+        run: rustup target add wasm32-unknown-unknown
+
+      # One job for all native examples: each builds in seconds, so per-example
+      # isolation would cost more in setup than it buys in signal. Plugins
+      # without scenario tests still get the install-time load check.
+      - name: Build + test every wasm example
+        run: |
+          set -e
+          for dir in examples/wasm/*/; do
+            [ -f "$dir/build.sh" ] || continue
+            echo "::group::$dir"
+            (
+              cd "$dir"
+              ./build.sh
+              if [ -d __tests__ ]; then
+                "$RUNNER_TEMP/owncast-plugin-test" .
+              else
+                echo "(no __tests__, load check only)"
+                "$RUNNER_TEMP/owncast-plugin-test" --load-only .
+              fi
+            )
+            echo "::endgroup::"
+          done

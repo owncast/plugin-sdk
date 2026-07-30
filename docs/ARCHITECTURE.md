@@ -16,7 +16,8 @@ This repository is where the Owncast plugin system is developed. It contains:
 - the **host runtime** (Go) that loads and runs plugins. The runtime itself now
   lives in Owncast (`services/plugins`) and is imported here (see
   [Relationship to Owncast](#relationship-to-owncast)),
-- **example plugins** (parallel JS and Python ports) and their tests.
+- **example plugins**: parallel JS and Python ports of each feature, one
+  self-contained wasm example, and their tests.
 
 ## Execution model
 
@@ -177,6 +178,16 @@ by language (**`plugin.js`**, **`plugin.py`**, or **`plugin.wasm`** for a
 self-contained module), and the host **infers the runtime from that filename**,
 so the manifest needs no `type` field. Authors no longer touch `extism-js`/
 `extism-py` or binaryen at all.
+
+None of that applies to a plugin authored directly as a self-contained wasm
+module: there's no SDK to bundle and no build CLI in the path. The author's own
+toolchain emits the module (`cargo build --target wasm32-unknown-unknown`,
+TinyGo, AssemblyScript, Zig, …), it's named `<slug>.wasm` next to
+`owncast-plugin-test` to discover, and packaging is a plain zip with the module
+entered as `plugin.wasm`. Such a module implements the wire protocol itself and
+reads its own manifest from the reserved `manifest` config key the host injects.
+`examples/wasm/hello-wasm` is a worked example: a few dozen lines of Rust plus a
+`build.sh`.
 
 ### Building the engines (what maintainers run)
 

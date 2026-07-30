@@ -1,0 +1,19 @@
+{
+  "api": "1",
+  "name": "Hello Wasm",
+  "slug": "hello-wasm",
+  "version": "0.1.0",
+  "description": "Minimal plugin authored directly as a self-contained wasm module, with no language SDK and no shared engine. This example was written in Rust.",
+  "category": "examples",
+  "permissions": [
+    "chat.send"
+  ],
+  "subscriptions": {
+    "notify": [
+      { "event": "chat.message.received" }
+    ]
+  },
+  "bot": {
+    "displayName": "Hello Wasm"
+  }
+}

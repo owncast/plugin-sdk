@@ -31,6 +31,9 @@ skill-aware agents, and pointed to here for those that aren't).
 - `host-runtime/`: Go host runtime that loads and runs plugins.
 - `examples/js/` and `examples/python/`: one example plugin per architectural
   feature, mirrored across both languages.
+- `examples/wasm/`: plugins authored directly as self-contained wasm modules
+  (no SDK, no shared engine). Built with their own toolchain via `build.sh`,
+  tested with `tools/owncast-plugin-test`.
 - `docs/`: `PLUGIN_AUTHOR_GUIDE.md` (exhaustive author reference),
   `ARCHITECTURE.md`, and `WIRE_PROTOCOL.md`.
 
