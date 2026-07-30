@@ -20,16 +20,17 @@ A self-contained module reads these through its Extism PDK's config helper (`con
 
 ## Exports (plugin → host)
 
-Every plugin must export these functions:
+Plugins must export `register`. The other exports are optional and only needed
+when the plugin uses those capabilities:
 
 | Function          | Input                      | Output                      | Purpose                                                                                               |
 | ----------------- | -------------------------- | --------------------------- | ----------------------------------------------------------------------------------------------------- |
-| `register`        | none                       | JSON `Manifest`             | Returns derived subscriptions and command declarations.                                               |
+| `register`        | none                       | JSON `Manifest`             | Returns the manifest with runtime subscriptions and command declarations.                             |
 | `on_event`        | JSON `Envelope`            | none                        | Notification dispatch. Fire-and-forget.                                                               |
 | `on_filter`       | JSON `Envelope`            | JSON `FilterResult`         | Filter chain entry point.                                                                             |
 | `on_http_request` | JSON `IncomingHttpRequest` | JSON `OutgoingHttpResponse` | HTTP request handler for `/plugins/<name>/*`.                                                         |
 | `on_tab_content`  | JSON `ContentRequest`      | raw HTML string             | Render HTML for a dynamic tab (one without a static `content` file in the manifest).                 |
-| `on_page_content` | JSON `ContentRequest`      | raw HTML string             | Render HTML for a dynamic `extraPageContent` slot (one without a static `content` file).             |
+| `on_page_content` | JSON `ContentRequest`      | raw HTML string             | Render HTML for a dynamic `extraPageContent` slot (one without a static `content` file in the manifest). |
 | `on_page_styles`  | none                       | raw CSS string              | Optional. Return CSS to append to `customStyles` on `/api/config`. Called only when the plugin holds `ui.modify`. |
 | `on_page_scripts` | none                       | raw JavaScript string       | Optional. Return JavaScript to append to `/customjavascript`. Same gating as `on_page_styles`.        |
 | `on_auth_check`   | JSON `AuthCheckRequest`    | JSON `AuthCheckResult`      | Optional. Re-validate a gate session on the viewer's `/` page load. Returns `{action: ok\|refresh\|deny}`. Called by the host only for the active `auth.gate` plugin. |
@@ -55,12 +56,11 @@ runtime:
   rejections, and unknown commands are silent. The same metadata builds the
   built-in `!help` response.
 
-The host consumes exactly three things from this output: identity (`slug`, or
-`name` when `slug` is omitted), `subscriptions`, and `commands`. It rejects the
-plugin when the identity disagrees with the sidecar manifest it parsed, or when
-the output claims a permission the sidecar didn't declare. Every other field is
-ignored, including `version`. The SDK bakes the version in at build time, so a
-mismatch only ever means a stale build.
+The host uses the identity, permissions, subscriptions, and commands in this
+output. It rejects the plugin when the identity disagrees with the sidecar
+manifest or when the output claims a permission the sidecar did not declare.
+Other fields are ignored, including `version`. The SDK bakes the version in at
+build time, so a mismatch only indicates a stale build.
 
 A language SDK derives subscriptions and commands from the handlers the author
 registered, then echoes the injected `manifest` config value with those two
