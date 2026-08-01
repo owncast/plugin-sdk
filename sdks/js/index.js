@@ -494,6 +494,8 @@ const owncast = {
   // Viewer-authentication gate. Only a plugin holding `auth.gate` (and enabled by
   // an admin) can issue sessions, and these are valid only inside onHttpRequest,
   // where the host attaches/clears the signed session cookie on the response.
+  // The admin selects the cumulative, host-owned access mode. Plugins cannot
+  // read or change it.
   auth: {
     // Issue a gate session for an already-registered user (see users.register).
     // `ttl` is optional seconds, and 0/omitted uses the host default. Throws on

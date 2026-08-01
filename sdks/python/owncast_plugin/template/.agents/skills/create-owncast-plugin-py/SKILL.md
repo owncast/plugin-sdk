@@ -57,9 +57,9 @@ Then map their description to capabilities using the **Capability map** below.
 That tells you which handler(s) to write, which `owncast.*` calls to make, and
 which permissions the manifest must declare. If a request needs a high-trust
 permission (`fediverse.post`, `videoconfig.write`, `users.moderate`,
-`network.fetch` to arbitrary hosts, or `auth.gate`, which locks the whole site
-behind the plugin's login), note it back to the user. The server admin
-will have to approve it.
+`network.fetch` to arbitrary hosts, or `auth.gate`, which lets the host require
+the plugin's login for operator-selected viewer resources), note it back to the
+user. The server admin will have to approve it.
 
 Keep it small. Build the simplest plugin that does what they asked. You can
 always add handlers later.
@@ -210,7 +210,7 @@ Several rows combine for richer plugins.
 | React to any verified inbound fediverse activity | `@plugin.on_fediverse` gets a non-subscriptable `_Obj` attribute view. Use `payload.raw` for the underlying dictionary and keys like `@context`. Specialized handlers: `@plugin.on_fediverse_follow/like/repost/quote/mention/reply` | none | `fediverse.inbound` |
 | Read/change video/transcoding config            | (any)                                               | `owncast.video_config.read/write`              | `videoconfig.read` / `videoconfig.write` |
 | Compose with other plugins via custom events    | emit: `owncast.events.emit`, receive: `@plugin.on(...)` | `owncast.events.emit(type, payload)`       | `events.emit` (emitter only)           |
-| Gate the whole site behind a member login (paywall) | `@plugin.on_http_request` (login flow) + `@plugin.on_auth_check` (re-validation) | `owncast.users.register` + `owncast.auth.grant_session/end_session` | `auth.gate` + `users.register` (+ `http.serve`); model on `examples/python/github-auth` |
+| Gate the site behind a member login (paywall) | `@plugin.on_http_request` (login flow) + `@plugin.on_auth_check` (re-validation) | `owncast.users.register` + `owncast.auth.grant_session/end_session` | `auth.gate` + `users.register` (+ `http.serve`); model on `examples/python/github-auth` |
 
 **Golden rule:** the `permissions` array must contain exactly the permissions
 required by the handlers you register and every `owncast.*` method you call.

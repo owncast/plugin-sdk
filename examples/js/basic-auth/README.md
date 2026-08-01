@@ -5,3 +5,11 @@ A shared-password viewer gate: visitors must enter one password before they can 
 **Demonstrates:** the full auth-gate lifecycle. `owncast.users.register({ authId, displayName })` + `owncast.auth.grantSession({ userId })` to log a viewer in, `owncast.auth.endSession()` to log them out, and the `onAuthCheck` hook to **revoke** sessions: an admin-only `/revoke` route flips a flag, and `onAuthCheck` (run by the host on each page load) returns `deny` while it's set, bouncing every viewer back to the login screen. Compare with `github-auth`, which adds a real OAuth provider on top of the same primitives.
 
 The host owns the signed session cookie end to end. The plugin only decides whether the password was right.
+
+The server admin selects a host-owned access mode on the **Authentication** tab:
+
+- **Website only** is the default. It leaves Owncast-hosted HLS, `/api/status`, and Owncast Directory listing public.
+- **Website, video players, and other resources** also requires authentication for Owncast-hosted HLS. VLC and other players without a browser session cannot play the stream, while `/api/status` and Directory listing stay public.
+- **Website, video players, and server status requests** also requires authentication for `/api/status` and disables Owncast Directory listing.
+
+The plugin cannot read or change that choice.

@@ -578,7 +578,9 @@ export const owncast: {
   };
   /** Viewer-authentication gate. Only a plugin holding `auth.gate` (and enabled
    *  by an admin) can issue sessions, and only inside `onHttpRequest`, where the
-   *  host attaches or clears the signed session cookie on the response. */
+   *  host attaches or clears the signed session cookie on the response. The
+   *  admin selects the cumulative, host-owned access mode. Plugins cannot read
+   *  or change it. */
   auth: {
     /** Issue a gate session for an already-registered user (see
      *  `users.register`). `ttl` is optional seconds (0/omitted = host default).

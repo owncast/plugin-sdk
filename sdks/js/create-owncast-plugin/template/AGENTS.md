@@ -81,7 +81,7 @@ the plugin. Admins judge trust by the declared list, so don't over-declare.
 | React to any verified inbound fediverse activity | `onFediverse(activity)` for raw JSON, plus `onFediverseFollow/Like/Repost/Quote/Mention/Reply` for specialized payloads | none | `fediverse.inbound` |
 | Read/change video config                        | (any)                                        | `owncast.videoConfig.read/write`          | `videoconfig.read` / `videoconfig.write` |
 | Compose with other plugins                      | emit `owncast.events.emit`, receive `on:{}`  | `owncast.events.emit(type, payload)`      | `events.emit` (emitter only)           |
-| Gate the whole site behind a member login (paywall) | `onHttpRequest` (login flow) + `onAuthCheck` (re-validation) | `owncast.users.register` + `owncast.auth.grantSession/endSession` | `auth.gate` + `users.register` (+ `http.serve`) |
+| Gate the site behind a member login (paywall) | `onHttpRequest` (login flow) + `onAuthCheck` (re-validation) | `owncast.users.register` + `owncast.auth.grantSession/endSession` | `auth.gate` + `users.register` (+ `http.serve`) |
 
 ## Gotchas that bite
 

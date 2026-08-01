@@ -554,7 +554,9 @@ class _Users:
 class _Auth:
     """Viewer-authentication gate. Only a plugin holding 'auth.gate' (and enabled
     by an admin) can issue sessions, and only inside on_http_request, where the
-    host attaches/clears the signed session cookie on the response."""
+    host attaches/clears the signed session cookie on the response. The admin
+    selects the cumulative, host-owned access mode. Plugins cannot read or
+    change it."""
 
     def grant_session(self, user_id, ttl=0):
         """Issue a gate session for an already-registered user (see

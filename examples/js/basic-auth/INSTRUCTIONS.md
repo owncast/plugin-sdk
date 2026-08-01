@@ -5,7 +5,11 @@ Requires viewers to enter a shared password before they can access your Owncast 
 ## Setup
 
 1. In **Admin → Plugins → Basic Auth**, set the **password** you want to hand out to viewers (default: `letmein`, which you should change).
-2. Enable the plugin. While it is enabled, every viewer must enter the password first.
+2. On the **Authentication** tab, choose an access mode:
+   - **Website only** is the default. It protects the website but leaves HLS players, `/api/status`, and Owncast Directory listing public.
+   - **Website, video players, and other resources** also protects Owncast-hosted HLS. VLC and other players without a browser session cannot play the stream. `/api/status` and Directory listing stay public.
+   - **Website, video players, and server status requests** also protects `/api/status` and disables Owncast Directory listing.
+3. Enable the plugin. Viewers must enter the password before reaching a protected resource.
 
 To turn the gate off again, disable the plugin.
 

@@ -150,6 +150,10 @@ signed session cookie end to end (the plugin never sees the token). Only one
 inside an `on_http_request` handler, where the host attaches or clears the
 session cookie on the response after the call returns.
 
+The access boundary is not part of the plugin wire protocol. The operator
+selects one cumulative, host-owned mode: website only, website and stream, or
+website, stream, and status. A plugin cannot read or change that selection.
+
 - `owncast_auth_grant_session(reqPtr: PTR): PTR`, JSON `GrantSessionRequest` in, JSON `{error?}` out. Mints a session for the named `userId` (which the same plugin must have registered via `users.register`) and attaches the signed cookie to the in-flight response.
 - `owncast_auth_end_session(): void`, clears the session cookie on the in-flight response (logout).
 

@@ -507,8 +507,8 @@ in the built-in help listing.
 | `chat.filter`        | Subscribe to `filterChatMessage` (read, modify, or drop every chat message). Required for any plugin that declares the handler.                   |
 | `users.read`         | `owncast.users.list`, `.get`                                                                                                                      |
 | `users.moderate`     | `owncast.users.setEnabled`, `.banIP`                                                                                                              |
-| `users.register`     | `owncast.users.register`, find-or-create an authenticated Owncast user for an external identity. The host namespaces `authId` by your slug, so plugins can't collide on or impersonate each other's users. |
-| `auth.gate`          | Be the site's viewer-authentication gate: `owncast.auth.grantSession` / `.endSession` plus the `onAuthCheck` hook. While enabled, the host blocks every route for unauthenticated visitors. Only one gate plugin can be enabled at a time. See [Viewer authentication gates](#viewer-authentication-gates). |
+| `users.register`     | `owncast.users.register`, find-or-create an authenticated Owncast user for an external identity. The host records your slug alongside the raw `authId` and scopes every lookup to that pair, so plugins can't collide on or impersonate each other's users. |
+| `auth.gate`          | Be the site's viewer-authentication gate: `owncast.auth.grantSession` / `.endSession` plus the `onAuthCheck` hook. Only one gate plugin can be enabled at a time. See [Viewer authentication gates](#viewer-authentication-gates). |
 | `storage.kv`         | Per-plugin namespaced key/value store                                                                                                             |
 | `storage.upload`     | `owncast.storage.upload`, upload files, get a public URL                                                                                          |
 | `storage.fs`         | `owncast.fs.*`, private sandboxed disk under `data/plugin-data/<slug>/` (server-side only, never served over HTTP)                                 |
@@ -736,7 +736,7 @@ Author flow:
 
 ## Viewer authentication gates
 
-A plugin holding the `auth.gate` permission can become the site's login wall: until a visitor authenticates through it, the host blocks the whole server — the watch page, the HLS video, chat, and the API. The plugin renders the login flow and decides who gets in; the host owns the signed session cookie end to end (your code never sees it). Only one `auth.gate` plugin can be enabled at a time.
+A plugin holding the `auth.gate` permission can become the site's login wall. The plugin renders the login flow and decides who gets in. The host owns the signed session cookie end to end, so your code never sees it. Only one `auth.gate` plugin can be enabled at a time.
 
 The flow (see `examples/js/github-auth` for a complete OAuth version):
 
@@ -752,7 +752,7 @@ return { status: 302, headers: { Location: returnTo } };
 
 4. For logout, call `owncast.auth.endSession()` and redirect.
 
-`users.register` finds-or-creates an authenticated Owncast user for an external identity (the host namespaces `authId` by your slug). `grantSession`/`endSession` are only meaningful inside `onHttpRequest`, where the host attaches or clears the cookie on the response after your handler returns.
+`users.register` finds-or-creates an authenticated Owncast user for an external identity (the host scopes the identity to your slug, so pass the raw external id unprefixed). `grantSession`/`endSession` are only meaningful inside `onHttpRequest`, where the host attaches or clears the cookie on the response after your handler returns.
 
 ### Re-validating sessions: `onAuthCheck`
 
@@ -766,6 +766,24 @@ onAuthCheck(req) {
 ```
 
 Return `authCheck.ok()`, `authCheck.deny()` (the host clears the session and bounces the viewer to your login screen), or `authCheck.refresh({ ttl? })` (keep the session and re-issue the cookie for sliding expiry). Errors fail closed, as a deny.
+
+### Access policy is the operator's, not yours
+
+The admin UI adds an **Authentication** tab for every installed plugin that
+declares `auth.gate`. The operator selects one host-owned access mode stored
+per plugin:
+
+| Access mode | Effect |
+| --- | --- |
+| Website only (default) | The web interface requires sign-in. `/hls/*`, `/api/status`, and directory listing stay public. |
+| Website, video players, and other resources | Also gates `/hls/*`. Players such as VLC cannot complete the browser login. `/api/status` and directory listing stay public. |
+| Website, video players, and server status requests | Gates the web interface, `/hls/*`, and `/api/status`. Directory listing is disabled. |
+
+The modes are cumulative. A plugin cannot read or change the selected mode.
+Write your plugin against the default. Do not assume a viewer reaching
+`/hls/*` has a session, and do not build features that depend on `/api/status`
+being private. A viewer with a valid session is let through regardless of the
+selected mode.
 
 Gate-specific things to know:
 

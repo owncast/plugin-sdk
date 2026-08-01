@@ -53,9 +53,9 @@ Then map their description to capabilities using the **Capability map** below.
 That tells you which handler(s) to write, which `owncast.*` calls to make, and
 which permissions the manifest must declare. If a request needs a high-trust
 permission (`fediverse.post`, `videoconfig.write`, `users.moderate`,
-`network.fetch` to arbitrary hosts, or `auth.gate`, which locks the whole site
-behind the plugin's login), note it back to the user. The server admin
-will have to approve it.
+`network.fetch` to arbitrary hosts, or `auth.gate`, which lets the host require
+the plugin's login for operator-selected viewer resources), note it back to the
+user. The server admin will have to approve it.
 
 Keep it small. Build the simplest plugin that does what they asked. You can
 always add handlers later.
@@ -204,7 +204,7 @@ combine for richer plugins.
 | React to any verified inbound fediverse activity | `onFediverse(activity)` for raw JSON, plus `onFediverseFollow/Like/Repost/Quote/Mention/Reply` for specialized payloads | none | `fediverse.inbound` |
 | Read/change video/transcoding config            | (any)                                        | `owncast.videoConfig.read/write`          | `videoconfig.read` / `videoconfig.write` |
 | Compose with other plugins via custom events    | emit: `owncast.events.emit`, receive: `on:{}`| `owncast.events.emit(type, payload)`      | `events.emit` (emitter only)           |
-| Gate the whole site behind a member login (paywall) | `onHttpRequest` (login flow) + `onAuthCheck` (re-validation) | `owncast.users.register` + `owncast.auth.grantSession/endSession` | `auth.gate` + `users.register` (+ `http.serve`); model on `examples/js/github-auth` |
+| Gate the site behind a member login (paywall) | `onHttpRequest` (login flow) + `onAuthCheck` (re-validation) | `owncast.users.register` + `owncast.auth.grantSession/endSession` | `auth.gate` + `users.register` (+ `http.serve`); model on `examples/js/github-auth` |
 
 **Golden rule:** the `permissions` array must contain exactly the permissions
 required by the handlers you register and every `owncast.*` method you call.

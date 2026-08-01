@@ -6,7 +6,11 @@ Requires viewers to sign in with GitHub before they can access your Owncast site
 
 1. Register a GitHub OAuth app at https://github.com/settings/developers. Set the callback URL to `https://YOUR-OWNCAST/plugins/github-auth/callback`.
 2. In **Admin → Plugins → GitHub Auth**, paste the **client ID** and **client secret** from that app.
-3. Enable the plugin. While it is enabled, every viewer must sign in with GitHub first.
+3. On the **Authentication** tab, choose an access mode:
+   - **Website only** is the default. It protects the website but leaves HLS players, `/api/status`, and Owncast Directory listing public.
+   - **Website, video players, and other resources** also protects Owncast-hosted HLS. VLC and other players without a browser session cannot play the stream. `/api/status` and Directory listing stay public.
+   - **Website, video players, and server status requests** also protects `/api/status` and disables Owncast Directory listing.
+4. Enable the plugin. Viewers must sign in with GitHub before reaching a protected resource.
 
 To turn the gate off again, disable the plugin.
 
