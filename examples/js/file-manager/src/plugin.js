@@ -92,8 +92,8 @@ function uploadFile(req) {
   // owncast.fs.exists lets us tell the admin whether they replaced a file.
   const replaced = owncast.fs.exists(name);
   const result = owncast.fs.write(name, b64decode(dataBase64 || ""));
-  if (!result.ok) {
-    return json(500, { ok: false, error: result.error || "write failed" });
+  if (result.error) {
+    return json(500, { ok: false, error: result.error });
   }
   return json(200, { ok: true, replaced });
 }
@@ -109,8 +109,8 @@ function deleteFile(req) {
     return json(400, { ok: false, error: "invalid file name" });
   }
   const result = owncast.fs.delete(parsed.name);
-  if (!result.ok) {
-    return json(500, { ok: false, error: result.error || "delete failed" });
+  if (result.error) {
+    return json(500, { ok: false, error: result.error });
   }
   return json(200, { ok: true });
 }

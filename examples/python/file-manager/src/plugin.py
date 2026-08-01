@@ -36,9 +36,8 @@ def upload_file(req):
     # owncast.fs.exists lets us tell the admin whether they replaced a file.
     replaced = owncast.fs.exists(name)
     result = owncast.fs.write(name, b64decode(parsed.get("dataBase64") or ""))
-    if not (result and result.get("ok")):
-        err = (result or {}).get("error") or "write failed"
-        return json_resp(500, {"ok": False, "error": err})
+    if result.get("error"):
+        return json_resp(500, {"ok": False, "error": result["error"]})
     return json_resp(200, {"ok": True, "replaced": replaced})
 
 
@@ -50,9 +49,8 @@ def delete_file(req):
     if bad_name(parsed.get("name")):
         return json_resp(400, {"ok": False, "error": "invalid file name"})
     result = owncast.fs.delete(parsed.get("name"))
-    if not (result and result.get("ok")):
-        err = (result or {}).get("error") or "delete failed"
-        return json_resp(500, {"ok": False, "error": err})
+    if result.get("error"):
+        return json_resp(500, {"ok": False, "error": result["error"]})
     return json_resp(200, {"ok": True})
 
 

@@ -448,6 +448,11 @@ class _Storage:
         return _call_json("owncast_storage_upload", str(name), str(data))
 
 
+def _operation_result(name, failure_message, *args):
+    result = _call_json(name, *args)
+    return result if isinstance(result, dict) else {"error": failure_message}
+
+
 class _FS:
     def read_text(self, path):
         return _host("owncast_fs_read")(str(path)) or None
@@ -457,13 +462,15 @@ class _FS:
     def write(self, path, data):
         if isinstance(data, (bytes, bytearray)):
             data = data.decode("utf-8", "replace")
-        return _call_json("owncast_fs_write", str(path), str(data))
+        return _operation_result(
+            "owncast_fs_write", "write failed", str(path), str(data)
+        )
 
     def list(self, directory):
         return _call_json("owncast_fs_list", str(directory)) or []
 
     def delete(self, path):
-        return _call_json("owncast_fs_delete", str(path))
+        return _operation_result("owncast_fs_delete", "delete failed", str(path))
 
     def exists(self, path):
         return bool(_host("owncast_fs_exists")(str(path)))
@@ -473,8 +480,9 @@ class _SQL:
     """Private SQLite database, one per plugin (permission: storage.sql). It
     lives in db/ next to the storage.fs sandbox in files/, outside anything
     owncast.fs.* can name, and has its own quota.
-    Integral parameters bind as SQLite INTEGERs exactly, including values past
-    2**53."""
+    A result without an error field is successful. An error, missing response,
+    or non-dict response raises RuntimeError. Integral parameters bind as SQLite
+    INTEGERs exactly, including values past 2**53."""
 
     def _request(self, sql, params, max_rows=0):
         request = {"sql": str(sql), "params": list(params or [])}
@@ -485,13 +493,12 @@ class _SQL:
         return json.dumps(request)
 
     def _result(self, name, sql, params, max_rows=0):
-        result = _call_json(name, self._request(sql, params, max_rows))
-        # A denied call returns nothing at all, so an answer that isn't an
-        # explicit success is a failure and never an empty result set.
-        if isinstance(result, dict) and result.get("ok") is True:
-            return result
-        error = result.get("error") if isinstance(result, dict) else None
-        raise RuntimeError(error or "SQL host call failed")
+        result = _operation_result(
+            name, "SQL host call failed", self._request(sql, params, max_rows)
+        )
+        if "error" in result:
+            raise RuntimeError(result.get("error") or "SQL host call failed")
+        return result
 
     def _rows(self, result):
         columns = result.get("columns") or []
@@ -551,7 +558,15 @@ class _VideoConfig:
         return _wrap(_call_json("owncast_video_config_read"))
 
     def write(self, config):
-        return _call_json("owncast_video_config_write", json.dumps(config))
+        """Apply a partial config update. Raise RuntimeError when the host
+        rejects the update or does not return an operation result."""
+        result = _operation_result(
+            "owncast_video_config_write",
+            "video_config.write failed",
+            json.dumps(config),
+        )
+        if "error" in result:
+            raise RuntimeError(result.get("error") or "video_config.write failed")
 
 
 class _Notifications:

@@ -393,11 +393,25 @@ function hostFns(name, perm) {
   return fns;
 }
 
-function sqlResult(offset) {
-  if (offset == 0) throw new Error("SQL host call failed");
+function operationResult(offset, failureMessage) {
+  if (offset == 0) return { error: failureMessage };
   const result = JSON.parse(Memory.find(offset).readString());
-  if (!result.ok) throw new Error(result.error || "SQL operation failed");
+  if (result === null || typeof result !== "object" || Array.isArray(result)) {
+    return { error: failureMessage };
+  }
   return result;
+}
+
+function requireOperationResult(offset, failureMessage) {
+  const result = operationResult(offset, failureMessage);
+  if (Object.prototype.hasOwnProperty.call(result, "error")) {
+    throw new Error(result.error || failureMessage);
+  }
+  return result;
+}
+
+function sqlResult(offset) {
+  return requireOperationResult(offset, "SQL host call failed");
 }
 
 function sqlRows(result) {
@@ -583,7 +597,7 @@ const owncast = {
       return Memory.find(offset).readString();
     },
     // Write bytes (Uint8Array) or a string to a file, creating parent
-    // directories as needed. Returns { ok, error? }.
+    // directories as needed. Returns { error? }.
     write(path, data) {
       const fns = hostFns("owncast_fs_write", Permissions.StorageFS);
       const dataMem =
@@ -599,8 +613,7 @@ const owncast = {
         Memory.fromString(path).offset,
         dataMem.offset,
       );
-      if (offset == 0) return { ok: false, error: "write failed" };
-      return JSON.parse(Memory.find(offset).readString());
+      return operationResult(offset, "write failed");
     },
     // List the entry names (files and subdirectories) directly inside dir.
     // A missing directory lists as empty. Returns string[].
@@ -610,12 +623,11 @@ const owncast = {
       if (offset == 0) return [];
       return JSON.parse(Memory.find(offset).readString());
     },
-    // Remove a single file or empty directory. Returns { ok, error? }.
+    // Remove a single file or empty directory. Returns { error? }.
     delete(path) {
       const fns = hostFns("owncast_fs_delete", Permissions.StorageFS);
       const offset = fns.owncast_fs_delete(Memory.fromString(path).offset);
-      if (offset == 0) return { ok: false, error: "delete failed" };
-      return JSON.parse(Memory.find(offset).readString());
+      return operationResult(offset, "delete failed");
     },
     // Report whether a path exists inside the sandbox. Returns boolean.
     exists(path) {
@@ -731,10 +743,7 @@ const owncast = {
       const offset = fns.owncast_video_config_write(
         Memory.fromString(JSON.stringify(config || {})).offset,
       );
-      if (offset == 0) throw new Error("videoConfig.write failed");
-      const result = JSON.parse(Memory.find(offset).readString());
-      if (!result.ok)
-        throw new Error(result.error || "videoConfig.write failed");
+      requireOperationResult(offset, "videoConfig.write failed");
     },
   },
   kv: {

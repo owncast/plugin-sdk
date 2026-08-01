@@ -278,10 +278,9 @@ export interface UploadResult {
   url: string;
 }
 
-/** Result of a mutating owncast.fs call (write/delete). `ok` is false and
- *  `error` is set when the host rejected the operation. */
+/** Result of a mutating owncast.fs call (write/delete). An empty object means
+ *  success. `error` is set when the host rejected the operation. */
 export interface FsResult {
-  ok: boolean;
   error?: string;
 }
 
@@ -289,10 +288,10 @@ export interface FsResult {
  *  column. Blobs arrive base64-encoded as strings. */
 export type SQLValue = null | boolean | number | string;
 
-/** Result of `owncast.sql.exec`. Both counters are SQLite 64-bit integers, so
- *  they lose precision in JavaScript above `Number.MAX_SAFE_INTEGER`. */
+/** Result of `owncast.sql.exec`. Absence of `error` means success. Both
+ *  counters are SQLite 64-bit integers, so they lose precision in JavaScript
+ *  above `Number.MAX_SAFE_INTEGER`. */
 export interface SQLExecResult {
-  ok: boolean;
   error?: string;
   rowsAffected: number;
   lastInsertId: number;
@@ -302,10 +301,9 @@ export interface SQLExecResult {
 export type SQLRow = Record<string, SQLValue>;
 
 /** The host's raw query response, before the SDK keys rows by column name.
- *  `rows` holds values in `columns` order, and `truncated` is set when more
- *  rows matched than the caller's row limit. */
+ *  Absence of `error` means success. `rows` holds values in `columns` order,
+ *  and `truncated` is set when more rows matched than the caller's row limit. */
 export interface SQLQueryResult {
-  ok: boolean;
   error?: string;
   columns: string[];
   rows: SQLValue[][];
@@ -642,8 +640,9 @@ export const owncast: {
   };
   /** Private SQLite database, one per plugin, stored in `db/` next to the
    *  `storage.fs` sandbox in `files/`, outside anything `owncast.fs.*` can name,
-   *  and quota'd separately. Every call runs with a 2 second timeout and
-   *  throws on error. JavaScript loses unsafe integers before `JSON.stringify`
+   *  and quota'd separately. Every call runs with a 2 second timeout. Absence
+   *  of `error` means success. An error, missing response, or non-object
+   *  response throws. JavaScript loses unsafe integers before `JSON.stringify`
    *  on writes and during `JSON.parse` on reads, so store values above
    *  `Number.MAX_SAFE_INTEGER` (2^53 - 1) as TEXT when they must remain exact.
    *  Requires `storage.sql`. */
@@ -770,7 +769,8 @@ export const owncast: {
     tags(): string[];
   };
   /** Read/change video/transcoding configuration. read() requires
-   *  `videoconfig.read`, and write() requires `videoconfig.write`. */
+   *  `videoconfig.read`. write() requires `videoconfig.write` and throws when
+   *  the host rejects the update or does not return an operation result. */
   videoConfig: {
     read(): VideoConfig;
     write(config: VideoConfigUpdate): void;

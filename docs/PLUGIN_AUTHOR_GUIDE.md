@@ -359,7 +359,7 @@ Each method requires the matching permission in your manifest:
 | `owncast.auth.grantSession({userId, ttl?})` / `owncast.auth.endSession()`       | `auth.gate`          |
 | `owncast.kv.get(key)` / `.set(key, value)` (+ `.getJSON` / `.setJSON`)          | `storage.kv`         |
 | `owncast.storage.upload(name, bytes)`, returns `{url}`                          | `storage.upload`     |
-| `owncast.fs.read/readText/write/list/delete/exists(...)`, sandboxed disk        | `storage.fs`         |
+| `owncast.fs.read/readText/write/list/delete/exists(...)`, sandboxed disk. `write` and `delete` return `{}` on success or `{error}` on failure. | `storage.fs`         |
 | `owncast.sql.exec/query/queryRow(sql, params?)`, private SQLite database        | `storage.sql`        |
 | `owncast.http.fetch(url, opts?)`                                                | `network.fetch`      |
 | `owncast.events.emit(eventType, payload)`                                       | `events.emit`        |
@@ -371,7 +371,7 @@ Each method requires the matching permission in your manifest:
 | `owncast.server.federation()`, `{enabled, username, isPrivate}`                 | `server.read`        |
 | `owncast.server.tags()`, `[string]`                                             | `server.read`        |
 | `owncast.videoConfig.read()`, `{latencyLevel, codec, variants}`                 | `videoconfig.read`   |
-| `owncast.videoConfig.write({latencyLevel?, codec?, variants?})`, partial update | `videoconfig.write`  |
+| `owncast.videoConfig.write({latencyLevel?, codec?, variants?})`, partial update, throws on failure | `videoconfig.write`  |
 | `owncast.notifications.discord(text)`                                           | `notifications.send` |
 | `owncast.notifications.browserPush({title, body, url?})`                        | `notifications.send` |
 | `owncast.notifications.fediverse({type, body, image?, link?})`                  | `notifications.send` |
@@ -385,7 +385,7 @@ Calling an API without its permission throws a clear error.
 
 ### SQL database
 
-`storage.sql` gives your plugin one SQLite database of its own, private to your plugin and separate from Owncast's database. `owncast.sql.exec(sql, params?)` runs statements and reports `rowsAffected` and `lastInsertId`, `owncast.sql.query(sql, params?)` returns rows as objects keyed by column name, and `owncast.sql.queryRow(sql, params?)` returns the first row or `null`. Python is the same API with `query_row` and dicts. A failed statement throws (Python raises).
+`storage.sql` gives your plugin one SQLite database of its own, private to your plugin and separate from Owncast's database. `owncast.sql.exec(sql, params?)` runs statements and reports `rowsAffected` and `lastInsertId`, `owncast.sql.query(sql, params?)` returns rows as objects keyed by column name, and `owncast.sql.queryRow(sql, params?)` returns the first row or `null`. Python is the same API with `query_row` and dicts. A failed statement throws (Python raises). The SDK treats a result object with no `error` field as success and rejects a missing or non-object host response.
 
 Each `exec` call is atomic: a multi-statement batch either commits whole or leaves the database untouched, so a schema migration can't half-apply. You can't hold a transaction open across calls, which also means you never have to clean one up.
 
@@ -533,7 +533,7 @@ in the built-in help listing.
 | `auth.gate`          | Be the site's viewer-authentication gate: `owncast.auth.grantSession` / `.endSession` plus the `onAuthCheck` hook. Only one gate plugin can be enabled at a time. See [Viewer authentication gates](#viewer-authentication-gates). |
 | `storage.kv`         | Per-plugin namespaced key/value store                                                                                                             |
 | `storage.upload`     | `owncast.storage.upload`, upload files, get a public URL                                                                                          |
-| `storage.fs`         | `owncast.fs.*`, private sandboxed disk under `data/plugin-storage/<slug>/files/` (server-side only, never served over HTTP)                       |
+| `storage.fs`         | `owncast.fs.*`, private sandboxed disk under `data/plugin-storage/<slug>/files/` (server-side only, never served over HTTP). `write` and `delete` return `{}` on success or `{error}` on failure. |
 | `storage.sql`        | `owncast.sql.*`, private per-plugin SQLite database under `data/plugin-storage/<slug>/db/`, separate from the `storage.fs` sandbox and not included in Owncast backups |
 | `network.fetch`      | Outbound HTTP, also requires `network.allowedHosts` (see below)                                                                                   |
 | `events.emit`        | Emit custom events for other plugins to subscribe to                                                                                              |

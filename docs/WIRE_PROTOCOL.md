@@ -90,9 +90,9 @@ Because all plugins of a language share one engine, the engine imports the **ful
 Sandboxed per-plugin filesystem under `data/plugin-storage/<slug>/files/`. The host confines every path to the plugin's own directory.
 
 - `owncast_fs_read(pathPtr: PTR): PTR`, returns the file's raw bytes, or 0-offset when missing/unreadable
-- `owncast_fs_write(pathPtr: PTR, dataPtr: PTR): PTR`, returns JSON `{ok, error?}`
+- `owncast_fs_write(pathPtr: PTR, dataPtr: PTR): PTR`, returns JSON `FSResult` (`{error?}`). An empty object means success.
 - `owncast_fs_list(dirPtr: PTR): PTR`, returns JSON `string[]` of entry names (missing dir → empty)
-- `owncast_fs_delete(pathPtr: PTR): PTR`, returns JSON `{ok, error?}`
+- `owncast_fs_delete(pathPtr: PTR): PTR`, returns JSON `FSResult` (`{error?}`). An empty object means success.
 - `owncast_fs_exists(pathPtr: PTR): I32`, returns 1 if the path exists, 0 otherwise
 
 ### `storage.sql`
@@ -111,7 +111,8 @@ space by deleting the one directory `data/plugin-storage/<slug>/`.
 - `owncast_sql_exec(requestPtr: PTR): PTR`, returns JSON `SQLExecResult`
 - `owncast_sql_query(requestPtr: PTR): PTR`, returns JSON `SQLQueryResult`
 
-Both take the same request JSON, where `params` and `maxRows` are optional:
+Both take the same request JSON. `params` is an optional array of scalar values,
+and `maxRows` is optional:
 
 ```json
 { "sql": "SELECT name FROM viewers WHERE seen > ?", "params": [1730000000], "maxRows": 100 }
@@ -120,12 +121,15 @@ Both take the same request JSON, where `params` and `maxRows` are optional:
 A parameter is `null`, a boolean, a number, or a string. Any other JSON type
 fails the call.
 
-`SQLExecResult` is `{ok, error?, rowsAffected, lastInsertId}`, both counters
-64-bit. `SQLQueryResult` is
-`{ok, error?, columns: string[], rows: any[][], truncated?}`, one `rows` entry
-per row with values in `columns` order. Use SQL column aliases when selecting
-duplicate column names. A failed operation returns the same envelope with `ok`
-false and `error` set.
+`SQLExecResult` is `{error?, rowsAffected, lastInsertId}`, both counters 64-bit.
+`SQLQueryResult` is
+`{error?, columns: string[], rows: any[][], truncated?}`, one `rows` entry per
+row with values in `columns` order. Use SQL column aliases when selecting
+duplicate column names. Absence of `error` means success. A failed operation
+sets `error`.
+
+The SDKs reject a missing or non-object host response instead of treating it as
+success.
 
 `maxRows` omitted or 0 means no caller limit, and the host never silently
 returns a short result for an unbounded query: once the result passes the row cap
@@ -199,7 +203,7 @@ plugin should store values above `Number.MAX_SAFE_INTEGER` (2^53 - 1) as TEXT.
 
 ### `videoconfig.write`
 
-- `owncast_video_config_write(configPtr: PTR): PTR`, applies a partial `VideoConfigUpdate`. Returns JSON `{ok, error?}`
+- `owncast_video_config_write(configPtr: PTR): PTR`, applies a partial `VideoConfigUpdate`. Returns JSON `VideoConfigWriteResult` (`{error?}`). An empty object means success.
 
 ### `notifications.send`
 
@@ -238,7 +242,7 @@ The access boundary is not part of the plugin wire protocol. The operator
 selects one cumulative, host-owned mode: website only, website and stream, or
 website, stream, and status. A plugin cannot read or change that selection.
 
-- `owncast_auth_grant_session(reqPtr: PTR): PTR`, JSON `GrantSessionRequest` in, JSON `{error?}` out. Mints a session for the named `userId` (which the same plugin must have registered via `users.register`) and attaches the signed cookie to the in-flight response.
+- `owncast_auth_grant_session(reqPtr: PTR): PTR`, JSON `GrantSessionRequest` in, JSON `GrantSessionResult` (`{error?}`) out. An empty object means success. Mints a session for the named `userId` (which the same plugin must have registered via `users.register`) and attaches the signed cookie to the in-flight response.
 - `owncast_auth_end_session(): void`, clears the session cookie on the in-flight response (logout).
 
 The optional `on_auth_check` export (see [Exports](#exports-plugin--host)) lets
