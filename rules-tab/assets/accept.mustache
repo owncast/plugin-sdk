@@ -1,0 +1,17 @@
+<div id="owncast-rules-gate" role="dialog" aria-modal="true" aria-labelledby="owncast-rules-gate-title">
+  <section class="rules-gate-card">
+    <p class="rules-gate-eyebrow">{{tabName}}</p>
+    <h2 id="owncast-rules-gate-title">{{{titleHtml}}}</h2>
+    {{#descriptionHtml}}<div class="rules-gate-intro">{{{descriptionHtml}}}</div>{{/descriptionHtml}}
+    <ol class="rules-gate-list" role="list">
+      {{#rules}}
+        <li class="rules-gate-item" role="listitem">
+          <span class="rules-gate-number" aria-hidden="true">{{number}}</span>
+          <article class="rules-gate-copy">{{{html}}}</article>
+        </li>
+      {{/rules}}
+    </ol>
+    {{#footerHtml}}<div class="rules-gate-footer">{{{footerHtml}}}</div>{{/footerHtml}}
+    <button type="button" data-accept-rules>I accept these rules</button>
+  </section>
+</div>

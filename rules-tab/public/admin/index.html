@@ -1,0 +1,60 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Rules</title>
+    <link rel="stylesheet" href="admin.css">
+  </head>
+  <body>
+    <main>
+      <header class="page-header stack">
+        <span class="tag">Viewer experience</span>
+        <h1>Rules</h1>
+        <p class="muted">Write the expectations viewers see in the Rules tab. Changes are published as soon as you save.</p>
+      </header>
+      <form class="panel card stack" id="rules-form">
+        <fieldset class="stack">
+          <legend>Tab content</legend>
+          <label for="tab-name">Viewer tab name</label>
+          <input id="tab-name" maxlength="24" required>
+          <p class="muted field-help">Keep it short so it fits in the mobile tab row. Viewers see the new name after reloading the page.</p>
+          <label for="title">Title</label>
+          <input id="title" maxlength="120" required>
+          <label for="description">Description</label>
+          <textarea id="description" maxlength="1000"></textarea>
+          <label for="footer">Footer</label>
+          <textarea id="footer" maxlength="500"></textarea>
+          <p class="muted">The title uses inline Markdown. Descriptions, footers, and rules support headings, emphasis, links, lists, quotes, and code. The viewer tab name is plain text.</p>
+        </fieldset>
+        <fieldset class="stack">
+          <legend>Before viewers enter</legend>
+          <label class="choice" for="require-acceptance">
+            <input id="require-acceptance" type="checkbox">
+            <span>
+              <strong>Require viewers to accept these rules</strong>
+              <span class="muted">When enabled, viewers see a blocking rules dialog before using the page.</span>
+            </span>
+          </label>
+          <p class="muted gate-warning">Acceptance is remembered in the viewer's browser. It does not block direct video or API access.</p>
+        </fieldset>
+        <div class="panel__heading row"><div><h2>Your rules</h2><p class="muted">Use Markdown for headings, emphasis, links, lists, quotes, and code.</p></div><span class="tag" id="count"></span></div>
+        <div class="stack" id="rules" aria-live="polite"></div>
+        <button class="secondary" id="add" type="button">Add a rule</button>
+        <div class="actions row"><p class="muted" id="status" role="status"></p><div class="row"><span class="tag" id="dirty" hidden>Unsaved changes</span><button id="save" type="submit">Save changes</button></div></div>
+      </form>
+    </main>
+    <template id="rule-template">
+      <div class="rule">
+        <span class="tag rule__number"></span>
+        <textarea maxlength="1000" required placeholder="**Be kind.** Critique ideas, not people."></textarea>
+        <div class="rule__controls">
+          <button class="secondary move-up" type="button" aria-label="Move rule up">Up</button>
+          <button class="secondary move-down" type="button" aria-label="Move rule down">Down</button>
+          <button class="secondary remove" type="button" aria-label="Remove rule">Remove</button>
+        </div>
+      </div>
+    </template>
+    <script src="admin.js"></script>
+  </body>
+</html>

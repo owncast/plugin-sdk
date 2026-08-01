@@ -21,6 +21,7 @@ examples/js/*/*.ocpkg
 examples/python/*/*.wasm
 examples/python/*/*.py
 examples/python/*/*.ocpkg
+rules-tab/*.ocpkg
 
 # The build CLI symlinks <plugin>/assets/ → <plugin>/<plugin>-assets/ so the
 # host's loose-files layout finds them. The symlink is generated at build time.

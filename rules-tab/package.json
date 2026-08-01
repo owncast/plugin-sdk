@@ -1,0 +1,15 @@
+{
+  "name": "rules-tab",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "build": "owncast-plugin build",
+    "package": "owncast-plugin package",
+    "test": "owncast-plugin build && owncast-plugin test"
+  },
+  "dependencies": {
+    "@owncast/plugin-sdk": "file:../sdks/js",
+    "marked": "^17.0.1",
+    "mustache": "^4.2.0"
+  }
+}
