@@ -380,8 +380,27 @@ Each method requires the matching permission in your manifest:
 | `owncast.sse.send(channel, event, data)`, push to browsers                      | `http.sse`           |
 | `owncast.timer.setTimeout/setInterval/clear(...)`, schedule callbacks           | none (ambient)       |
 | `owncast.config.get(key, fallback?)`, read manifest-declared config             | none (ambient)       |
+| `owncast.log.info/warning/error(message)`, write to the Owncast server log      | none (ambient)       |
 
-Calling an API without its permission throws a clear error.
+Calling a permission-gated API without its permission throws a clear error.
+
+### Server logging
+
+Use `owncast.log` for operator-visible plugin logs:
+
+```js
+owncast.log.info("sync started");
+owncast.log.warning("provider response is incomplete");
+owncast.log.error("sync failed");
+```
+
+```python
+owncast.log.info("sync started")
+owncast.log.warning("provider response is incomplete")
+owncast.log.error("sync failed")
+```
+
+`info`, `warning`, and `error` map directly to the same Owncast logrus levels. Every entry includes the calling plugin's slug, for example `plugin schedule-sync: sync started`. No permission is required. Prefer this API over `console.log` or `print` when the level and plugin identity need to reach the Owncast log reliably.
 
 ### SQL database
 
@@ -1148,6 +1167,7 @@ Per-step `expect` (on filter and http steps):
 Final-state `expect` (on the whole scenario):
 
 - `chatSends`, `chatActions`, `chatSystems`, exact-match lists of chat posts (the bot-sent, "/me" action, and system message variants). Captures sends from any step, including chat posted from an `onHttpRequest` handler.
+- `logs`, ordered list of `{plugin, level, message}` entries written through `owncast.log`
 - `chatTo`, list of `{clientId, text}` private replies (`owncast.chat.sendTo` / `replyTo`)
 - `sseSends`, ordered list of `{channel, event?, data?}` pushed via `owncast.sse.send` (omit `event`/`data` to match only on channel)
 - `videoConfigWrites`, list of partial configs applied via `owncast.videoConfig.write()`
@@ -1441,7 +1461,7 @@ module.exports = definePlugin({
 module.exports = definePlugin({
   on: {
     "announcement.broadcast"(payload) {
-      console.log(`📢 ${payload.by}: ${payload.text}`);
+      owncast.log.info(`Announcement from ${payload.by}: ${payload.text}`);
     },
   },
 });
@@ -1451,7 +1471,7 @@ module.exports = definePlugin({
 
 - **TypeScript works**, name your file `src/plugin.ts` instead of `.js`. The SDK ships TypeScript declarations. Use `import` instead of `require`.
 - **Third-party code is limited.** npm packages must be pure JavaScript (no Node built-ins like `fs` or `http`). Python has no `pip`: to use a library, copy its pure-Python source into your project. For outbound HTTP call `owncast.http.fetch`, not `requests` or Node's `http`.
-- **`console.log`** in plugin code surfaces in the host log with a `[your-plugin]` prefix. Use it freely for debugging.
+- **Server logs:** use `owncast.log.info`, `.warning`, or `.error`. Owncast preserves the level and adds your plugin slug.
 - **One handler = one subscription.** Define `onChatMessage` → subscribed. Delete it → unsubscribed. Don't think about it.
 - **Mocked tests are fast** (3-5 s including rebuild). Run them on every save.
 - **State doesn't leak between scenarios.** Each test gets a fresh plugin instance and a clean in-memory plugin config.

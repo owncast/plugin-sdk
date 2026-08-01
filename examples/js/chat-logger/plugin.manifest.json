@@ -3,7 +3,7 @@
   "name": "Example Chat Logger",
   "slug": "chat-logger",
   "version": "0.3.2",
-  "description": "Logs every chat message via console.log (host stderr). This example was written in JavaScript.",
+  "description": "Logs chat messages at info, warning, or error level through Owncast's server log. This example was written in JavaScript.",
   "category": "examples",
   "permissions": []
 }

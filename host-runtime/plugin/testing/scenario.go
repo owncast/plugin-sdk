@@ -189,6 +189,7 @@ type ScenarioExpect struct {
 	ChatSends         []string                         `json:"chatSends,omitempty"`
 	ChatActions       []string                         `json:"chatActions,omitempty"`
 	ChatSystems       []string                         `json:"chatSystems,omitempty"`
+	Logs              []ScenarioLogExpect              `json:"logs,omitempty"`
 	DeletedMessages   []string                         `json:"deletedMessages,omitempty"`
 	KickedClients     []uint64                         `json:"kickedClients,omitempty"`
 	DiscordPosts      []string                         `json:"discordPosts,omitempty"`
@@ -208,6 +209,12 @@ type ScenarioExpect struct {
 	HTTPRequests      []ScenarioHTTPRequestExpect      `json:"httpRequests,omitempty"`
 	SSESends          []ScenarioSSEExpect              `json:"sseSends,omitempty"`
 	Commands          []ScenarioCommandExpect          `json:"commands,omitempty"`
+}
+
+type ScenarioLogExpect struct {
+	Plugin  string `json:"plugin"`
+	Level   string `json:"level"`
+	Message string `json:"message"`
 }
 
 // ScenarioCommandExpect asserts on one core-routed command registration.

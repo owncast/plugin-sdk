@@ -8,7 +8,7 @@ This plugin does nothing on its own. It's one half of a pair.
 
 1. Install and enable **both** this plugin and the **relay** plugin.
 2. In chat, type `/announce <text>` (that command is handled by relay).
-3. relay emits an `announcement.broadcast` event. This plugin receives it and writes a line to the **server log** (stderr).
+3. relay emits an `announcement.broadcast` event. This plugin receives it and writes an info entry to the Owncast server log through `owncast.log.info`.
 
 There is no viewer-facing output. Watch the Owncast server logs to see it fire.
 

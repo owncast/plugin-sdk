@@ -383,6 +383,17 @@ def _dispatch_command(event):
 # ---------------------------------------------------------------------------
 # owncast.* host facade.
 # ---------------------------------------------------------------------------
+class _Log:
+    def info(self, message):
+        _host("owncast_log_info")(str(message))
+
+    def warning(self, message):
+        _host("owncast_log_warning")(str(message))
+
+    def error(self, message):
+        _host("owncast_log_error")(str(message))
+
+
 class _Chat:
     def send(self, text):
         _host("owncast_send_chat")(str(text))
@@ -732,6 +743,7 @@ class _Http:
 
 class _Owncast:
     http = _Http()
+    log = _Log()
     chat = _Chat()
     kv = _KV()
     storage = _Storage()

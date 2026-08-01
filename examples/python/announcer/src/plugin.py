@@ -1,8 +1,8 @@
-from owncast_plugin import plugin
+from owncast_plugin import owncast, plugin
 
 
 @plugin.on("announcement.broadcast")
 def handle(payload):
     by = payload.get("by") if isinstance(payload, dict) else None
     text = payload.get("text") if isinstance(payload, dict) else None
-    print(f"ANNOUNCEMENT from {by}: {text}")
+    owncast.log.info(f"Announcement from {by}: {text}")

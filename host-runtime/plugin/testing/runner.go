@@ -348,6 +348,17 @@ func runHTTPStep(server *plugin.Server, pluginName string, h *HTTPStep) error {
 	return nil
 }
 
+func pluginLogLevelName(level plugin.PluginLogLevel) string {
+	switch level {
+	case plugin.PluginLogWarning:
+		return "warning"
+	case plugin.PluginLogError:
+		return "error"
+	default:
+		return "info"
+	}
+}
+
 func checkExpectations(res *Result, e *ScenarioExpect, mock *MockHost, pluginName string, commands []plugin.CommandInfo) {
 	if e.ChatSends != nil {
 		got := mock.ChatSends()
@@ -368,6 +379,19 @@ func checkExpectations(res *Result, e *ScenarioExpect, mock *MockHost, pluginNam
 		got := mock.ChatSystems()
 		if (len(e.ChatSystems) != 0 || len(got) != 0) && !reflect.DeepEqual(e.ChatSystems, got) {
 			res.Errors = append(res.Errors, fmt.Sprintf("chatSystems mismatch:\n  want %v\n  got  %v", e.ChatSystems, got))
+		}
+	}
+	if e.Logs != nil {
+		got := mock.Logs()
+		if len(e.Logs) != len(got) {
+			res.Errors = append(res.Errors, fmt.Sprintf("logs count: want %d got %d", len(e.Logs), len(got)))
+		} else {
+			for i, want := range e.Logs {
+				level := pluginLogLevelName(got[i].Level)
+				if want.Plugin != got[i].Plugin || want.Level != level || want.Message != got[i].Message {
+					res.Errors = append(res.Errors, fmt.Sprintf("logs[%d]: want %+v got {Plugin:%s Level:%s Message:%s}", i, want, got[i].Plugin, level, got[i].Message))
+				}
+			}
 		}
 	}
 	if e.DeletedMessages != nil {

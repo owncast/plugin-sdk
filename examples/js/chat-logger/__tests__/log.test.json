@@ -1,11 +1,26 @@
 [
   {
-    "name": "handles chat.message.received without error",
+    "name": "preserves info, warning, and error levels",
     "events": [
       {
         "event": "chat.message.received",
         "payload": { "id": "1", "user": { "id": "u-alice", "displayName": "alice" }, "body": "hello", "timestamp": "2024-01-01T00:00:00Z" }
+      },
+      {
+        "event": "chat.message.received",
+        "payload": { "id": "2", "user": { "id": "u-alice", "displayName": "alice" }, "body": "warning: check this", "timestamp": "2024-01-01T00:00:01Z" }
+      },
+      {
+        "event": "chat.message.received",
+        "payload": { "id": "3", "user": { "id": "u-alice", "displayName": "alice" }, "body": "error: failed", "timestamp": "2024-01-01T00:00:02Z" }
       }
-    ]
+    ],
+    "expect": {
+      "logs": [
+        { "plugin": "chat-logger", "level": "info", "message": "alice: hello" },
+        { "plugin": "chat-logger", "level": "warning", "message": "alice: warning: check this" },
+        { "plugin": "chat-logger", "level": "error", "message": "alice: error: failed" }
+      ]
+    }
   }
 ]

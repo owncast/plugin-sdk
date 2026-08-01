@@ -293,6 +293,11 @@ These imports are granted to every plugin without a declared permission. A plugi
 - `owncast_timer_clear(id: I64): void`, cancel a pending timer by id.
 - `owncast_config_get(keyPtr: PTR): PTR`, returns the JSON value of a `manifest.config` key (admin override, else declared default), or 0-offset for an unknown/unset key.
 - `owncast_asset_read(pathPtr: PTR): PTR`, returns the raw bytes of a file from the plugin's own `assets/` directory, or 0-offset when the file is missing or the path escapes the directory. The path is relative to `assets/` and must not start with `/` or contain `..` segments. The host rejects any path that would escape the plugin's own asset tree. Plugins use this to load bundled resources (templates, data files) at request time without needing `storage.fs`.
+- `owncast_log_info(messagePtr: PTR): void`, write an info entry to the Owncast server log
+- `owncast_log_warning(messagePtr: PTR): void`, write a warning entry to the Owncast server log
+- `owncast_log_error(messagePtr: PTR): void`, write an error entry to the Owncast server log
+
+The host attributes every entry to the calling plugin's slug and preserves the selected severity in its logrus output. The fixed functions keep unknown levels out of the wire contract.
 
 The host also dispatches a `tick` event (payload `{now}`, host wall-clock ms) about once a second to any plugin defining `onTick`, independent of timers.
 

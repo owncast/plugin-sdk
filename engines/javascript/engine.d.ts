@@ -21,6 +21,9 @@ declare module 'extism:host' {
     owncast_timer_clear(id: I64): void;
     owncast_config_get(keyPtr: PTR): PTR;
     owncast_asset_read(pathPtr: PTR): PTR;
+    owncast_log_info(messagePtr: PTR): void;
+    owncast_log_warning(messagePtr: PTR): void;
+    owncast_log_error(messagePtr: PTR): void;
     owncast_send_chat(textPtr: PTR): void;
     owncast_send_chat_action(textPtr: PTR): void;
     owncast_send_chat_system(bodyPtr: PTR): void;
