@@ -355,7 +355,7 @@ Each method requires the matching permission in your manifest:
 | `owncast.users.list()` / `.get(id)`                                             | `users.read`         |
 | `owncast.users.setEnabled(id, enabled, reason?)`                                | `users.moderate`     |
 | `owncast.users.banIP(ip)`                                                       | `users.moderate`     |
-| `owncast.users.register({authId, displayName})`, find-or-create a viewer identity | `users.register`  |
+| `owncast.users.register({authId, displayName?, scopes?, profileUrl?, handle?, public?})` | `users.register` |
 | `owncast.auth.grantSession({userId, ttl?})` / `owncast.auth.endSession()`       | `auth.gate`          |
 | `owncast.kv.get(key)` / `.set(key, value)` (+ `.getJSON` / `.setJSON`)          | `storage.kv`         |
 | `owncast.storage.upload(name, bytes)`, returns `{url}`                          | `storage.upload`     |
@@ -401,6 +401,13 @@ owncast.log.error("sync failed")
 ```
 
 `info`, `warning`, and `error` map directly to the same Owncast logrus levels. Every entry includes the calling plugin's slug, for example `plugin schedule-sync: sync started`. Owncast replaces control characters with spaces so each entry stays on one line, then truncates messages longer than 4 KiB. No permission is required. Prefer this API over `console.log` or `print` when the level and plugin identity need to reach the Owncast log reliably.
+
+`storage.upload`, `fs.write`, `fs.read`, and `assets.read` preserve arbitrary
+bytes. Their string conveniences encode or decode UTF-8 explicitly:
+`fs.readText` and `assets.readText` return text, while passing a string to
+`storage.upload` or `fs.write` UTF-8 encodes it. Python uses the matching
+`read_text` names and returns `bytes` from `read`.
+
 
 ### SQL database
 
@@ -548,7 +555,7 @@ in the built-in help listing.
 | `chat.filter`        | Subscribe to `filterChatMessage` (read, modify, or drop every chat message). Required for any plugin that declares the handler.                   |
 | `users.read`         | `owncast.users.list`, `.get`                                                                                                                      |
 | `users.moderate`     | `owncast.users.setEnabled`, `.banIP`                                                                                                              |
-| `users.register`     | `owncast.users.register`, find-or-create an authenticated Owncast user for an external identity. The host records your slug alongside the raw `authId` and scopes every lookup to that pair, so plugins can't collide on or impersonate each other's users. |
+| `users.register`     | `owncast.users.register`, find or create an authenticated Owncast user for an external identity. The host scopes the raw `authId` to your plugin slug. Optional `profileUrl`, `handle`, and `public` fields describe a verified identity and whether the viewer chose to display it publicly. |
 | `auth.gate`          | Be the site's viewer-authentication gate: `owncast.auth.grantSession` / `.endSession` plus the `onAuthCheck` hook. Only one gate plugin can be enabled at a time. See [Viewer authentication gates](#viewer-authentication-gates). |
 | `storage.kv`         | Per-plugin namespaced key/value store                                                                                                             |
 | `storage.upload`     | `owncast.storage.upload`, upload files, get a public URL                                                                                          |
@@ -796,14 +803,26 @@ The flow (see `examples/js/github-auth` for a complete OAuth version):
 3. Once satisfied, name the visitor and grant the session:
 
 ```js
-const { userId } = owncast.users.register({ authId: "provider:1234", displayName: "Jo" });
+const { userId } = owncast.users.register({
+  authId: "1234",
+  displayName: "Jo",
+  profileUrl: "https://provider.example/users/1234",
+  handle: "jo",
+  public: viewerOptedIn,
+});
 owncast.auth.grantSession({ userId }); // the host attaches the cookie to this response
 return { status: 302, headers: { Location: returnTo } };
 ```
 
 4. For logout, call `owncast.auth.endSession()` and redirect.
 
-`users.register` finds-or-creates an authenticated Owncast user for an external identity (the host scopes the identity to your slug, so pass the raw external id unprefixed). `grantSession`/`endSession` are only meaningful inside `onHttpRequest`, where the host attaches or clears the cookie on the response after your handler returns.
+`users.register` finds or creates an authenticated Owncast user for an external
+identity. The host scopes `authId` to your slug, so pass the provider's raw
+stable ID. `profileUrl` must be empty or an absolute HTTP(S) URL. Set `handle`
+to the verified provider label and set `public` true only after the viewer opts
+into public display. `grantSession` and `endSession` are meaningful only inside
+`onHttpRequest`, where the host attaches or clears the cookie after the handler
+returns.
 
 ### Re-validating sessions: `onAuthCheck`
 
@@ -840,7 +859,7 @@ Gate-specific things to know:
 
 - `req.user` carries no external identity. Store your own mapping at registration time (`owncast.kv.set("member:" + userId, externalId)`) and look it up in `onAuthCheck`.
 - Use a stable external id in `authId` (a numeric account id), never a username or email that can change.
-- Your own routes stay reachable through the gate — visitors must be able to reach the login screen — which also means inbound webhooks to `/plugins/<slug>/...` keep working while the gate is up. `/admin` is likewise exempt, so an admin can always fix or disable a misconfigured gate.
+- Your own routes stay reachable through the gate because visitors must be able to reach the login screen. Inbound webhooks to `/plugins/<slug>/...` also keep working while the gate is up. `/admin` is exempt so an admin can always fix or disable a misconfigured gate.
 - Fail closed while unconfigured: refuse to grant sessions until your config values are set.
 - Testing: the `authCheck` scenario step drives `onAuthCheck` directly (see [Step types](#step-types)).
 
@@ -930,7 +949,7 @@ Each also has a **dynamic** form computed at request time by a handler instead o
 }
 ```
 
-Bundle the CSS files under `assets/` and reference them by path. The host strips the plugin prefix, reads each file's bytes, and concatenates them in front of a `/* plugin: <slug> — <file> */` delimiter so a reader can attribute a rule back to whichever plugin shipped it. Disabling the plugin drops its contribution.
+Bundle the CSS files under `assets/` and reference them by path. The host strips the plugin prefix, reads each file's bytes, and concatenates them after a delimiter comment that identifies the plugin slug and file. Disabling the plugin drops its contribution.
 
 Path rules match action-button URLs:
 
@@ -954,7 +973,7 @@ module.exports = definePlugin({
 });
 ```
 
-The returned string is appended to `customStyles` after any static `styles` files (so a later rule wins the cascade), preceded by a `/* plugin: <slug> — dynamic */` delimiter. The call is global. It takes no per-viewer argument, which keeps `/api/config` cacheable. Return `""` to contribute nothing on this request. Python exposes the same hook as the bare decorator `@plugin.on_page_styles`.
+The returned string is appended to `customStyles` after any static `styles` files, so a later rule wins the cascade. A delimiter comment identifies the plugin slug and marks the contribution as dynamic. The call is global. It takes no per-viewer argument, which keeps `/api/config` cacheable. Return `""` to contribute nothing on this request. Python exposes the same hook as the bare decorator `@plugin.on_page_styles`.
 
 ### Scripts
 
@@ -965,7 +984,7 @@ The returned string is appended to `customStyles` after any static `styles` file
 }
 ```
 
-Same path and permission rules as `styles`, applied to `.js` files. The host prefixes each contribution with `// plugin: <slug> — <file>`.
+The same path and permission rules as `styles` apply to `.js` files. The host prefixes each contribution with a comment containing the plugin slug and file name.
 
 Two things to keep in mind about execution:
 
@@ -1083,7 +1102,7 @@ install-time path a real Owncast server runs, covering manifest validity, a
 healthy `register()`, and permission-gated subscriptions (a chat filter
 without `chat.filter`, or a fediverse handler without `fediverse.inbound`,
 fails right there with the same error the server gives at install). The check
-runs even when a plugin ships no tests, and `package` runs it too — a plugin
+runs even when a plugin ships no tests. `package` runs it too, and a plugin
 that would be rejected at install refuses to package.
 
 ```js
@@ -1176,6 +1195,10 @@ Final-state `expect` (on the whole scenario):
 - `emits`, list of `{eventType, payload}` for custom events
 - `kv`, partial map of your plugin's key/value store after the scenario
 - `httpRequests`, outbound HTTP made by your plugin
+- `userRegistrations`, list of `{authId, displayName?, scopes?, profileUrl?,
+  handle?, public?}` calls to `owncast.users.register`
+- `uploads`, list of `{name, body?}` uploads. Use `bodyBase64` instead of
+  `body` to compare arbitrary bytes.
 
 ### Seeding state with `given`
 

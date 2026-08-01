@@ -536,15 +536,21 @@ const owncast = {
       const fns = hostFns("owncast_ban_ip", Permissions.UsersModerate);
       fns.owncast_ban_ip(Memory.fromString(ip).offset);
     },
-    // Find-or-create an authenticated Owncast user for an external identity
-    // (e.g. a provider account). `authId` is the stable provider-scoped id. The
-    // host namespaces it by this plugin's slug so it can't collide with or spoof
-    // another plugin's users. Optionally seeds displayName and scopes. Returns
-    // { userId }. Throws on host error. Requires `users.register`.
+    // Find or create an authenticated Owncast user for an external identity.
+    // profileUrl and handle describe a verified profile. public opts that
+    // identity into public display. Returns { userId }. Throws on host error.
+    // Requires `users.register`.
     register(opts) {
       const fns = hostFns("owncast_users_register", Permissions.UsersRegister);
-      const req =
-        typeof opts === "string" ? { authId: opts } : opts || {};
+      const source = typeof opts === "string" ? { authId: opts } : opts || {};
+      const req = {
+        authId: source.authId,
+        displayName: source.displayName,
+        scopes: source.scopes,
+        profileUrl: source.profileUrl,
+        handle: source.handle,
+        public: source.public,
+      };
       const offset = fns.owncast_users_register(
         Memory.fromString(JSON.stringify(req)).offset,
       );

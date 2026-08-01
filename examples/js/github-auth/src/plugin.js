@@ -82,10 +82,15 @@ module.exports = definePlugin({
       const authId = "github:" + gh.id;
       const display = gh.name || gh.login || authId;
 
-      // Identity, then session. register() finds-or-creates the Owncast user
-      // for this GitHub identity (the host namespaces authId by our slug). The
-      // returned userId is what grantSession() issues the cookie for.
-      const { userId } = owncast.users.register({ authId, displayName: display });
+      // Register the provider identity and its verified profile metadata. Keep
+      // public false until the login UI offers an explicit visibility choice.
+      const { userId } = owncast.users.register({
+        authId,
+        displayName: display,
+        profileUrl: gh.html_url || "",
+        handle: gh.login || "",
+        public: false,
+      });
       owncast.auth.grantSession({ userId });
 
       return { status: 302, headers: { Location: returnTo || "/" } };

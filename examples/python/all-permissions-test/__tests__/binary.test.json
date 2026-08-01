@@ -1,0 +1,19 @@
+[
+  {
+    "name": "invalid UTF-8 survives assets, filesystem, and upload as raw bytes",
+    "events": [
+      {
+        "http": {
+          "method": "GET",
+          "path": "/binary-round-trip",
+          "expect": { "status": 200, "body": "/wCA" }
+        }
+      }
+    ],
+    "expect": {
+      "uploads": [
+        { "name": "invalid-utf8.bin", "bodyBase64": "/wCA" }
+      ]
+    }
+  }
+]

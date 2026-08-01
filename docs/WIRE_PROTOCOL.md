@@ -1,10 +1,16 @@
 # Owncast Plugin Wire Protocol
 
-The contract between the Owncast host runtime and a plugin. This document is the source of truth that every language SDK (and the host implementation in the Owncast server repo) implements.
+This is the author-facing contract between the Owncast host runtime and a
+plugin. Owncast's stack-based host functions are the implementation source of
+truth.
 
 ## Overview
 
-At the wasm ABI a plugin is a module exposing a fixed set of well-known exports and importing a fixed set of host functions. For interpreted plugins (JavaScript, Python) that module is the host-embedded **shared engine** (one per language, compiled once and instantiated per plugin) running the plugin's source, which the host injects via Extism config at load. A plugin authored directly as a self-contained wasm module presents the same ABI itself. Either way the protocol below is identical. Communication is single-buffer in / single-buffer out: the host writes a JSON or text body before the call, the plugin reads it via the Extism `Host.input*()` helpers, and any return value is written via `Host.output*()`.
+At the Wasm ABI a plugin exposes fixed exports and imports fixed host
+functions. Interpreted JavaScript and Python plugins run inside a shared engine
+that presents this ABI. A self-contained Wasm plugin presents it directly.
+Exports use Extism's single input and output buffers. Host imports use the
+stack signatures and memory pointers documented below.
 
 ## Exports (plugin → host)
 
@@ -57,43 +63,80 @@ not prevent plugins from also responding.
 
 ## Imports (host → plugin)
 
-Because all plugins of a language share one engine, the engine imports the **full** set of host functions and the host enforces **permissions at call time**: every host function resolves the calling plugin's identity (from a per-instance config value the host sets at load) and rejects the call (returning a zero/empty result and logging) when the plugin's manifest didn't grant the matching permission. The SDK wrappers still map one-to-one to these imports, so an author only ever calls the ones their permissions allow. (A self-contained wasm plugin that imports an ungranted host function instead fails to link at instantiation, the older structural enforcement.)
+All custom imports use the `extism:host/user` namespace. The shared JavaScript
+and Python engines import the full set. The host resolves the calling plugin
+and checks its manifest permission on every call. A denied call logs the
+denial and returns 0 for a `PTR` or `I64` result. A denied `void` call has no
+observable result.
+
+### ABI types and pointer payloads
+
+The signatures below are the exact stack-based host ABI:
+
+- `I64` is a WebAssembly `i64` scalar. Boolean inputs and outputs use 0 for
+  false and 1 for true unless a function says otherwise.
+- `PTR` is Extism's pointer value, carried in an `i64` stack slot. It identifies
+  one Extism-managed guest-memory allocation whose byte length Extism tracks.
+  It is not a null-terminated C pointer.
+- A **UTF-8 string** pointer contains only the encoded string bytes.
+- A **JSON** pointer contains one UTF-8 encoded JSON value of the named shape.
+- A **raw bytes** pointer may contain arbitrary bytes and must not be decoded or
+  JSON-parsed by the host.
+- `void` means no output stack value. `()` means no input stack values.
+
+A returned `PTR` identifies a host-written allocation in the calling plugin's
+memory. A 0 return means no value or failure only where noted below. There are
+no custom `I32` host imports.
 
 ### `chat.send`
 
-- `owncast_send_chat(textPtr: PTR): void`, plugin's bot identity, regular message
-- `owncast_send_chat_action(textPtr: PTR): void`, same identity, "/me" action style
-- `owncast_send_chat_system(bodyPtr: PTR): void`, no user identity, body rendered as HTML
-- `owncast_send_chat_to(clientId: I64, textPtr: PTR): void`, private DM to one client
+- `owncast_send_chat(textPtr: PTR): void`. Input: `textPtr` is a UTF-8 string.
+  Output: none. Sends a regular message using the plugin's bot identity.
+- `owncast_send_chat_action(textPtr: PTR): void`. Input: `textPtr` is a UTF-8
+  string. Output: none. Sends a `/me`-style action using the bot identity.
+- `owncast_send_chat_system(bodyPtr: PTR): void`. Input: `bodyPtr` is a UTF-8
+  HTML string. Output: none. Sends a system message without a user identity.
+- `owncast_send_chat_to(clientId: I64, textPtr: PTR): void`. Inputs: `clientId`
+  is the scalar chat client ID and `textPtr` is a UTF-8 string. Output: none.
 
 ### `chat.history`
 
-- `owncast_chat_history(limit: I32): PTR`, returns JSON `ChatMessage[]`
-- `owncast_chat_clients(): PTR`, returns JSON `ChatClient[]`
+- `owncast_chat_history(limit: I64): PTR`. Input: non-positive `limit` values
+  select the host default of 50 rows; positive values request that row limit.
+  Output: JSON `ChatMessage[]`.
+- `owncast_chat_clients(): PTR`. Input: none. Output: JSON `ChatClient[]`.
 
 ### `chat.moderate`
 
-- `owncast_delete_message(idPtr: PTR): void`
-- `owncast_kick_client(clientId: I64): void`
+- `owncast_delete_message(idPtr: PTR): void`. Input: `idPtr` is a UTF-8 message
+  ID. Output: none.
+- `owncast_kick_client(clientId: I64): void`. Input: `clientId` is the scalar
+  chat client ID. Output: none.
 
 ### `storage.kv`
 
-- `owncast_kv_get(keyPtr: PTR): PTR`, returns text or 0-offset on miss
-- `owncast_kv_set(keyPtr: PTR, valPtr: PTR): void`
+- `owncast_kv_get(keyPtr: PTR): PTR`. Input: `keyPtr` is a UTF-8 key. Output:
+  a UTF-8 string, or 0 when the key is missing.
+- `owncast_kv_set(keyPtr: PTR, valPtr: PTR): void`. Inputs: both pointers
+  contain UTF-8 strings. Output: none.
 
 ### `storage.upload`
 
-- `owncast_storage_upload(namePtr: PTR, dataPtr: PTR): PTR`, returns JSON `{url}` or 0-offset on failure
+- `owncast_storage_upload(namePtr: PTR, dataPtr: PTR): PTR`. Inputs: `namePtr`
+  is a UTF-8 filename and `dataPtr` is raw bytes. Output: JSON
+  `{"url": string}`, or 0 on failure.
 
 ### `storage.fs`
 
-Sandboxed per-plugin filesystem under `data/plugin-storage/<slug>/files/`. The host confines every path to the plugin's own directory.
+Sandboxed per-plugin filesystem under
+`data/plugin-storage/<slug>/files/`. The host confines every path to the
+plugin's own directory.
 
 - `owncast_fs_read(pathPtr: PTR): PTR`, returns the file's raw bytes, or 0-offset when missing/unreadable
 - `owncast_fs_write(pathPtr: PTR, dataPtr: PTR): PTR`, returns JSON `FSResult` (`{error?}`). An empty object means success.
-- `owncast_fs_list(dirPtr: PTR): PTR`, returns JSON `string[]` of entry names (missing dir → empty)
+- `owncast_fs_list(dirPtr: PTR): PTR`, returns JSON `string[]` of direct entry names (missing dir → empty)
 - `owncast_fs_delete(pathPtr: PTR): PTR`, returns JSON `FSResult` (`{error?}`). An empty object means success.
-- `owncast_fs_exists(pathPtr: PTR): I32`, returns 1 if the path exists, 0 otherwise
+- `owncast_fs_exists(pathPtr: PTR): I64`, returns 1 if the path exists, 0 otherwise
 
 ### `storage.sql`
 
@@ -185,114 +228,174 @@ plugin should store values above `Number.MAX_SAFE_INTEGER` (2^53 - 1) as TEXT.
 
 ### `events.emit`
 
-- `owncast_emit_event(eventTypePtr: PTR, payloadPtr: PTR): void`, payload is a JSON-encoded value
+- `owncast_emit_event(eventTypePtr: PTR, payloadPtr: PTR): void`. Inputs:
+  `eventTypePtr` is a UTF-8 event name and `payloadPtr` is one JSON value.
+  Output: none.
 
 ### `server.read`
 
-- `owncast_stream_current(): PTR`, JSON `StreamInfo`
-- `owncast_stream_broadcaster(): PTR`, JSON `StreamBroadcaster` (read-only inbound-feed telemetry)
-- `owncast_server_info(): PTR`, JSON `ServerInfo`
-- `owncast_server_socials(): PTR`, JSON `SocialHandle[]`
-- `owncast_server_emotes(): PTR`, JSON `Emote[]` (custom chat emotes, `{name, url}`)
-- `owncast_server_federation(): PTR`, JSON `FederationInfo`
-- `owncast_server_tags(): PTR`, JSON `string[]`
+- `owncast_stream_current(): PTR`. Input: none. Output: JSON `StreamInfo`.
+- `owncast_stream_broadcaster(): PTR`. Input: none. Output: JSON
+  `StreamBroadcaster`.
+- `owncast_server_info(): PTR`. Input: none. Output: JSON `ServerInfo`.
+- `owncast_server_socials(): PTR`. Input: none. Output: JSON `SocialHandle[]`.
+- `owncast_server_emotes(): PTR`. Input: none. Output: JSON `Emote[]`.
+- `owncast_server_federation(): PTR`. Input: none. Output: JSON
+  `FederationInfo`.
+- `owncast_server_tags(): PTR`. Input: none. Output: JSON `string[]`.
 
 ### `videoconfig.read`
 
-- `owncast_video_config_read(): PTR`, JSON `VideoConfig` (`{latencyLevel, codec, variants}`)
+- `owncast_video_config_read(): PTR`. Input: none. Output: JSON `VideoConfig`
+  with `latencyLevel`, `codec`, and `variants`.
 
 ### `videoconfig.write`
 
-- `owncast_video_config_write(configPtr: PTR): PTR`, applies a partial `VideoConfigUpdate`. Returns JSON `VideoConfigWriteResult` (`{error?}`). An empty object means success.
+- `owncast_video_config_write(configPtr: PTR): PTR`. Input: `configPtr` is JSON
+  partial `VideoConfigUpdate`. Output: JSON `VideoConfigWriteResult`
+  (`{error?}`). An empty object means success.
 
 ### `notifications.send`
 
-- `owncast_notify_discord(textPtr: PTR): void`
-- `owncast_notify_browser_push(payloadPtr: PTR): void`, JSON `BrowserPushPayload`
-- `owncast_notify_fediverse(payloadPtr: PTR): void`, JSON `FediversePayload`
+- `owncast_notify_discord(textPtr: PTR): void`. Input: `textPtr` is a UTF-8
+  string. Output: none.
+- `owncast_notify_browser_push(payloadPtr: PTR): void`. Input: `payloadPtr` is
+  JSON `BrowserPushPayload`. Output: none.
+- `owncast_notify_fediverse(payloadPtr: PTR): void`. Input: `payloadPtr` is JSON
+  `FediversePayload`. Output: none.
 
 ### `users.read`
 
-- `owncast_users_list(): PTR`, JSON `User[]`
-- `owncast_user_get(idPtr: PTR): PTR`, JSON `User` or 0-offset on miss
+- `owncast_users_list(): PTR`. Input: none. Output: JSON `User[]`.
+- `owncast_user_get(idPtr: PTR): PTR`. Input: `idPtr` is a UTF-8 user ID.
+  Output: JSON `User`, or 0 when the user is missing.
 
 ### `users.moderate`
 
-- `owncast_user_set_enabled(idPtr: PTR, enabled: I32, reasonPtr: PTR): void`
-- `owncast_ban_ip(ipPtr: PTR): void`
+- `owncast_user_set_enabled(idPtr: PTR, enabled: I64, reasonPtr: PTR): void`.
+  Inputs: `idPtr` is a UTF-8 user ID, `enabled` is scalar 0 or 1, and
+  `reasonPtr` is a UTF-8 reason. Output: none.
+- `owncast_ban_ip(ipPtr: PTR): void`. Input: `ipPtr` is a UTF-8 IP address.
+  Output: none.
 
 ### `users.register`
 
-Find-or-create an authenticated Owncast user for an external identity. Used by
-a viewer-auth gate (see [`auth.gate`](#authgate)) to turn a provider login into
-a real Owncast user before granting it a session.
+Find or create an authenticated Owncast user for an external identity. A viewer
+authentication gate uses this before granting a session.
 
-- `owncast_users_register(reqPtr: PTR): PTR`, JSON `UserRegisterRequest` in, JSON `UserRegisterResult` out. The host namespaces the request's `authId` by the calling plugin's slug, so two plugins can't collide on or impersonate each other's users. The host restricts which `scopes` a plugin may assign and rejects administrative scopes, so an out-of-policy scope fails the call.
+- `owncast_users_register(reqPtr: PTR): PTR`. Input: `reqPtr` is JSON
+  `UserRegisterRequest`. Output: JSON `UserRegisterResult`. The host supplies the
+  calling plugin's slug as the identity provider namespace and keeps `authId`
+  as the unmodified provider-specific ID. The host rejects administrative or
+  otherwise disallowed scopes.
 
 ### `auth.gate`
 
-Grants a plugin the right to be the site's viewer-authentication gate: it
-renders the login flow and names the authenticated user, and the host owns the
-signed session cookie end to end (the plugin never sees the token). Only one
-`auth.gate` plugin can be enabled at a time. Both functions are meaningful only
-inside an `on_http_request` handler, where the host attaches or clears the
-session cookie on the response after the call returns.
+Only one `auth.gate` plugin can be enabled at a time. These calls are meaningful
+inside `on_http_request`, where the host can attach or clear the signed session
+cookie. The plugin never receives the token. The operator's host-owned access
+mode is not part of the plugin wire protocol and a plugin cannot read or change
+it.
 
-The access boundary is not part of the plugin wire protocol. The operator
-selects one cumulative, host-owned mode: website only, website and stream, or
-website, stream, and status. A plugin cannot read or change that selection.
+The operator selects one cumulative host mode: website only, website and
+stream, or website, stream, and status.
 
-- `owncast_auth_grant_session(reqPtr: PTR): PTR`, JSON `GrantSessionRequest` in, JSON `GrantSessionResult` (`{error?}`) out. An empty object means success. Mints a session for the named `userId` (which the same plugin must have registered via `users.register`) and attaches the signed cookie to the in-flight response.
-- `owncast_auth_end_session(): void`, clears the session cookie on the in-flight response (logout).
+- `owncast_auth_grant_session(reqPtr: PTR): PTR`. Input: `reqPtr` is JSON
+  `GrantSessionRequest`. Output: JSON `{"error"?: string}`.
+- `owncast_auth_end_session(): void`. Input: none. Output: none.
 
-The optional `on_auth_check` export (see [Exports](#exports-plugin--host)) lets
-the gate re-validate a session on each `/` page load and return
-`ok` / `refresh` / `deny`.
+The optional `on_auth_check` export lets the gate revalidate a session on each
+viewer page load and return `ok`, `refresh`, or `deny`.
 
 ### `fediverse.post`
 
-- `owncast_fediverse_post(textPtr: PTR): PTR`, JSON `{url}` or 0-offset on failure
+- `owncast_fediverse_post(textPtr: PTR): PTR`. Input: `textPtr` is a UTF-8
+  string. Output: JSON `{"url": string}`, or 0 on failure.
 
 ### `network.fetch`
 
-- Not a custom host function, grants the plugin access to Extism's built-in `Http.request`. The host configures Extism's `AllowedHosts` from the manifest's `network.allowedHosts` (see [Manifest extensions](#manifest-extensions) below). Manifests granting `network.fetch` without `network.allowedHosts` are rejected at load.
+This permission grants access to Extism's built-in `Http.request`. It does not
+add a custom host import. The host configures `AllowedHosts` from
+`manifest.network.allowedHosts`. A manifest that grants `network.fetch` without
+an allowed-host list is rejected at load.
+
+The wildcard `"*"` is allowed only when the manifest states it explicitly.
 
 ### `http.serve`
 
-- Not a host function. Grants the host's HTTP server permission to route `/plugins/<name>/*` requests to this plugin's `on_http_request` export and to serve static files from its `public/` directory. The plugin's separate `assets/` directory is read by the host for manifest fields that inline content (`styles`, `scripts`, `extraPageContent`) and is never reachable through the plugin's URL space.
+This permission does not add a custom host import. It lets the host route
+`/plugins/<name>/*` requests to `on_http_request` and serve the plugin's
+`public/` directory.
+
+The separate `assets/` directory is read by the host for manifest content and
+is not served from the plugin's URL space.
 
 ### `http.sse`
 
-- `owncast_sse_send(channelPtr: PTR, eventPtr: PTR, dataPtr: PTR): void`, push one Server-Sent-Events message to every browser connected to `(this plugin, channel)`. `channel` and `event` are plain strings. `data` is the message body (the SDK JSON-encodes non-string values). Fire-and-forget: the call returns immediately and never blocks on a slow or absent client.
-- Grants the host permission to serve the reserved `/plugins/<name>/_sse/<channel>` endpoint (see [Host-reserved endpoints](#host-reserved-endpoints)). Independent of `http.serve`: a plugin may stream events without serving any other routes.
+- `owncast_sse_send(channelPtr: PTR, eventPtr: PTR, dataPtr: PTR): void`.
+  Inputs: all three pointers contain UTF-8 strings. `channelPtr` names the
+  stream, `eventPtr` names the SSE event, and `dataPtr` contains its text data.
+  Output: none. The call queues one event for every browser connected to the
+  plugin and channel.
+  The call returns after queueing the frame and does not wait for browsers to
+  consume it.
+
+The permission also lets the host serve the reserved
+`/plugins/<name>/_sse/<channel>` endpoint. It is independent of `http.serve`.
 
 ### `ui.modify`
 
-- Not a custom host function. Gates UI surfaces that place plugin-contributed elements inside Owncast's own chrome.
-- Required when the manifest declares `actions[]`, `styles[]`, `scripts[]`, `extraPageContent`, or `tabs`, and required at runtime by `owncast_add_actions` / `owncast_clear_actions`. Manifests that declare any of those fields without `ui.modify` are rejected at load. Runtime calls return a permission error.
-- `owncast_add_actions(jsonPtr: PTR): u64`, append one or more `ActionButton` entries on top of `manifest.actions`. Argument is a JSON array. The host validates each entry with the same rules as the manifest (title required, exactly one of `url` / `html`, relative URLs and icons auto-prefixed to the plugin's namespace, cross-plugin paths rejected) and persists the merged set to the plugin's config. Returns the host call envelope (success indicator + optional error string).
-- `owncast_clear_actions(jsonPtr: PTR): u64`, drop every runtime addition. `manifest.actions` are untouched. Argument is an empty JSON object (`"{}"`) for API symmetry. Returns the host call envelope.
+This permission gates UI surfaces inside Owncast's chrome. A manifest that
+declares actions, styles, scripts, extra page content, or tabs without
+`ui.modify` is rejected at load.
+
+- `owncast_add_actions(actionsPtr: PTR): void`. Input: `actionsPtr` is JSON
+  `ActionButton[]`. Output: none. The host validates and appends the actions to
+  the plugin's runtime action list. Invalid input is logged.
+  Each action needs a title and exactly one of `url` or `html`. The host
+  rewrites relative URLs and icons into the plugin's namespace, rejects
+  cross-plugin paths, and persists the merged runtime list in plugin config.
+- `owncast_clear_actions(): void`. Input: none. Output: none. Clears runtime
+  actions without changing `manifest.actions`.
 
 ### `chat.filter`
 
-- Not a custom host function. Gates the `filter_chat_message` export: a plugin that registers a `filterChatMessage` handler must declare this permission at load time, otherwise the host rejects the manifest.
-- This is deliberately separate from `chat.send`, `chat.history`, and `chat.moderate`: filtering happens inline on every chat message before broadcast (modify the body, drop the message, or pass it through), so the manifest reviewer needs to see it called out explicitly.
+This permission gates the `filter_chat_message` export. A plugin that registers
+a `filterChatMessage` handler without it is rejected at load. It is separate
+from chat sending, history, and moderation because filtering runs inline before
+broadcast.
+
+A filter can modify the message body, drop the message, or pass it through.
 
 ### `fediverse.inbound`
 
-- Not a custom host function. Gates notify subscriptions to `fediverse.activity`, `fediverse.follow`, `fediverse.like`, `fediverse.repost`, `fediverse.quote`, `fediverse.mention`, and `fediverse.reply`. If `register` reports any of these subscriptions, the plugin manifest must declare this permission or the host rejects the plugin at load time.
-- `fediverse.activity` carries the verified inbound activity's raw JSON object after HTTP signature and actor-origin checks. It is dispatched in addition to any matching specialized event and is also dispatched for verified activity types with no specialized event.
-- `fediverse.quote` carries `{actor, target}`, where `target` is the locally authored post that the remote actor quoted. `fediverse.mention` and `fediverse.reply` are limited to verified public `Create(Note)` activities that mention the local account or reply to a locally authored post.
-- These are internal plugin notify events, not external HTTP webhooks. `fediverse.post` is separate and permits outbound posts under the streamer's Fediverse identity.
+This permission gates notify subscriptions to `fediverse.activity`,
+`fediverse.follow`, `fediverse.like`, `fediverse.repost`, `fediverse.quote`,
+`fediverse.mention`, and `fediverse.reply`. These are internal plugin events,
+not external HTTP webhooks.
+
+`fediverse.activity` carries the verified inbound activity as a raw JSON
+object. It fires alongside a matching specialized event and also covers
+verified activity types without a specialized event. `fediverse.quote` carries
+`{actor, target}`, where `target` is the quoted local post. Mentions and replies
+are verified public `Create(Note)` activities tied to the local account or a
+locally authored post.
 
 ### ambient (no permission)
 
-These imports are granted to every plugin without a declared permission. A plugin can't `setTimeout` or read its own config without the host, and the acts themselves are benign (a scheduled callback still needs its own permissions to do anything, and reading your own manifest-declared config exposes nothing new).
+These imports are available to every plugin:
 
-- `owncast_timer_set(id: I64, delayMs: I64, repeat: I32): I32`, schedule a host-driven timer. The host fires the `timer.fire` event (payload `{id}`) when it elapses. Returns 1 on success, 0 if the plugin is at its pending-timer cap. `delayMs` is clamped to `[100, 86_400_000]`. The SDK maps `id`→callback for `owncast.timer.setTimeout/setInterval`.
-- `owncast_timer_clear(id: I64): void`, cancel a pending timer by id.
-- `owncast_config_get(keyPtr: PTR): PTR`, returns the JSON value of a `manifest.config` key (admin override, else declared default), or 0-offset for an unknown/unset key.
-- `owncast_asset_read(pathPtr: PTR): PTR`, returns the raw bytes of a file from the plugin's own `assets/` directory, or 0-offset when the file is missing or the path escapes the directory. The path is relative to `assets/` and must not start with `/` or contain `..` segments. The host rejects any path that would escape the plugin's own asset tree. Plugins use this to load bundled resources (templates, data files) at request time without needing `storage.fs`.
+- `owncast_timer_set(id: I64, delayMs: I64, repeat: I64): I64`. Inputs: `id`
+  and `delayMs` are scalar integers. The host clamps `delayMs` to
+  `[100, 86_400_000]`. `repeat` is 1 for an interval and any other value for a
+  one-shot timer. Output: scalar 1 on success and 0 at the pending-timer cap.
+- `owncast_timer_clear(id: I64): void`. Input: `id` is a scalar timer ID.
+  Output: none.
+- `owncast_config_get(keyPtr: PTR): PTR`. Input: `keyPtr` is a UTF-8 manifest
+  config key. Output: one JSON value, or 0 for an unknown or unset key.
+- `owncast_asset_read(pathPtr: PTR): PTR`. Input: `pathPtr` is a UTF-8 path
+  relative to the plugin's `assets/` directory. Output: raw file bytes, or 0
+  when the path is missing, invalid, or unreadable.
 - `owncast_log_info(messagePtr: PTR): void`, write an info entry to the Owncast server log
 - `owncast_log_warning(messagePtr: PTR): void`, write a warning entry to the Owncast server log
 - `owncast_log_error(messagePtr: PTR): void`, write an error entry to the Owncast server log
@@ -398,13 +501,13 @@ Per-entry validation:
 - `http://` and `https://` URLs are rejected at load.
 - Each entry must end in `.css`.
 
-Each plugin contribution in the concatenated response is preceded by a `/* plugin: <slug> — <file> */\n` comment so devtools "view source" can attribute a rule back to whichever plugin shipped it. Disabling the plugin drops its contribution on the next `/api/config` request.
+Each plugin contribution in the concatenated response is preceded by a comment that identifies the plugin slug and file, so a reader can attribute a rule to its source. Disabling the plugin drops its contribution on the next `/api/config` request.
 
 ### `manifest.scripts[]`
 
 An array of relative paths to JavaScript files the plugin contributes to the viewer page. The host reads each file's bytes from the plugin's `assets/` directory and appends them to the response served at `/customjavascript`, so a viewer loads one `<script>` tag covering admin and plugin contributions.
 
-Same per-entry rules as `manifest.styles[]`, applied to `.js` files (only `ui.modify` required, and the file is inlined, not served). Contributions are separated by `// plugin: <slug> — <file>\n` delimiter comments. Every plugin's JavaScript runs in the viewer page's shared global scope, so authors are expected to wrap their script in an IIFE so top-level declarations don't collide.
+The same per-entry rules as `manifest.styles[]` apply to `.js` files. Only `ui.modify` is required because the file is inlined, not served. Delimiter comments identify each plugin slug and file. Every plugin's JavaScript runs in the viewer page's shared global scope, so authors should wrap their script in an IIFE to keep top-level declarations from colliding.
 
 ### `manifest.extraPageContent`
 
@@ -428,7 +531,7 @@ Validation:
 
 **Dynamic** (`content` absent): the host calls `on_page_content` with `{ slug, user? }` and inlines the returned HTML string. `user` carries the requesting viewer's chat identity when available.
 
-Each contribution is wrapped with an `<!-- plugin: <slug> — <file> -->\n` comment for in-page attribution. The admin's content goes through the markdown processor before plugin HTML is prepended. Plugin HTML is left raw so tags and attributes pass through as written.
+Each contribution is wrapped with an HTML comment that identifies the plugin slug and file. The admin's content goes through the markdown processor before plugin HTML is prepended. Plugin HTML is left raw so tags and attributes pass through as written.
 
 ### `manifest.tabs`
 
@@ -462,19 +565,466 @@ JSON object order is not significant. The host emits tabs in lexicographic slug 
 
 ## Payload types
 
-The JSON shapes for `Manifest`, `Envelope`, `ChatMessage`, `FediverseInboundPost`, `UserRegisterRequest`, `GrantSessionRequest`, `AuthCheckResult`, etc. are documented in the JS SDK's `index.d.ts` as TypeScript interfaces. Future SDKs (Go, Python) port these shapes into their native type system. The over-the-wire JSON is identical.
+The schemas below come from the JSON tags and envelope builders in Owncast
+core. The sources are `services/plugins/hostfns.go`, `manifest.go`,
+`dispatcher.go`, and `server.go`, plus the event translators in
+`pluginhost/pluginevents.go` and `services/activitypub/events/`. They describe
+the raw values at the Wasm boundary. A `?` means the key may be omitted. SDK
+convenience objects may rename methods, but they must encode these keys exactly.
+
+```ts
+type JSONValue =
+  | null
+  | boolean
+  | number
+  | string
+  | JSONValue[]
+  | { [key: string]: JSONValue };
+```
+
+### Registration and dispatch
+
+```ts
+type Manifest = {
+  api: string;
+  type?: "wasm" | "javascript" | "python";
+  name: string;
+  slug?: string;
+  version: string;
+  description?: string;
+  bot?: BotConfig;
+  subscriptions: Subscriptions;
+  commands?: CommandInfo[];
+  permissions?: string[];
+  config?: { [key: string]: ConfigField };
+  admin?: AdminConfig;
+  actions?: ActionButton[];
+  network?: NetworkConfig;
+  styles?: string[];
+  scripts?: string[];
+  extraPageContent?: ExtraPageContent;
+  tabs?: Tab[];
+};
+
+type BotConfig = {
+  displayName?: string;
+};
+
+type Subscription = {
+  event: string;
+  priority?: number;
+};
+
+type Subscriptions = {
+  notify?: Subscription[];
+  filter?: Subscription[];
+};
+
+type CommandInfo = {
+  name: string;
+  prefix?: string;
+  description?: string;
+  usage?: string;
+  aliases?: string[];
+  modOnly?: boolean;
+  caseSensitive?: boolean;
+  cooldownMs?: number;
+};
+
+type ConfigField = {
+  type: string;
+  default?: JSONValue;
+  description?: string;
+};
+
+type AdminConfig = {
+  pages?: AdminPage[];
+};
+
+type AdminPage = {
+  title: string;
+  path: string;
+  icon?: string;
+};
+
+type NetworkConfig = {
+  allowedHosts?: string[];
+};
+
+type ActionButton = {
+  title: string;
+  url?: string;
+  html?: string;
+  icon?: string;
+  color?: string;
+  description?: string;
+  openExternally?: boolean;
+};
+
+type ExtraPageContent = {
+  slug: string;
+  content?: string;
+};
+
+type Tab = {
+  title: string;
+  slug: string;
+  content?: string;
+};
+
+type Envelope = {
+  eventType: string;
+  payload: JSONValue;
+};
+
+type FilterResult =
+  | { action: "pass" }
+  | { action: "modify"; payload: JSONValue }
+  | { action: "drop"; reason?: string };
+```
+
+`type` is derived by the host from the packaged code filename. Authors do not
+set it. The SDK derives `subscriptions` and `commands` in `register`.
+
+### Users and chat
+
+```ts
+type User = {
+  id: string;
+  displayName: string;
+  displayColor: number;
+  previousNames?: string[];
+  createdAt?: string;
+  disabledAt?: string;
+  scopes?: string[];
+  isBot?: boolean;
+  isAuthenticated?: boolean;
+};
+
+type ChatMessage = {
+  id: string;
+  user?: User;
+  clientId?: number;
+  body: string;
+  timestamp: string;
+};
+
+type ChatClient = {
+  id: number;
+  userId?: string;
+  displayName?: string;
+  connectedAt?: string;
+  userAgent?: string;
+  ipAddress?: string;
+  messageCount: number;
+};
+
+type ChatUserRename = {
+  user: User;
+  previousName: string;
+};
+
+type ChatMessageModeration = {
+  messageId: string;
+  visible: boolean;
+  moderator?: User;
+};
+
+type CommandEvent = {
+  message: ChatMessage;
+  command: string;
+  invokedAs: string;
+  args: string[];
+  argString: string;
+};
+
+type UserRegisterRequest = {
+  authId: string;
+  displayName?: string;
+  scopes?: string[];
+  profileUrl?: string;
+  handle?: string;
+  public?: boolean;
+};
+
+type UserRegisterResult =
+  | { userId: string; error?: never }
+  | { userId?: never; error: string };
+
+type GrantSessionRequest = {
+  userId: string;
+  ttl?: number;
+};
+
+type AuthResult = {
+  error?: string;
+};
+```
+
+`profileUrl`, `handle`, and `public` describe a verified external identity.
+The host accepts an empty `profileUrl` or an absolute HTTP(S) URL. It stores the
+identity for public display only when `public` is true.
+
+### HTTP and authentication exports
+
+```ts
+type IncomingHttpRequest = {
+  method: string;
+  path: string;
+  query: { [key: string]: string };
+  headers: { [key: string]: string };
+  body: string;
+  remoteAddr: string;
+  authenticated: boolean;
+  user?: User;
+};
+
+type OutgoingHttpResponse = {
+  status?: number;
+  headers?: { [key: string]: string };
+  body?: string;
+};
+
+type ContentRequest = {
+  slug: string;
+  user?: User;
+};
+
+type AuthCheckRequest = {
+  user: User;
+};
+
+type AuthCheckResult =
+  | { action: "ok" }
+  | { action: "refresh"; ttl?: number }
+  | { action: "deny"; reason?: string };
+```
+
+The host always supplies every non-optional `IncomingHttpRequest` key. It
+omits `user` for anonymous viewers and admin-only authentication. A missing or
+zero response status defaults to 200.
+
+### Stream and server data
+
+```ts
+type StreamLifecycleEvent = {
+  startedAt?: string;
+  stoppedAt?: string;
+  title?: string;
+  summary?: string;
+};
+
+type StreamTitleChange = {
+  from: string;
+  to: string;
+};
+
+type StreamInfo = {
+  online: boolean;
+  title?: string;
+  summary?: string;
+  viewers: number;
+  startedAt?: string;
+  latencyLevel?: number;
+};
+
+type StreamBroadcaster = {
+  remoteAddr?: string;
+  codecs?: string[];
+  resolution?: string;
+  framerate?: number;
+  bitrates?: number[];
+};
+
+type ServerInfo = {
+  name?: string;
+  url?: string;
+  summary?: string;
+  welcomeMessage?: string;
+  version?: string;
+};
+
+type SocialHandle = {
+  platform: string;
+  url: string;
+  icon?: string;
+};
+
+type Emote = {
+  name: string;
+  url: string;
+};
+
+type FederationInfo = {
+  enabled: boolean;
+  username?: string;
+  isPrivate?: boolean;
+};
+
+type StreamVariant = {
+  width: number;
+  height: number;
+  framerate: number;
+  videoBitrate: number;
+  audioBitrate: number;
+  isPassthrough: boolean;
+};
+
+type VideoConfig = {
+  latencyLevel: number;
+  codec: string;
+  variants: StreamVariant[];
+};
+
+type VideoConfigUpdate = {
+  latencyLevel?: number;
+  codec?: string;
+  variants?: StreamVariant[];
+};
+```
+
+### Fediverse and notifications
+
+```ts
+type FediverseActor = {
+  name: string;
+  handle: string;
+  url?: string;
+  image?: string;
+};
+
+type FediverseTarget = {
+  url: string;
+};
+
+type FediverseEngagement = {
+  actor: FediverseActor;
+  target?: FediverseTarget;
+};
+
+type FediverseAttachment = {
+  url: string;
+  mediaType: string;
+  alt?: string;
+};
+
+type FediverseInboundPost = {
+  actor: FediverseActor;
+  content: string;
+  contentText: string;
+  url: string;
+  postedAt: string;
+  inReplyTo?: string;
+  attachments?: FediverseAttachment[];
+  language?: string;
+};
+
+type BrowserPushPayload = {
+  title: string;
+  body?: string;
+  url?: string;
+};
+
+type FediversePayload = {
+  type: string;
+  body: string;
+  image?: string;
+  link?: string;
+};
+```
+
+`fediverse.activity` carries the verified ActivityPub object as an unrestricted
+`JSONValue`. Follow carries `FediverseEngagement` without `target`. Like,
+repost, and quote carry it with `target`. Mention and reply carry
+`FediverseInboundPost`.
+
+### Storage and remaining host results
+
+```ts
+type UploadResult = {
+  url: string;
+};
+
+type FsResult = {
+  ok: boolean;
+  error?: string;
+};
+
+type SQLValue = null | boolean | number | string;
+
+type SQLRequest = {
+  sql: string;
+  params?: SQLValue[];
+  maxRows?: number;
+};
+
+type SQLExecResult = {
+  ok: boolean;
+  error?: string;
+  rowsAffected: number;
+  lastInsertId: number;
+};
+
+type SQLQueryResult = {
+  ok: boolean;
+  error?: string;
+  columns: string[];
+  rows: SQLValue[][];
+  truncated?: boolean;
+};
+
+type SSEConnectionEvent = {
+  channel: string;
+  connectionId: number;
+  user?: User;
+};
+
+type TickEvent = {
+  now: number;
+};
+
+type TimerFireEvent = {
+  id: number;
+};
+```
+
+SQL integer fields are signed 64-bit values in core. Chat client IDs, SSE
+connection IDs, and timer IDs are unsigned 64-bit values. JavaScript exposes
+all of them as `number`, which loses integer precision above
+`Number.MAX_SAFE_INTEGER`.
+
+### Event payload map
+
+| Event | `Envelope.payload` |
+| --- | --- |
+| `chat.message.received` | `ChatMessage` |
+| `chat.user.joined`, `chat.user.parted` | `User` |
+| `chat.user.renamed` | `ChatUserRename` |
+| `chat.message.moderated` | `ChatMessageModeration` |
+| `chat.command` | `CommandEvent` |
+| `stream.started`, `stream.stopped` | `StreamLifecycleEvent` |
+| `stream.title.changed` | `StreamTitleChange` |
+| `sse.connect`, `sse.disconnect` | `SSEConnectionEvent` |
+| `tick` | `TickEvent` |
+| `timer.fire` | `TimerFireEvent` |
+| `fediverse.activity` | `JSONValue` |
+| `fediverse.follow`, `fediverse.like`, `fediverse.repost`, `fediverse.quote` | `FediverseEngagement` |
+| `fediverse.mention`, `fediverse.reply` | `FediverseInboundPost` |
+| Custom event name | `JSONValue` |
 
 ## Conformance
 
 Each language SDK is responsible for:
 
-- Declaring the imports listed above (gated by manifest permissions) so the plugin author's call into `owncast.chat.send(...)` resolves to the right wasm import.
-- Encoding/decoding payloads as JSON or text per the table above.
-- Implementing the exports' dispatch loop: parse the envelope, route to the right handler, serialize the response. This covers all nine exports: `register`, `on_event`, `on_filter`, `on_http_request`, `on_tab_content`, `on_page_content`, `on_page_styles`, `on_page_scripts`, and `on_auth_check`.
+- Declaring every import above in the shared engine.
+- Encoding each pointer as the documented JSON, UTF-8 string, or raw bytes.
+- Using `I64` for every scalar input and output.
+- Dispatching all nine exports with the documented input and output shapes.
 
-The Owncast server repo's plugin runtime is responsible for:
-
-- Registering each host function under the right Extism namespace and permission gate.
-- Calling exports with the right input shapes and observing the documented timeout / size caps.
-
-The Owncast repo's `services/plugins/contract_test.go` re-derives the permission and host-function names (and wire-type field shapes) from the host implementation and compares them against the committed `plugin-contract.json` snapshot, so the runtime can't silently drift from the contract this document describes.
+The Owncast runtime registers each custom import under `extism:host/user`,
+checks its permission, and handles the documented stack shape. Owncast's
+`services/plugins/contract_test.go` snapshots permission names, host-function
+names, and wire-type fields. This SDK's
+`host-runtime/host_function_contract_test.go` derives the current names and
+stack signatures from `plugins.BuildHostFunctions(&plugins.HostEnv{})`, then
+compares both shared engine declaration files.

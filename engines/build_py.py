@@ -49,11 +49,11 @@ HOST_FNS = {
         ("owncast_kv_set", "key: str, value: str"),
     ],
     "storage.upload": [
-        ("owncast_storage_upload", "name: str, data: str", "str"),
+        ("owncast_storage_upload", "name: str, data: bytes", "str"),
     ],
     "storage.fs": [
-        ("owncast_fs_read", "path: str", "str"),
-        ("owncast_fs_write", "path: str, data: str", "str"),
+        ("owncast_fs_read", "path: str", "bytes"),
+        ("owncast_fs_write", "path: str, data: bytes", "str"),
         ("owncast_fs_list", "directory: str", "str"),
         ("owncast_fs_delete", "path: str", "str"),
         ("owncast_fs_exists", "path: str", "int"),
@@ -117,7 +117,7 @@ AMBIENT_FNS = [
     ("owncast_timer_set", "timer_id: int, delay_ms: int, repeat: int", "int"),
     ("owncast_timer_clear", "timer_id: int"),
     ("owncast_config_get", "key: str", "str"),
-    ("owncast_asset_read", "path: str", "str"),
+    ("owncast_asset_read", "path: str", "bytes"),
     ("owncast_log_info", "message: str"),
     ("owncast_log_warning", "message: str"),
     ("owncast_log_error", "message: str"),

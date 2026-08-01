@@ -380,6 +380,14 @@ def _dispatch_command(event):
     ))
 
 
+def _as_bytes(data):
+    if isinstance(data, bytes):
+        return data
+    if isinstance(data, bytearray):
+        return bytes(data)
+    return str(data).encode("utf-8")
+
+
 # ---------------------------------------------------------------------------
 # owncast.* host facade.
 # ---------------------------------------------------------------------------
@@ -460,9 +468,8 @@ class _KV:
 
 class _Storage:
     def upload(self, name, data):
-        if isinstance(data, (bytes, bytearray)):
-            data = data.decode("utf-8", "replace")
-        return _call_json("owncast_storage_upload", str(name), str(data))
+        """Upload raw bytes, or UTF-8 encode a string convenience value."""
+        return _call_json("owncast_storage_upload", str(name), _as_bytes(data))
 
 
 def _operation_result(name, failure_message, *args):
@@ -471,17 +478,18 @@ def _operation_result(name, failure_message, *args):
 
 
 class _FS:
-    def read_text(self, path):
-        return _host("owncast_fs_read")(str(path)) or None
+    def read(self, path):
+        """Read raw file bytes."""
+        return _host("owncast_fs_read")(str(path))
 
-    read = read_text
+    def read_text(self, path):
+        """Read a file as UTF-8 text, replacing malformed byte sequences."""
+        data = self.read(path)
+        return data.decode("utf-8", "replace") if data is not None else None
 
     def write(self, path, data):
-        if isinstance(data, (bytes, bytearray)):
-            data = data.decode("utf-8", "replace")
-        return _operation_result(
-            "owncast_fs_write", "write failed", str(path), str(data)
-        )
+        """Write raw bytes, or UTF-8 encode a string convenience value."""
+        return _call_json("owncast_fs_write", str(path), _as_bytes(data))
 
     def list(self, directory):
         return _call_json("owncast_fs_list", str(directory)) or []
@@ -616,19 +624,33 @@ class _Users:
     def ban_ip(self, ip):
         _host("owncast_ban_ip")(str(ip))
 
-    def register(self, auth_id, display_name=None, scopes=None):
-        """Find-or-create an authenticated user for an external identity.
+    def register(
+        self,
+        auth_id,
+        display_name=None,
+        scopes=None,
+        profile_url=None,
+        handle=None,
+        public=None,
+    ):
+        """Find or create an authenticated user for an external identity.
 
-        auth_id is the stable, provider-scoped id (e.g. "github:583231"). The
-        host namespaces it by this plugin's slug so plugins can't collide on or
-        spoof each other's users. Returns an object with .user_id. Raises on
-        host error. Requires the 'users.register' permission.
+        auth_id is the stable, provider-scoped ID. profile_url and handle
+        describe a verified external profile. Set public=True only when the
+        viewer agreed to show that identity publicly. Returns an object with
+        .user_id. Raises on host error. Requires 'users.register'.
         """
         req = {"authId": str(auth_id)}
         if display_name is not None:
             req["displayName"] = str(display_name)
         if scopes is not None:
             req["scopes"] = list(scopes)
+        if profile_url is not None:
+            req["profileUrl"] = str(profile_url)
+        if handle is not None:
+            req["handle"] = str(handle)
+        if public is not None:
+            req["public"] = bool(public)
         result = _call_json("owncast_users_register", json.dumps(req)) or {}
         if isinstance(result, dict) and result.get("error"):
             raise RuntimeError(result["error"])
@@ -708,10 +730,14 @@ class _Config:
 
 
 class _Assets:
-    def read_text(self, path):
-        return _host("owncast_asset_read")(str(path)) or None
+    def read(self, path):
+        """Read raw bundled asset bytes."""
+        return _host("owncast_asset_read")(str(path))
 
-    read = read_text
+    def read_text(self, path):
+        """Read a bundled asset as UTF-8 text, replacing malformed bytes."""
+        data = self.read(path)
+        return data.decode("utf-8", "replace") if data is not None else None
 
 
 class _Http:

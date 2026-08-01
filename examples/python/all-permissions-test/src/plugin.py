@@ -7,14 +7,15 @@
 #   - a new load-time manifest validation rule,
 #   - a registration-semantics change (register() output, manifest/runtime
 #     agreement, an engine handler mapping core stops accepting).
-#
-# It does NOT catch call-time permission changes: those permissions are
-# silent no-ops at call time and their manifest strings aren't validated
-# against a catalog at load, so a rename there leaves this canary green.
+# Most call-time permission changes remain outside this canary because denied
+# calls are silent no-ops. The focused binary scenario is the exception. It
+# covers the raw-byte path through assets, storage.fs, and storage.upload.
 # When the host's permission catalog changes, update this plugin's manifest,
 # its JavaScript twin, and the permission table in docs/PLUGIN_AUTHOR_GUIDE.md
 # together — by hand.
-from owncast_plugin import plugin, filter, auth_check
+import base64
+
+from owncast_plugin import plugin, filter, auth_check, owncast
 
 # Declarative command registration (host-matched dispatch).
 plugin.commands({
@@ -125,8 +126,15 @@ def on_fediverse_reply(_post):
 
 # Requires http.serve.
 @plugin.on_http_request
-def on_http_request(_req):
-    return {"status": 204}
+def on_http_request(req):
+    if req.path != "/binary-round-trip":
+        return {"status": 204}
+
+    data = owncast.assets.read("invalid-utf8.bin")
+    owncast.fs.write("invalid-utf8.bin", data)
+    stored = owncast.fs.read("invalid-utf8.bin")
+    owncast.storage.upload("invalid-utf8.bin", stored)
+    return {"status": 200, "body": base64.b64encode(stored).decode("ascii")}
 
 
 # Requires auth.gate.

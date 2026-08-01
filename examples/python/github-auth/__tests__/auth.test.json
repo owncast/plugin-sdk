@@ -26,7 +26,7 @@
           "url": "https://api.github.com/user",
           "method": "GET",
           "status": 200,
-          "body": "{\"id\":583231,\"login\":\"octocat\",\"name\":\"octocat\"}"
+          "body": "{\"id\":583231,\"login\":\"octocat\",\"name\":\"octocat\",\"html_url\":\"https://github.com/octocat\"}"
         }
       ]
     },
@@ -41,7 +41,7 @@
     ],
     "expect": {
       "userRegistrations": [
-        { "authId": "github:583231", "displayName": "octocat" }
+        { "authId": "github:583231", "displayName": "octocat", "profileUrl": "https://github.com/octocat", "handle": "octocat", "public": false }
       ],
       "sessionGrants": [{ "userId": "u-github:583231" }]
     }
