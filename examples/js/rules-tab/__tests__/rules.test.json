@@ -1,0 +1,368 @@
+[
+  {
+    "name": "viewer rules tab renders Markdown emphasis",
+    "given": {
+      "kv": {
+        "rules": "[\"Be **kind** to one another.\"]"
+      }
+    },
+    "events": [
+      {
+        "tabContent": {
+          "slug": "rules",
+          "expect": {
+            "bodyContains": "<strong>kind</strong>"
+          }
+        }
+      }
+    ]
+  },
+  {
+    "name": "viewer rules tab renders Markdown links and code",
+    "given": {
+      "kv": {
+        "rules": "[\"Use `CW: topic` when needed. [Learn more](https://owncast.online).\"]"
+      }
+    },
+    "events": [
+      {
+        "tabContent": {
+          "slug": "rules",
+          "expect": {
+            "bodyContains": "<code>CW: topic</code>"
+          }
+        }
+      }
+    ]
+  },
+  {
+    "name": "viewer rules tab escapes raw HTML",
+    "given": {
+      "kv": {
+        "rules": "[\"<script>alert('no')</script>\"]"
+      }
+    },
+    "events": [
+      {
+        "tabContent": {
+          "slug": "rules",
+          "expect": {
+            "bodyContains": "&lt;script&gt;"
+          }
+        }
+      }
+    ]
+  },
+  {
+    "name": "viewer rules tab drops unsafe Markdown links",
+    "given": {
+      "kv": {
+        "rules": "[\"[Do not open](javascript:alert('no'))\"]"
+      }
+    },
+    "events": [
+      {
+        "tabContent": {
+          "slug": "rules",
+          "expect": {
+            "bodyContains": "<p>Do not open</p>"
+          }
+        }
+      }
+    ]
+  },
+  {
+    "name": "viewer rules tab escapes customized display text",
+    "given": {
+      "kv": {
+        "settings": "{\"title\":\"<script>alert('no')</script>\",\"description\":\"<img src=x onerror=alert('no')>\",\"footer\":\"Safe footer\"}"
+      }
+    },
+    "events": [
+      {
+        "tabContent": {
+          "slug": "rules",
+          "expect": {
+            "bodyContains": "&lt;script&gt;"
+          }
+        }
+      }
+    ]
+  },
+  {
+    "name": "rules tab has a friendly empty state",
+    "events": [
+      {
+        "tabContent": {
+          "slug": "rules",
+          "expect": {
+            "bodyContains": "No rules have been published yet"
+          }
+        }
+      }
+    ]
+  },
+  {
+    "name": "viewer rules tab uses Markdown in custom text",
+    "given": {
+      "kv": {
+        "rules": "[\"Be kind.\"]",
+        "settings": "{\"title\":\"**Chat guidelines**\",\"description\":\"Read **this first**.\",\"footer\":\"Thanks **for contributing**.\"}"
+      }
+    },
+    "events": [
+      {
+        "tabContent": {
+          "slug": "rules",
+          "expect": {
+            "bodyContains": "<strong>Chat guidelines</strong>"
+          }
+        }
+      },
+      {
+        "tabContent": {
+          "slug": "rules",
+          "expect": {
+            "bodyContains": "<strong>this first</strong>"
+          }
+        }
+      },
+      {
+        "tabContent": {
+          "slug": "rules",
+          "expect": {
+            "bodyContains": "<strong>for contributing</strong>"
+          }
+        }
+      }
+    ]
+  },
+  {
+    "name": "viewer rules tab shows when rules last changed",
+    "given": {
+      "kv": {
+        "rules": "[\"Be kind.\"]",
+        "updatedAt": "2026-08-01T00:31:00Z"
+      }
+    },
+    "events": [
+      {
+        "tabContent": {
+          "slug": "rules",
+          "expect": {
+            "bodyContains": "Last updated August 1, 2026"
+          }
+        }
+      }
+    ]
+  },
+  {
+    "name": "admin can read and update tab content and rules",
+    "events": [
+      {
+        "http": {
+          "method": "PUT",
+          "path": "/admin/api/rules",
+          "authenticated": true,
+          "body": "{\"tabName\":\"Guidelines\",\"title\":\"Chat guidelines\",\"description\":\"Read this first.\",\"footer\":\"Thanks for contributing.\",\"requireAcceptance\":true,\"rules\":[\"Be kind.\",\"No spoilers.\"]}",
+          "expect": { "status": 204 }
+        }
+      },
+      {
+        "http": {
+          "method": "GET",
+          "path": "/admin/api/rules",
+          "authenticated": true,
+          "expect": { "status": 200, "body": "{\"tabName\":\"Guidelines\",\"title\":\"Chat guidelines\",\"description\":\"Read this first.\",\"footer\":\"Thanks for contributing.\",\"requireAcceptance\":true,\"rules\":[\"Be kind.\",\"No spoilers.\"]}" }
+        }
+      }
+    ],
+    "expect": {
+      "kv": {
+        "rules": "[\"Be kind.\",\"No spoilers.\"]",
+        "settings": "{\"tabName\":\"Guidelines\",\"title\":\"Chat guidelines\",\"description\":\"Read this first.\",\"footer\":\"Thanks for contributing.\",\"requireAcceptance\":true}"
+      }
+    }
+  },
+  {
+    "name": "admin API rejects invalid rules",
+    "events": [
+      {
+        "http": {
+          "method": "PUT",
+          "path": "/admin/api/rules",
+          "authenticated": true,
+          "body": "{\"rules\":[\"\"]}",
+          "expect": { "status": 400 }
+        }
+      }
+    ],
+    "expect": { "kv": {} }
+  },
+  {
+    "name": "admin routes require authentication",
+    "events": [
+      {
+        "http": {
+          "method": "GET",
+          "path": "/admin/api/rules",
+          "expect": { "status": 401 }
+        }
+      }
+    ]
+  },
+  {
+    "name": "!rules posts the current rules with the custom tab name",
+    "given": {
+      "kv": {
+        "rules": "[\"Be <3 kind.\",\"Use content warnings.\"]",
+        "settings": "{\"tabName\":\"Code of Conduct\"}"
+      }
+    },
+    "events": [
+      {
+        "event": "chat.message.received",
+        "payload": {
+          "id": "m-rules",
+          "user": { "id": "u-viewer", "displayName": "viewer" },
+          "body": "!rules",
+          "timestamp": "2026-08-01T00:00:00Z"
+        }
+      }
+    ],
+    "expect": {
+      "chatSends": ["**Code of Conduct:**\n\n**01.** Be <3 kind.  \n**02.** Use content warnings.  "],
+      "commands": [
+        {
+          "name": "rules",
+          "prefix": "!",
+          "description": "Show the community rules",
+          "cooldownMs": 10000
+        }
+      ]
+    }
+  },
+  {
+    "name": "!rules bolds the custom tab name without adding the configured page title",
+    "given": {
+      "kv": {
+        "rules": "[\"Be kind.\"]",
+        "settings": "{\"tabName\":\"Guidelines\",\"title\":\"Community guidelines\"}"
+      }
+    },
+    "events": [
+      {
+        "event": "chat.message.received",
+        "payload": {
+          "id": "m-bold-rules",
+          "user": { "id": "u-viewer", "displayName": "viewer" },
+          "body": "!rules",
+          "timestamp": "2026-08-01T00:00:00Z"
+        }
+      }
+    ],
+    "expect": {
+      "chatSends": ["**Guidelines:**\n\n**01.** Be kind.  "]
+    }
+  },
+  {
+    "name": "!rules handles an empty rules list",
+    "events": [
+      {
+        "event": "chat.message.received",
+        "payload": {
+          "id": "m-empty-rules",
+          "user": { "id": "u-viewer", "displayName": "viewer" },
+          "body": "!rules",
+          "timestamp": "2026-08-01T00:00:00Z"
+        }
+      }
+    ],
+    "expect": { "chatSends": ["No rules have been published yet."] }
+  },
+  {
+    "name": "custom viewer tab name is applied by the page script",
+    "given": {
+      "kv": {
+        "settings": "{\"tabName\":\"Code of Conduct\"}"
+      }
+    },
+    "events": [
+      {
+        "pageScripts": {
+          "slug": "",
+          "expect": { "bodyContains": "var label = \"Code of Conduct\"" }
+        }
+      }
+    ]
+  },
+  {
+    "name": "acceptance prompt ships its dialog script and styles when enabled",
+    "given": {
+      "kv": {
+        "rules": "[\"Be kind.\"]",
+        "settings": "{\"tabName\":\"Guidelines\",\"requireAcceptance\":true}",
+        "updatedAt": "2026-08-01T01:02:03Z"
+      }
+    },
+    "events": [
+      {
+        "pageStyles": {
+          "slug": "",
+          "expect": { "bodyContains": "#owncast-rules-gate" }
+        }
+      },
+      {
+        "pageScripts": {
+          "slug": "",
+          "expect": { "bodyContains": "owncast-rules-accepted-version" }
+        }
+      }
+    ]
+  },
+  {
+    "name": "empty rules hide the viewer tab",
+    "events": [
+      {
+        "pageStyles": {
+          "slug": "",
+          "expect": { "bodyContains": ".ant-tabs-tab:has(" }
+        }
+      }
+    ]
+  },
+  {
+    "name": "published rules leave the viewer tab visible",
+    "given": {
+      "kv": {
+        "rules": "[\"Be kind.\"]"
+      }
+    },
+    "events": [
+      {
+        "pageStyles": {
+          "slug": "",
+          "expect": { "body": "" }
+        }
+      }
+    ]
+  },
+  {
+    "name": "acceptance cannot be enabled without a rule",
+    "events": [
+      {
+        "http": {
+          "method": "PUT",
+          "path": "/admin/api/rules",
+          "authenticated": true,
+          "body": "{\"tabName\":\"Rules\",\"title\":\"Community rules\",\"description\":\"\",\"footer\":\"\",\"requireAcceptance\":true,\"rules\":[]}",
+          "expect": {
+            "status": 400,
+            "body": "Add at least one rule before requiring viewers to accept them."
+          }
+        }
+      }
+    ],
+    "expect": { "kv": {} }
+  }
+]

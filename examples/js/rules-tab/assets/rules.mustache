@@ -1,0 +1,25 @@
+<main class="rules">
+  <style>{{{styles}}}</style>
+  <h1>{{{titleHtml}}}</h1>
+  {{#descriptionHtml}}<div class="muted rules-intro">{{{descriptionHtml}}}</div>{{/descriptionHtml}}
+
+  {{#hasRules}}
+  <ol class="rules-list" role="list">
+    {{#rules}}
+    <li class="rules-item" role="listitem">
+      <span class="rules-number" aria-hidden="true">{{number}}</span>
+      <article class="rules-copy">{{{html}}}</article>
+    </li>
+    {{/rules}}
+  </ol>
+  {{/hasRules}}
+  {{^hasRules}}
+  <div class="rules-empty stack">
+    <h2>No rules have been published yet.</h2>
+    <p class="muted">Check back before joining the conversation.</p>
+  </div>
+  {{/hasRules}}
+
+  {{#footerHtml}}<div class="muted rules-closing">{{{footerHtml}}}</div>{{/footerHtml}}
+  {{#updatedLabel}}<p class="muted rules-updated">Last updated {{updatedLabel}}</p>{{/updatedLabel}}
+</main>

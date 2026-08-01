@@ -1,0 +1,29 @@
+{
+  "api": "1",
+  "name": "Rules",
+  "slug": "rules-tab",
+  "version": "0.1.0",
+  "description": "Adds configurable community rules, a !rules chat command, and an optional viewer acceptance prompt.",
+  "category": "viewer-ui",
+  "permissions": [
+    "ui.modify",
+    "http.serve",
+    "storage.kv",
+    "chat.send"
+  ],
+  "tabs": [
+    {
+      "title": "Rules",
+      "slug": "rules"
+    }
+  ],
+  "admin": {
+    "pages": [
+      {
+        "title": "Rules",
+        "path": "/admin/*",
+        "icon": "book"
+      }
+    ]
+  }
+}
