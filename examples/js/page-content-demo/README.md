@@ -6,9 +6,9 @@ Demonstrates dynamic `extraPageContent` and viewer tabs using `onPageContent` an
 {
   "permissions": ["ui.modify", "server.read"],
   "extraPageContent": { "slug": "banner" },
-  "tabs": [
-    { "title": "Stream Info", "slug": "stream-info" }
-  ]
+  "tabs": {
+    "stream-info": { "title": "Stream Info" }
+  }
 }
 ```
 

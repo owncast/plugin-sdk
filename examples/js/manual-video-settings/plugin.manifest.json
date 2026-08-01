@@ -11,12 +11,11 @@
     "videoconfig.write"
   ],
   "admin": {
-    "pages": [
-      {
+    "pages": {
+      "/admin": {
         "title": "Manual Video Settings",
-        "path": "/admin",
         "icon": "gear"
       }
-    ]
+    }
   }
 }

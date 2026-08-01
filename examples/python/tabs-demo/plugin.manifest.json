@@ -8,16 +8,14 @@
   "permissions": [
     "ui.modify"
   ],
-  "tabs": [
-    {
+  "tabs": {
+    "music": {
       "title": "Music",
-      "slug": "music",
       "content": "music.html"
     },
-    {
+    "schedule": {
       "title": "Schedule",
-      "slug": "schedule",
       "content": "schedule.html"
     }
-  ]
+  }
 }

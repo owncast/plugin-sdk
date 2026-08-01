@@ -13,19 +13,19 @@ The tab content is plain HTML the plugin ships, so editing `assets/music.html` o
 
 ## How it works
 
-The manifest declares two tabs. Each has a `slug` (the stable identifier Owncast uses internally and passes to handlers), a `title` (the tab label), and a `content` path pointing at a static HTML file:
+The manifest declares two tabs. Each object key is the stable slug Owncast uses internally and passes to handlers. Each value contains a `title` and a `content` path pointing at a static HTML file:
 
 ```json
 {
   "permissions": ["ui.modify"],
-  "tabs": [
-    { "title": "Music",    "slug": "music",    "content": "music.html" },
-    { "title": "Schedule", "slug": "schedule", "content": "schedule.html" }
-  ]
+  "tabs": {
+    "music": { "title": "Music", "content": "music.html" },
+    "schedule": { "title": "Schedule", "content": "schedule.html" }
+  }
 }
 ```
 
-The host reads each file at `/api/config` time, inlines the bytes into a `pluginTabs[]` array on the response, and the viewer page maps each entry to a tab next to the built-ins. Tab keys are derived from the tab `slug` so a tab only unmounts when the plugin is disabled or removed.
+The host reads each file at `/api/config` time, inlines the bytes into a `pluginTabs[]` array on the response, and maps each entry to a tab next to the built-ins. The emitted tab key combines the plugin slug and manifest object key, so a tab only unmounts when the plugin is disabled or removed.
 
 ## Permissions
 

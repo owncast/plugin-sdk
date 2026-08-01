@@ -32,7 +32,7 @@ One self-contained plugin per directory, authored in Python and compiled to wasm
 | [page-content-demo](./page-content-demo/)         | `manifest.extraPageContent` + tabs rendered server-side from Mustache templates.                        |
 | [theme-hub](./theme-hub/)                         | Dynamic `@plugin.on_page_styles` + `@plugin.on_page_scripts`: an admin-selectable theme catalog applied to the whole viewer UI via `customStyles`. |
 | [viewer-gate](./viewer-gate/)                     | `manifest.styles` + `manifest.scripts` together: a confirmation modal on page load.                     |
-| [tabs-demo](./tabs-demo/)                         | `manifest.tabs[]`, two tabs added to the viewer page's tab row alongside Followers and About.           |
+| [tabs-demo](./tabs-demo/)                         | `manifest.tabs`, two tabs added to the viewer page's tab row alongside Followers and About.             |
 | [timer-bot](./timer-bot/)                         | `owncast.timer` (set_timeout/set_interval/clear) and the once-a-second `on_tick` event.                 |
 | [whoami](./whoami/)                               | Reads the logged-in chat user the host passes to a plugin HTTP handler as `req.user`.                   |
 

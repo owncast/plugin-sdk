@@ -294,7 +294,8 @@ Important shape/behavior notes:
 - `permissions`: see the Capability map. Declare exactly what you use.
 - `config`: optional admin-configurable settings: `{ "key": { "type": "string|number|boolean", "default": ..., "description": "..." } }`, read via `owncast.config.get`.
 - UI fields (`actions`, `styles`, `scripts`, `extraPageContent`, `tabs`) all require `ui.modify`.
-- `admin.pages`: `[{ "title", "path": "/admin/*" }]`, and the host auth-gates matching paths.
+- `tabs`: `{ "tab-slug": { "title": "Tab label", "content": "optional.html" } }`.
+- `admin.pages`: `{ "/admin/*": { "title": "Settings" } }`. The host auth-gates matching path keys.
 - **`network.fetch` also requires `network` block:** `"network": { "allowedHosts": ["api.example.com", "*.weather.com"] }`. The bare wildcard `"*"` is allowed but must be written explicitly. The host rejects the load if `network.fetch` is granted without `allowedHosts`.
 
 ## Project layout

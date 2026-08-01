@@ -5,14 +5,14 @@ Example plugin for `manifest.tabs`: contributes two static viewer-page tabs (Mus
 ```json
 {
   "permissions": ["ui.modify"],
-  "tabs": [
-    { "title": "Music",    "slug": "music",    "content": "music.html" },
-    { "title": "Schedule", "slug": "schedule", "content": "schedule.html" }
-  ]
+  "tabs": {
+    "music": { "title": "Music", "content": "music.html" },
+    "schedule": { "title": "Schedule", "content": "schedule.html" }
+  }
 }
 ```
 
-Each tab has a `slug` (stable identifier), a `title` (tab label), and a `content` path pointing at a static HTML file in `assets/`. When `content` is present the host reads the file and inlines it directly, and no plugin code runs. When `content` is omitted the host calls `on_tab_content({ slug, user? })` so the plugin can render dynamic content per viewer.
+Each tab's object key is its stable slug. The value contains the tab label in `title` and an optional `content` path pointing at a static HTML file in `assets/`. When `content` is present the host reads the file and inlines it directly, and no plugin code runs. When `content` is omitted the host calls `on_tab_content({ slug, user? })` so the plugin can render dynamic content per viewer.
 
 Requires `ui.modify` (the plugin paints inside Owncast's chrome). `http.serve` is not required: each tab's HTML is read from `assets/` and inlined into the tab body on `/api/config`, not served at a URL.
 

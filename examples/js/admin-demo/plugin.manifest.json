@@ -10,16 +10,14 @@
     "storage.kv"
   ],
   "admin": {
-    "pages": [
-      {
+    "pages": {
+      "/admin": {
         "title": "Example Page 1",
-        "path": "/admin",
         "icon": "gear"
       },
-      {
-        "title": "Example Page 2",
-        "path": "/admin/anotherpage.html"
+      "/admin/anotherpage.html": {
+        "title": "Example Page 2"
       }
-    ]
+    }
   }
 }
