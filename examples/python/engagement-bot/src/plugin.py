@@ -51,8 +51,9 @@ def on_fediverse_repost(event):
 
 @plugin.on_fediverse_quote
 def on_fediverse_quote(event):
+    caption = event.content_text or "quoted your post"
     owncast.notifications.discord(
-        f"quote from {event.actor.handle}: {event.target.url}"
+        f"quote from {event.actor.handle}: {caption}\n{event.url}"
     )
 
 

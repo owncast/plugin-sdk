@@ -187,7 +187,7 @@ module.exports = definePlugin({
     /* {actor, target: {url}} */
   },
   onFediverseQuote(event) {
-    /* {actor, target: {url}}; target is the locally authored quoted post */
+    /* FediverseQuote; target is local, url is the remote quote post */
   },
 
   // Fediverse, inbound posts (with content)
@@ -266,7 +266,23 @@ privately to whoever sent a message, pass `msg` (or `msg.clientId`) to
 
 ### Fediverse engagement and raw activity
 
-`onFediverseFollow` receives `{actor}`. `onFediverseLike`, `onFediverseRepost`, and `onFediverseQuote` receive `{actor, target}`. `actor` uses the SDK's `FediverseActor` shape. `target` is `{url: string}`. For a quote, it identifies the locally authored post that the remote actor quoted.
+`onFediverseFollow` receives `{actor}`. `onFediverseLike` and `onFediverseRepost` receive `{actor, target}`. `actor` uses the SDK's `FediverseActor` shape. `target` is `{url: string}`.
+
+`onFediverseQuote` receives a `FediverseQuote`. `target.url` identifies the locally authored post being quoted. `url` identifies the remote quote post. Content metadata is included when the requesting server embeds its quote `Note` in the `QuoteRequest`. Servers may send only the quote post IRI, so the content fields are optional.
+
+```ts
+interface FediverseQuote {
+  actor: FediverseActor;
+  target: { url: string };
+  content?: string;
+  contentText?: string;
+  url: string;
+  postedAt?: string;
+  inReplyTo?: string;
+  attachments?: { url: string; mediaType: string; alt?: string }[];
+  language?: string;
+}
+```
 
 `onFediverse` receives the verified inbound ActivityPub activity after the host validates the HTTP signature and actor origin. In JavaScript, the payload is the raw JSON object. It fires in addition to a specialized handler when one applies. It also fires for verified activity types that have no specialized handler.
 

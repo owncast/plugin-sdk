@@ -46,8 +46,9 @@ module.exports = definePlugin({
   },
 
   onFediverseQuote(event) {
+    const caption = event.contentText || "quoted your post";
     owncast.notifications.discord(
-      `quote from ${event.actor.handle}: ${event.target.url}`,
+      `quote from ${event.actor.handle}: ${caption}\n${event.url}`,
     );
   },
 

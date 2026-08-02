@@ -377,9 +377,10 @@ not external HTTP webhooks.
 `fediverse.activity` carries the verified inbound activity as a raw JSON
 object. It fires alongside a matching specialized event and also covers
 verified activity types without a specialized event. `fediverse.quote` carries
-`{actor, target}`, where `target` is the quoted local post. Mentions and replies
-are verified public `Create(Note)` activities tied to the local account or a
-locally authored post.
+a `FediverseQuote`. Its `target` is the quoted local post and its `url` is the
+remote quote post. Content fields are present when the `QuoteRequest` embeds
+the quote `Note`. Mentions and replies are verified public `Create(Note)`
+activities tied to the local account or a locally authored post.
 
 ### ambient (no permission)
 
@@ -919,6 +920,18 @@ type FediverseInboundPost = {
   language?: string;
 };
 
+type FediverseQuote = {
+  actor: FediverseActor;
+  target: FediverseTarget;
+  content?: string;
+  contentText?: string;
+  url: string;
+  postedAt?: string;
+  inReplyTo?: string;
+  attachments?: FediverseAttachment[];
+  language?: string;
+};
+
 type BrowserPushPayload = {
   title: string;
   body?: string;
@@ -934,9 +947,9 @@ type FediversePayload = {
 ```
 
 `fediverse.activity` carries the verified ActivityPub object as an unrestricted
-`JSONValue`. Follow carries `FediverseEngagement` without `target`. Like,
-repost, and quote carry it with `target`. Mention and reply carry
-`FediverseInboundPost`.
+`JSONValue`. Follow carries `FediverseEngagement` without `target`. Like and
+repost carry it with `target`. Quote carries `FediverseQuote`. Mention and
+reply carry `FediverseInboundPost`.
 
 ### Storage and remaining host results
 
