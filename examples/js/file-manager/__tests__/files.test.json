@@ -127,6 +127,24 @@
     ]
   },
   {
+    "name": "deleting a missing file reports the host error",
+    "events": [
+      {
+        "http": {
+          "method": "POST",
+          "path": "/admin/api/files/delete",
+          "headers": { "Content-Type": "application/json" },
+          "body": "{\"name\":\"missing.txt\"}",
+          "authenticated": true,
+          "expect": {
+            "status": 500,
+            "body": "{\"ok\":false,\"error\":\"remove missing.txt: file does not exist\"}"
+          }
+        }
+      }
+    ]
+  },
+  {
     "name": "upload rejects an invalid file name",
     "events": [
       {

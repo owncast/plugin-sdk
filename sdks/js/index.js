@@ -65,6 +65,7 @@ const Permissions = Object.freeze({
   StorageKV: "storage.kv",
   StorageUpload: "storage.upload",
   StorageFS: "storage.fs",
+  StorageSQL: "storage.sql",
   EventsEmit: "events.emit",
   NetworkFetch: "network.fetch",
   HttpServe: "http.serve",
@@ -392,6 +393,53 @@ function hostFns(name, perm) {
   return fns;
 }
 
+function operationResult(offset, failureMessage) {
+  if (offset == 0) return { error: failureMessage };
+  try {
+    const result = JSON.parse(Memory.find(offset).readString());
+    if (result === null || typeof result !== "object" || Array.isArray(result)) {
+      return { error: failureMessage };
+    }
+    return result;
+  } catch {
+    return { error: failureMessage };
+  }
+}
+
+function requireOperationResult(offset, failureMessage) {
+  const result = operationResult(offset, failureMessage);
+  if (Object.prototype.hasOwnProperty.call(result, "error")) {
+    throw new Error(result.error || failureMessage);
+  }
+  return result;
+}
+
+function sqlResult(offset) {
+  return requireOperationResult(offset, "SQL host call failed");
+}
+
+function sqlRows(result) {
+  if (!Array.isArray(result.columns) || !Array.isArray(result.rows)) {
+    throw new Error("SQL host returned an invalid result");
+  }
+  return result.rows.map((values) => {
+    if (!Array.isArray(values)) {
+      throw new Error("SQL host returned an invalid result");
+    }
+    return Object.fromEntries(result.columns.map((column, i) => [column, values[i]]));
+  });
+}
+
+// sqlQuery issues one query request. maxRows is deliberately not an author
+// parameter: it exists so queryRow can ask the host for a single row.
+function sqlQuery(sql, params, maxRows) {
+  const fns = hostFns("owncast_sql_query", Permissions.StorageSQL);
+  const payload = { sql: String(sql), params: Array.from(params || []) };
+  if (maxRows) payload.maxRows = maxRows;
+  const request = Memory.fromString(JSON.stringify(payload));
+  return sqlResult(fns.owncast_sql_query(request.offset));
+}
+
 const owncast = {
   chat: {
     send(text) {
@@ -537,7 +585,7 @@ const owncast = {
       return JSON.parse(Memory.find(offset).readString());
     },
   },
-  // Private, sandboxed filesystem under data/plugin-data/<slug>/. Unlike
+  // Private, sandboxed filesystem under data/plugin-storage/<slug>/files/. Unlike
   // storage.upload (which publishes browser-accessible files), these bytes
   // stay server-side. The host confines every path to this plugin's own
   // directory. All methods require the 'storage.fs' permission.
@@ -559,7 +607,7 @@ const owncast = {
       return Memory.find(offset).readString();
     },
     // Write bytes (Uint8Array) or a string to a file, creating parent
-    // directories as needed. Returns { ok, error? }.
+    // directories as needed. Returns { error? }.
     write(path, data) {
       const fns = hostFns("owncast_fs_write", Permissions.StorageFS);
       const dataMem =
@@ -575,8 +623,7 @@ const owncast = {
         Memory.fromString(path).offset,
         dataMem.offset,
       );
-      if (offset == 0) return { ok: false, error: "write failed" };
-      return JSON.parse(Memory.find(offset).readString());
+      return operationResult(offset, "write failed");
     },
     // List the entry names (files and subdirectories) directly inside dir.
     // A missing directory lists as empty. Returns string[].
@@ -586,17 +633,33 @@ const owncast = {
       if (offset == 0) return [];
       return JSON.parse(Memory.find(offset).readString());
     },
-    // Remove a single file or empty directory. Returns { ok, error? }.
+    // Remove a single file or empty directory. Returns { error? }.
     delete(path) {
       const fns = hostFns("owncast_fs_delete", Permissions.StorageFS);
       const offset = fns.owncast_fs_delete(Memory.fromString(path).offset);
-      if (offset == 0) return { ok: false, error: "delete failed" };
-      return JSON.parse(Memory.find(offset).readString());
+      return operationResult(offset, "delete failed");
     },
     // Report whether a path exists inside the sandbox. Returns boolean.
     exists(path) {
       const fns = hostFns("owncast_fs_exists", Permissions.StorageFS);
       return fns.owncast_fs_exists(Memory.fromString(path).offset) === 1;
+    },
+  },
+  sql: {
+    exec(sql, params = []) {
+      const fns = hostFns("owncast_sql_exec", Permissions.StorageSQL);
+      const request = Memory.fromString(
+        JSON.stringify({ sql: String(sql), params: Array.from(params || []) }),
+      );
+      return sqlResult(fns.owncast_sql_exec(request.offset));
+    },
+    query(sql, params = []) {
+      return sqlRows(sqlQuery(sql, params));
+    },
+    queryRow(sql, params = []) {
+      // Asking the host for one row keeps a first-row read off the result
+      // budget, so this works against a table `query` would be too big for.
+      return sqlRows(sqlQuery(sql, params, 1))[0] || null;
     },
   },
   fediverse: {
@@ -692,10 +755,7 @@ const owncast = {
       const offset = fns.owncast_video_config_write(
         Memory.fromString(JSON.stringify(config || {})).offset,
       );
-      if (offset == 0) throw new Error("videoConfig.write failed");
-      const result = JSON.parse(Memory.find(offset).readString());
-      if (!result.ok)
-        throw new Error(result.error || "videoConfig.write failed");
+      requireOperationResult(offset, "videoConfig.write failed");
     },
   },
   kv: {

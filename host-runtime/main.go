@@ -12,13 +12,14 @@ import (
 	"time"
 
 	extism "github.com/extism/go-sdk"
-	"github.com/owncast/owncast/services/plugins/kv"
+	"github.com/owncast/owncast-plugin-sdk/host-runtime/sqlstore"
 	plugin "github.com/owncast/owncast/services/plugins"
+	"github.com/owncast/owncast/services/plugins/kv"
 )
 
 // demoFS is the in-memory storage.fs backing for the demo host, keyed by
 // plugin slug then cleaned path. Production wires this to a real sandboxed
-// directory under data/plugin-data/<slug>/.
+// directory under data/plugin-storage/<slug>/files/.
 var demoFS = map[string]map[string][]byte{}
 
 // demoFSClean normalizes a plugin path the way the real sandbox does: rooted
@@ -40,10 +41,10 @@ func isAuthenticatedHeader(r *http.Request) bool {
 }
 
 type ChatMessage struct {
-	ID        string               `json:"id"`
+	ID        string           `json:"id"`
 	User      *plugin.HostUser `json:"user,omitempty"`
-	Body      string               `json:"body"`
-	Timestamp time.Time            `json:"timestamp"`
+	Body      string           `json:"body"`
+	Timestamp time.Time        `json:"timestamp"`
 }
 
 // chatUser builds the nested ChatUser object the host sends with every chat
@@ -137,7 +138,7 @@ func main() {
 
 		// storage.fs: in-memory sandbox for the demo, keyed by plugin slug
 		// then cleaned path, so owncast.fs.* round-trips work without writing
-		// to disk. Production wires this to data/plugin-data/<slug>/.
+		// to disk. Production wires this to data/plugin-storage/<slug>/files/.
 		FSRead: func(pluginName, p string) ([]byte, error) {
 			data, ok := demoFS[pluginName][demoFSClean(p)]
 			if !ok {
@@ -214,6 +215,12 @@ func main() {
 		},
 	}
 
+	// storage.sql, matching this host's in-memory key-value store: a private
+	// database per plugin, discarded when the demo exits.
+	sqlStore := sqlstore.NewMemory()
+	defer sqlStore.Close()
+	env.SQLExec = sqlStore.Exec
+	env.SQLQuery = sqlStore.Query
 	mgr := plugin.NewManager(pluginsDir, env)
 	if err := mgr.Start(ctx); err != nil {
 		log.Fatalf("start plugin manager: %v", err)

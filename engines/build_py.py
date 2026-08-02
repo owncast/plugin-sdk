@@ -58,6 +58,10 @@ HOST_FNS = {
         ("owncast_fs_delete", "path: str", "str"),
         ("owncast_fs_exists", "path: str", "int"),
     ],
+    "storage.sql": [
+        ("owncast_sql_exec", "request: str", "str"),
+        ("owncast_sql_query", "request: str", "str"),
+    ],
     "events.emit": [
         ("owncast_emit_event", "event_type: str, payload: str"),
     ],

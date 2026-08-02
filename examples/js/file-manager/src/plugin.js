@@ -1,9 +1,10 @@
 // file-manager, a worked example of the storage.fs permission.
 //
 // It serves an admin-only page that lists the files in this plugin's
-// private sandbox (data/plugin-data/file-manager/), lets you upload new
-// ones, and delete existing ones. Everything goes through the owncast.fs.*
-// API, so the host confines every path to the plugin's own directory.
+// private sandbox (data/plugin-storage/file-manager/files/), lets you
+// upload new ones, and delete existing ones. Everything goes through the
+// owncast.fs.* API, so the host confines every path to the plugin's own
+// directory.
 //
 // Routes (all the /admin/* ones are auth-gated by the host before the
 // plugin ever sees them, so the handler never checks auth itself):
@@ -91,8 +92,8 @@ function uploadFile(req) {
   // owncast.fs.exists lets us tell the admin whether they replaced a file.
   const replaced = owncast.fs.exists(name);
   const result = owncast.fs.write(name, b64decode(dataBase64 || ""));
-  if (!result.ok) {
-    return json(500, { ok: false, error: result.error || "write failed" });
+  if (result.error) {
+    return json(500, { ok: false, error: result.error });
   }
   return json(200, { ok: true, replaced });
 }
@@ -108,8 +109,8 @@ function deleteFile(req) {
     return json(400, { ok: false, error: "invalid file name" });
   }
   const result = owncast.fs.delete(parsed.name);
-  if (!result.ok) {
-    return json(500, { ok: false, error: result.error || "delete failed" });
+  if (result.error) {
+    return json(500, { ok: false, error: result.error });
   }
   return json(200, { ok: true });
 }

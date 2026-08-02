@@ -194,6 +194,7 @@ Several rows combine for richer plugins.
 | Read live stream state (title, viewers, uptime) | (any)                                               | `owncast.stream.current()`                     | `server.read`                          |
 | Read server info / socials / emotes / tags      | (any)                                               | `owncast.server.*()`                           | `server.read`                          |
 | Store per-user or persistent state              | (any)                                               | `owncast.kv.get/set` (+ `get_json/set_json`)   | `storage.kv`                           |
+| Rank or aggregate data (private SQL database)   | (any)                                               | `owncast.sql.exec/query/query_row`             | `storage.sql`                          |
 | Expose admin-configurable settings              | (read at runtime)                                   | `owncast.config.get(key, fallback=None)`       | — (declare under `config` in manifest) |
 | Call an external API / webhook                  | (any)                                               | `owncast.http.fetch(url, opts=None)`           | `network.fetch` + `network.allowedHosts` |
 | Do delayed / periodic work                      | `@plugin.on_tick` or `owncast.timer.*`              | `owncast.timer.set_timeout/set_interval`       | — (ambient)                            |
@@ -265,6 +266,12 @@ Important shape/behavior notes:
 - **`filter.pass_()` has a trailing underscore** (`pass` is a Python keyword).
 - **No `time.sleep` / threads for delays.** Use `owncast.timer.*`. Timers don't
   survive a host restart.
+- **`owncast.sql.*` is one private SQLite database per plugin.** Each `exec` is
+  a single atomic transaction, so a multi-statement schema setup either lands
+  whole or not at all. An unbounded `query` that overruns the host's row or
+  result budget is an error, not a truncated result, so write a `LIMIT`, or use
+  `query_row` when you only need one row. Plugin databases are not included in
+  Owncast's backups. Worked example: `examples/python/chat-leaderboard`.
 - **Chat commands:** declare commands with `plugin.commands({...})`. Command
   tables support prefixes, aliases, parsed arguments, moderator gating, and
   per-user cooldowns. Unknown and gated invocations are silent.

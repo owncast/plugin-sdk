@@ -173,6 +173,7 @@ export const Permissions: {
   readonly StorageKV: "storage.kv";
   readonly StorageUpload: "storage.upload";
   readonly StorageFS: "storage.fs";
+  readonly StorageSQL: "storage.sql";
   readonly EventsEmit: "events.emit";
   readonly NetworkFetch: "network.fetch";
   readonly HttpServe: "http.serve";
@@ -277,11 +278,36 @@ export interface UploadResult {
   url: string;
 }
 
-/** Result of a mutating owncast.fs call (write/delete). `ok` is false and
- *  `error` is set when the host rejected the operation. */
+/** Result of a mutating owncast.fs call (write/delete). An empty object means
+ *  success. `error` is set when the host rejected the operation. */
 export interface FsResult {
-  ok: boolean;
   error?: string;
+}
+
+/** A value a plugin can bind to a statement parameter, or read back out of a
+ *  column. Blobs arrive base64-encoded as strings. */
+export type SQLValue = null | boolean | number | string;
+
+/** Result of `owncast.sql.exec`. Absence of `error` means success. Both
+ *  counters are SQLite 64-bit integers, so they lose precision in JavaScript
+ *  above `Number.MAX_SAFE_INTEGER`. */
+export interface SQLExecResult {
+  error?: string;
+  rowsAffected: number;
+  lastInsertId: number;
+}
+
+/** One row as `owncast.sql.query` hands it back: column name to value. */
+export type SQLRow = Record<string, SQLValue>;
+
+/** The host's raw query response, before the SDK keys rows by column name.
+ *  Absence of `error` means success. `rows` holds values in `columns` order,
+ *  and `truncated` is set when more rows matched than the caller's row limit. */
+export interface SQLQueryResult {
+  error?: string;
+  columns: string[];
+  rows: SQLValue[][];
+  truncated?: boolean;
 }
 
 export const filter: {
@@ -595,7 +621,7 @@ export const owncast: {
   storage: {
     upload(name: string, data: Uint8Array | string): UploadResult | null;
   };
-  /** Private, sandboxed filesystem under data/plugin-data/<slug>/. The bytes
+  /** Private, sandboxed filesystem under data/plugin-storage/<slug>/files/. The bytes
    *  stay server-side (never served over HTTP) and the host confines every
    *  path to this plugin's own directory. All methods require `storage.fs`. */
   fs: {
@@ -611,6 +637,29 @@ export const owncast: {
     delete(path: string): FsResult;
     /** Report whether a path exists inside the sandbox. */
     exists(path: string): boolean;
+  };
+  /** Private SQLite database, one per plugin, stored in `db/` next to the
+   *  `storage.fs` sandbox in `files/`, outside anything `owncast.fs.*` can name,
+   *  and quota'd separately. Every call runs with a 2 second timeout. Absence
+   *  of `error` means success. An error, missing response, or non-object
+   *  response throws. JavaScript loses unsafe integers before `JSON.stringify`
+   *  on writes and during `JSON.parse` on reads, so store values above
+   *  `Number.MAX_SAFE_INTEGER` (2^53 - 1) as TEXT when they must remain exact.
+   *  Requires `storage.sql`. */
+  sql: {
+    /** Execute one statement batch as a single transaction: it commits whole
+     *  or leaves the database untouched. A transaction cannot stay open
+     *  across calls. */
+    exec(sql: string, params?: SQLValue[]): SQLExecResult;
+    /** Query rows as objects keyed by column name. Alias duplicate columns.
+     *  The result is never silently shortened: a query returning more than
+     *  10000 rows, or more than 1 MiB of encoded data, throws asking for a
+     *  LIMIT. */
+    query(sql: string, params?: SQLValue[]): SQLRow[];
+    /** Return the first matching row, or null. Only that row is read back, so
+     *  this stays under the result budget on a table `query` is too big
+     *  for. */
+    queryRow(sql: string, params?: SQLValue[]): SQLRow | null;
   };
   /** Post to the fediverse on the streamer's behalf. Requires `fediverse.post`,
    *  which is high-trust (posts go out under the streamer's own handle), so
@@ -720,7 +769,8 @@ export const owncast: {
     tags(): string[];
   };
   /** Read/change video/transcoding configuration. read() requires
-   *  `videoconfig.read`, and write() requires `videoconfig.write`. */
+   *  `videoconfig.read`. write() requires `videoconfig.write` and throws when
+   *  the host rejects the update or does not return an operation result. */
   videoConfig: {
     read(): VideoConfig;
     write(config: VideoConfigUpdate): void;

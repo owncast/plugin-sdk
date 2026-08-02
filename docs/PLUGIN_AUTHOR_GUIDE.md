@@ -359,7 +359,8 @@ Each method requires the matching permission in your manifest:
 | `owncast.auth.grantSession({userId, ttl?})` / `owncast.auth.endSession()`       | `auth.gate`          |
 | `owncast.kv.get(key)` / `.set(key, value)` (+ `.getJSON` / `.setJSON`)          | `storage.kv`         |
 | `owncast.storage.upload(name, bytes)`, returns `{url}`                          | `storage.upload`     |
-| `owncast.fs.read/readText/write/list/delete/exists(...)`, sandboxed disk        | `storage.fs`         |
+| `owncast.fs.read/readText/write/list/delete/exists(...)`, sandboxed disk. `write` and `delete` return `{}` on success or `{error}` on failure. | `storage.fs`         |
+| `owncast.sql.exec/query/queryRow(sql, params?)`, private SQLite database        | `storage.sql`        |
 | `owncast.http.fetch(url, opts?)`                                                | `network.fetch`      |
 | `owncast.events.emit(eventType, payload)`                                       | `events.emit`        |
 | `owncast.stream.current()`, live stream state                                   | `server.read`        |
@@ -370,7 +371,7 @@ Each method requires the matching permission in your manifest:
 | `owncast.server.federation()`, `{enabled, username, isPrivate}`                 | `server.read`        |
 | `owncast.server.tags()`, `[string]`                                             | `server.read`        |
 | `owncast.videoConfig.read()`, `{latencyLevel, codec, variants}`                 | `videoconfig.read`   |
-| `owncast.videoConfig.write({latencyLevel?, codec?, variants?})`, partial update | `videoconfig.write`  |
+| `owncast.videoConfig.write({latencyLevel?, codec?, variants?})`, partial update, throws on failure | `videoconfig.write`  |
 | `owncast.notifications.discord(text)`                                           | `notifications.send` |
 | `owncast.notifications.browserPush({title, body, url?})`                        | `notifications.send` |
 | `owncast.notifications.fediverse({type, body, image?, link?})`                  | `notifications.send` |
@@ -381,6 +382,27 @@ Each method requires the matching permission in your manifest:
 | `owncast.config.get(key, fallback?)`, read manifest-declared config             | none (ambient)       |
 
 Calling an API without its permission throws a clear error.
+
+### SQL database
+
+`storage.sql` gives your plugin one SQLite database of its own, private to your plugin and separate from Owncast's database. `owncast.sql.exec(sql, params?)` runs statements and reports `rowsAffected` and `lastInsertId`, `owncast.sql.query(sql, params?)` returns rows as objects keyed by column name, and `owncast.sql.queryRow(sql, params?)` returns the first row or `null`. Python is the same API with `query_row` and dicts. A failed statement throws (Python raises). The SDK treats a result object with no `error` field as success and rejects a missing or non-object host response.
+
+Each `exec` call is atomic: a multi-statement batch either commits whole or leaves the database untouched, so a schema migration can't half-apply. You can't hold a transaction open across calls, which also means you never have to clean one up.
+
+`query` never hands you a silently short answer. A query returning more than the row cap, or a result larger than the result budget (see [Limits](#limits)), fails with an error asking for a `LIMIT`. Write the `LIMIT` yourself when a table can grow without bound, and use `queryRow` when you only need one row out of a big table.
+
+Your database has its own size cap, independent of the `storage.fs` quota, so writing files never shrinks the room your tables have, and the other way around. Two things to design around: plugin databases are **not** part of Owncast's database backups, so treat the contents as rebuildable or export what matters yourself, and the data is kept when an admin uninstalls your plugin, exactly like your config and your `storage.fs` files, so a reinstall finds its tables where it left them. An admin who wants the space back deletes one directory, `data/plugin-storage/<slug>/`, which holds both your database and your `storage.fs` files.
+
+Ordinary SQL is all available: DDL, DML, indexes, views, triggers, `ORDER BY`, recursive CTEs, subqueries, `UNION`, and the json1 functions. Refused in every host: `ATTACH`, `DETACH`, every `PRAGMA` (reads included), temporary-schema DDL both as keywords (`CREATE TEMP TABLE` / `INDEX` / `TRIGGER` / `VIEW`) and schema-qualified (`CREATE TABLE temp.x`), `load_extension()`, `VACUUM` and `VACUUM INTO`, and transaction controls (`BEGIN`, `COMMIT`, `END`, `ROLLBACK`, `SAVEPOINT`, and `RELEASE`). Each `exec` call already owns the transaction around the whole batch.
+
+`owncast-plugin-test` and `owncast-plugin-serve` give your plugin a real SQLite database, so you can develop and test against `owncast.sql` without a running Owncast. It is in-memory, so every scenario and every restart of the dev server starts clean. Every limit and every refusal above applies there too, including the statements listed in the previous paragraph, so a passing scenario test means the same SQL is accepted on a real server.
+
+A worked example ships with the SDK: `examples/js/chat-leaderboard` and
+`examples/python/chat-leaderboard` rank chatters by message count, covering
+schema creation in one atomic `exec`, an `ON CONFLICT` upsert, a bounded ranked
+`query`, and a single-row read.
+
+> **JavaScript integers.** Parameters and results cross the host boundary as JSON. Python can bind and read exact 64-bit SQLite integers. JavaScript loses unsafe integers before `JSON.stringify` on writes and during `JSON.parse` on reads. Store values above `Number.MAX_SAFE_INTEGER` (2^53 - 1) as TEXT when a JavaScript plugin needs them to remain exact.
 
 ### Chat identity
 
@@ -511,7 +533,8 @@ in the built-in help listing.
 | `auth.gate`          | Be the site's viewer-authentication gate: `owncast.auth.grantSession` / `.endSession` plus the `onAuthCheck` hook. Only one gate plugin can be enabled at a time. See [Viewer authentication gates](#viewer-authentication-gates). |
 | `storage.kv`         | Per-plugin namespaced key/value store                                                                                                             |
 | `storage.upload`     | `owncast.storage.upload`, upload files, get a public URL                                                                                          |
-| `storage.fs`         | `owncast.fs.*`, private sandboxed disk under `data/plugin-data/<slug>/` (server-side only, never served over HTTP)                                 |
+| `storage.fs`         | `owncast.fs.*`, private sandboxed disk under `data/plugin-storage/<slug>/files/` (server-side only, never served over HTTP). `write` and `delete` return `{}` on success or `{error}` on failure. |
+| `storage.sql`        | `owncast.sql.*`, private per-plugin SQLite database under `data/plugin-storage/<slug>/db/`, separate from the `storage.fs` sandbox and not included in Owncast backups |
 | `network.fetch`      | Outbound HTTP, also requires `network.allowedHosts` (see below)                                                                                   |
 | `events.emit`        | Emit custom events for other plugins to subscribe to                                                                                              |
 | `http.serve`         | Serve HTTP at `/plugins/<your-name>/*`                                                                                                            |
@@ -560,6 +583,14 @@ The host enforces these caps per plugin. They're generous for normal use. Size p
 | Pending timers | 64 | `owncast.timer.setTimeout`/`setInterval` outstanding at once |
 | Timer delay | 100 ms to 24 h | clamped into this range |
 | SSE connections | 64 | concurrent browser clients on your event stream |
+| `storage.fs` footprint | 256 MiB | every file your plugin writes through `owncast.fs.*` |
+| `storage.sql` database | 128 MiB | your whole SQLite database, counted separately from `storage.fs` |
+| SQL request | 64 KiB | one `owncast.sql` call, statement text plus parameters |
+| SQL bound parameters | 64 | `params` in one `owncast.sql` call |
+| SQL column value | 1 MiB | a single value in a returned row |
+| SQL query result | 1 MiB | the whole encoded result of one `query` |
+| SQL rows returned | 10000 | one `query`, and passing it is an error rather than a truncated result |
+| SQL call runtime | 2 s | each `exec` or `query` |
 
 `owncast.kv` values have no hard size cap, but it's a config/state store, not a blob store, so keep values small (use `storage.upload` or `storage.fs` for large data). Timeouts mean a handler that blocks (a slow `owncast.http.fetch`, a tight loop) is cancelled, so keep event/filter work quick and push slow work elsewhere.
 

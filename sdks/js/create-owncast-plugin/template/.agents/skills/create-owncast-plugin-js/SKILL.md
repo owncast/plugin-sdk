@@ -188,6 +188,7 @@ combine for richer plugins.
 | Read live stream state (title, viewers, uptime) | (any)                                        | `owncast.stream.current()`                | `server.read`                          |
 | Read server info / socials / emotes / tags      | (any)                                        | `owncast.server.*()`                      | `server.read`                          |
 | Store per-user or persistent state              | (any)                                        | `owncast.kv.get/set` (+ `getJSON/setJSON`)| `storage.kv`                           |
+| Rank or aggregate data (private SQL database)   | (any)                                        | `owncast.sql.exec/query/queryRow`         | `storage.sql`                          |
 | Expose admin-configurable settings              | (read at runtime)                            | `owncast.config.get(key, fallback?)`      | — (declare under `config` in manifest) |
 | Call an external API / webhook                  | (any)                                        | `owncast.http.fetch(url, opts?)`          | `network.fetch` + `network.allowedHosts` |
 | Do delayed / periodic work                      | `onTick({now})` or `owncast.timer.*`         | `owncast.timer.setTimeout/setInterval`    | — (ambient)                            |
@@ -259,6 +260,12 @@ Important shape/behavior notes:
   failures auto-disable the plugin for the session.
 - **`Date`/`Date.now()` work**, but there is no global `setTimeout`. Use
   `owncast.timer.*`. Timers don't survive a host restart.
+- **`owncast.sql.*` is one private SQLite database per plugin.** Each `exec` is
+  a single atomic transaction, so a multi-statement schema setup either lands
+  whole or not at all. An unbounded `query` that overruns the host's row or
+  result budget is an error, not a truncated result, so write a `LIMIT`, or use
+  `queryRow` when you only need one row. Plugin databases are not included in
+  Owncast's backups. Worked example: `examples/js/chat-leaderboard`.
 - **Chat commands:** declare a `commands` table in `definePlugin`. Command
   tables support prefixes, aliases, parsed arguments, moderator gating, and
   per-user cooldowns. Unknown and gated invocations are silent.

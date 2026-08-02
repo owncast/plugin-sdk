@@ -1,9 +1,10 @@
 # file-manager, a worked example of the storage.fs permission.
 #
 # It serves an admin-only page that lists the files in this plugin's
-# private sandbox (data/plugin-data/file-manager/), lets you upload new
-# ones, and delete existing ones. Everything goes through the owncast.fs.*
-# API, so the host confines every path to the plugin's own directory.
+# private sandbox (data/plugin-storage/file-manager/files/), lets you
+# upload new ones, and delete existing ones. Everything goes through the
+# owncast.fs.* API, so the host confines every path to the plugin's own
+# directory.
 #
 # Routes (all the /admin/* ones are auth-gated by the host before the
 # plugin ever sees them, so the handler never checks auth itself):
@@ -35,9 +36,8 @@ def upload_file(req):
     # owncast.fs.exists lets us tell the admin whether they replaced a file.
     replaced = owncast.fs.exists(name)
     result = owncast.fs.write(name, b64decode(parsed.get("dataBase64") or ""))
-    if not (result and result.get("ok")):
-        err = (result or {}).get("error") or "write failed"
-        return json_resp(500, {"ok": False, "error": err})
+    if result.get("error"):
+        return json_resp(500, {"ok": False, "error": result["error"]})
     return json_resp(200, {"ok": True, "replaced": replaced})
 
 
@@ -49,9 +49,8 @@ def delete_file(req):
     if bad_name(parsed.get("name")):
         return json_resp(400, {"ok": False, "error": "invalid file name"})
     result = owncast.fs.delete(parsed.get("name"))
-    if not (result and result.get("ok")):
-        err = (result or {}).get("error") or "delete failed"
-        return json_resp(500, {"ok": False, "error": err})
+    if result.get("error"):
+        return json_resp(500, {"ok": False, "error": result["error"]})
     return json_resp(200, {"ok": True})
 
 

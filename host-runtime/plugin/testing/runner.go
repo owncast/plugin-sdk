@@ -46,6 +46,7 @@ func RunFile(ctx context.Context, wasmPath, manifestPath, path string) ([]Result
 // here fails to install on a real Owncast server.
 func LoadCheck(ctx context.Context, wasmPath, manifestPath string) error {
 	mock := NewMockHost()
+	defer mock.closeSQL()
 	origTransport := http.DefaultClient.Transport
 	http.DefaultClient.Transport = mock.HTTPTransport()
 	defer func() { http.DefaultClient.Transport = origTransport }()
@@ -62,6 +63,7 @@ func runOne(ctx context.Context, wasmPath, manifestPath, file string, sc Scenari
 	res := Result{File: file, Scenario: sc.Name}
 
 	mock := NewMockHost()
+	defer mock.closeSQL()
 
 	// Install the mock HTTP transport on http.DefaultClient (which Extism's
 	// built-in http_request uses). Restore on exit so scenarios are isolated.

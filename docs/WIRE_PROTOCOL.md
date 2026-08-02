@@ -87,13 +87,101 @@ Because all plugins of a language share one engine, the engine imports the **ful
 
 ### `storage.fs`
 
-Sandboxed per-plugin filesystem under `data/plugin-data/<slug>/`. The host confines every path to the plugin's own directory.
+Sandboxed per-plugin filesystem under `data/plugin-storage/<slug>/files/`. The host confines every path to the plugin's own directory.
 
 - `owncast_fs_read(pathPtr: PTR): PTR`, returns the file's raw bytes, or 0-offset when missing/unreadable
-- `owncast_fs_write(pathPtr: PTR, dataPtr: PTR): PTR`, returns JSON `{ok, error?}`
+- `owncast_fs_write(pathPtr: PTR, dataPtr: PTR): PTR`, returns JSON `FSResult` (`{error?}`). An empty object means success.
 - `owncast_fs_list(dirPtr: PTR): PTR`, returns JSON `string[]` of entry names (missing dir → empty)
-- `owncast_fs_delete(pathPtr: PTR): PTR`, returns JSON `{ok, error?}`
+- `owncast_fs_delete(pathPtr: PTR): PTR`, returns JSON `FSResult` (`{error?}`). An empty object means success.
 - `owncast_fs_exists(pathPtr: PTR): I32`, returns 1 if the path exists, 0 otherwise
+
+### `storage.sql`
+
+The host opens one private SQLite database per plugin at
+`data/plugin-storage/<slug>/db/plugin.db`. The `storage.fs` sandbox is rooted at
+`data/plugin-storage/<slug>/files/`, so `db/` is not a path the `storage.fs` API
+refuses, it is one that API cannot express, and the two quotas stay independent
+because the filesystem quota walk covers `files/` only. A plugin's database is
+capped at 128 MiB, separate from the 256 MiB `storage.fs` quota. Plugin
+databases are not included in Owncast's database backups. The host keeps a
+plugin's SQL data when the plugin is uninstalled, the same way it keeps its
+config and its `storage.fs` files, and an operator reclaims all of a plugin's
+space by deleting the one directory `data/plugin-storage/<slug>/`.
+
+- `owncast_sql_exec(requestPtr: PTR): PTR`, returns JSON `SQLExecResult`
+- `owncast_sql_query(requestPtr: PTR): PTR`, returns JSON `SQLQueryResult`
+
+Both take the same request JSON. `params` is an optional array of scalar values,
+and `maxRows` is optional:
+
+```json
+{ "sql": "SELECT name FROM viewers WHERE seen > ?", "params": [1730000000], "maxRows": 100 }
+```
+
+A parameter is `null`, a boolean, a number, or a string. Any other JSON type
+fails the call.
+
+`SQLExecResult` is `{error?, rowsAffected, lastInsertId}`, both counters 64-bit.
+`SQLQueryResult` is
+`{error?, columns: string[], rows: any[][], truncated?}`, one `rows` entry per
+row with values in `columns` order. Use SQL column aliases when selecting
+duplicate column names. Absence of `error` means success. A failed operation
+sets `error`.
+
+The SDKs reject a missing or non-object host response instead of treating it as
+success.
+
+`maxRows` omitted or 0 means no caller limit, and the host never silently
+returns a short result for an unbounded query: once the result passes the row cap
+or the result-size budget, the call fails with an error telling the author to add
+a `LIMIT`. A value from 1 through 10000 is caller intent, so the host returns at
+most that many rows and sets `truncated` true when more rows matched. Values
+below 0 or above 10000 are invalid. Reading one row out of a large table is the
+bounded case: the SDK's `queryRow` sends `maxRows: 1`.
+
+Limits the host applies to every `exec` and `query`:
+
+- request JSON: 64 KiB, which bounds the statement text along with it
+- bound parameters: 64
+- one returned column value: 1 MiB
+- whole encoded query result: 1 MiB
+- rows returned: 10000
+- one call: 2 seconds, including time spent waiting for the plugin's serialized connection
+
+Each `exec` call runs as one host-owned transaction: a multi-statement batch
+either commits whole or leaves the database untouched, and a plugin cannot leave
+a transaction open across calls.
+
+These operations are refused, in every host:
+
+- `ATTACH` and `DETACH`
+- every `PRAGMA`, reads included
+- temporary-schema DDL, both the keyword forms (`CREATE TEMP TABLE` / `INDEX` /
+  `TRIGGER` / `VIEW`) and the schema-qualified ones (`CREATE TABLE temp.x`),
+  which SQLite reports as ordinary DDL against the `temp` schema
+- `load_extension()`
+- `VACUUM` and `VACUUM INTO`
+- transaction controls: `BEGIN`, `COMMIT`, `END`, `ROLLBACK`, `SAVEPOINT`, and
+  `RELEASE`
+
+Owncast refuses them twice. A SQLite authorizer on each connection is the gate,
+because it sees the compiled statement: every statement in a multi-statement
+string runs, so an operation smuggled in behind a permitted one would defeat a
+check on the text alone. In front of that, the host runtime refuses the same
+list in Go before the statement reaches a driver. That second check is what lets
+a host without an authorizer (the SDK's test runner and dev server, which use a
+pure-Go SQLite driver so they can cross-compile) reach the same verdict, so a
+plugin that passes its scenario tests is not about to fail on a real server.
+
+Those refusals cost ordinary SQL nothing: DDL, DML, indexes, views, triggers,
+`ORDER BY` sorts, recursive CTEs, subqueries, `UNION`, and the json1 functions
+all work, as do identifiers that merely begin with `temp`.
+
+An integral JSON parameter binds as a SQLite INTEGER exactly, including values
+beyond 2^53 when the guest language can represent them. Python can bind and
+read exact 64-bit integers. JavaScript loses unsafe integers before
+`JSON.stringify` on writes and during `JSON.parse` on reads, so a JavaScript
+plugin should store values above `Number.MAX_SAFE_INTEGER` (2^53 - 1) as TEXT.
 
 ### `events.emit`
 
@@ -115,7 +203,7 @@ Sandboxed per-plugin filesystem under `data/plugin-data/<slug>/`. The host confi
 
 ### `videoconfig.write`
 
-- `owncast_video_config_write(configPtr: PTR): PTR`, applies a partial `VideoConfigUpdate`. Returns JSON `{ok, error?}`
+- `owncast_video_config_write(configPtr: PTR): PTR`, applies a partial `VideoConfigUpdate`. Returns JSON `VideoConfigWriteResult` (`{error?}`). An empty object means success.
 
 ### `notifications.send`
 
@@ -154,7 +242,7 @@ The access boundary is not part of the plugin wire protocol. The operator
 selects one cumulative, host-owned mode: website only, website and stream, or
 website, stream, and status. A plugin cannot read or change that selection.
 
-- `owncast_auth_grant_session(reqPtr: PTR): PTR`, JSON `GrantSessionRequest` in, JSON `{error?}` out. Mints a session for the named `userId` (which the same plugin must have registered via `users.register`) and attaches the signed cookie to the in-flight response.
+- `owncast_auth_grant_session(reqPtr: PTR): PTR`, JSON `GrantSessionRequest` in, JSON `GrantSessionResult` (`{error?}`) out. An empty object means success. Mints a session for the named `userId` (which the same plugin must have registered via `users.register`) and attaches the signed cookie to the in-flight response.
 - `owncast_auth_end_session(): void`, clears the session cookie on the in-flight response (logout).
 
 The optional `on_auth_check` export (see [Exports](#exports-plugin--host)) lets

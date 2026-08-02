@@ -33,6 +33,7 @@ import (
 	"time"
 
 	extism "github.com/extism/go-sdk"
+	"github.com/owncast/owncast-plugin-sdk/host-runtime/sqlstore"
 	plugin "github.com/owncast/owncast/services/plugins"
 	"github.com/owncast/owncast/services/plugins/kv"
 )
@@ -71,7 +72,7 @@ func main() {
 	if info, statErr := os.Stat(abs); statErr == nil && !info.IsDir() {
 		devDataBase = filepath.Dir(abs)
 	}
-	devDataRoot := filepath.Join(devDataBase, ".owncast-dev-data", "plugin-data")
+	devDataRoot := filepath.Join(devDataBase, ".owncast-dev-data", "plugin-storage")
 
 	ctx := context.Background()
 	extism.SetLogLevel(extism.LogLevelError)
@@ -277,6 +278,12 @@ func main() {
 		GetRequestUser: devRequestUser,
 	}
 
+	// storage.sql, on the same terms as the dev key-value store: a private
+	// in-memory database per plugin, so a restart starts clean.
+	sqlStore := sqlstore.NewMemory()
+	defer sqlStore.Close()
+	env.SQLExec = sqlStore.Exec
+	env.SQLQuery = sqlStore.Query
 	loaded, name, staticDescription := loadTarget(ctx, env, abs)
 	defer loaded.Close(ctx)
 
@@ -561,12 +568,12 @@ func devRequestUser(r *http.Request) *plugin.HostUser {
 }
 
 // fsSandboxPath maps a plugin-supplied relative path to an absolute path
-// inside root/<slug> and refuses to escape it. Mirrors the production host's
-// storage.fs sandboxing (rel is rooted at "/" then cleaned, so "../" and
-// absolute paths collapse back inside) so `owncast-plugin serve` behaves like
-// real Owncast.
+// inside root/<slug>/files and refuses to escape it. Mirrors the production
+// host's storage.fs sandbox (data/plugin-storage/<slug>/files/, with rel
+// rooted at "/" then cleaned, so "../" and absolute paths collapse back
+// inside) so `owncast-plugin serve` behaves like real Owncast.
 func fsSandboxPath(root, pluginName, rel string) (string, error) {
-	sandbox, err := filepath.Abs(filepath.Join(root, pluginName))
+	sandbox, err := filepath.Abs(filepath.Join(root, pluginName, "files"))
 	if err != nil {
 		return "", err
 	}
