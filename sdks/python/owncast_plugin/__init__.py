@@ -501,8 +501,13 @@ class _SQL:
         return result
 
     def _rows(self, result):
-        columns = result.get("columns") or []
-        return [dict(zip(columns, row)) for row in result.get("rows") or []]
+        columns = result.get("columns")
+        rows = result.get("rows")
+        if not isinstance(columns, list) or not isinstance(rows, list):
+            raise RuntimeError("SQL host returned an invalid result")
+        if any(not isinstance(row, list) for row in rows):
+            raise RuntimeError("SQL host returned an invalid result")
+        return [dict(zip(columns, row)) for row in rows]
 
     def exec(self, sql, params=None):
         """Run one statement batch as a single transaction, committed whole or

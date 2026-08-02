@@ -395,11 +395,15 @@ function hostFns(name, perm) {
 
 function operationResult(offset, failureMessage) {
   if (offset == 0) return { error: failureMessage };
-  const result = JSON.parse(Memory.find(offset).readString());
-  if (result === null || typeof result !== "object" || Array.isArray(result)) {
+  try {
+    const result = JSON.parse(Memory.find(offset).readString());
+    if (result === null || typeof result !== "object" || Array.isArray(result)) {
+      return { error: failureMessage };
+    }
+    return result;
+  } catch {
     return { error: failureMessage };
   }
-  return result;
 }
 
 function requireOperationResult(offset, failureMessage) {
@@ -415,16 +419,22 @@ function sqlResult(offset) {
 }
 
 function sqlRows(result) {
-  return result.rows.map((values) =>
-    Object.fromEntries(result.columns.map((column, i) => [column, values[i]])),
-  );
+  if (!Array.isArray(result.columns) || !Array.isArray(result.rows)) {
+    throw new Error("SQL host returned an invalid result");
+  }
+  return result.rows.map((values) => {
+    if (!Array.isArray(values)) {
+      throw new Error("SQL host returned an invalid result");
+    }
+    return Object.fromEntries(result.columns.map((column, i) => [column, values[i]]));
+  });
 }
 
 // sqlQuery issues one query request. maxRows is deliberately not an author
 // parameter: it exists so queryRow can ask the host for a single row.
 function sqlQuery(sql, params, maxRows) {
   const fns = hostFns("owncast_sql_query", Permissions.StorageSQL);
-  const payload = { sql, params };
+  const payload = { sql: String(sql), params: Array.from(params || []) };
   if (maxRows) payload.maxRows = maxRows;
   const request = Memory.fromString(JSON.stringify(payload));
   return sqlResult(fns.owncast_sql_query(request.offset));
@@ -638,7 +648,9 @@ const owncast = {
   sql: {
     exec(sql, params = []) {
       const fns = hostFns("owncast_sql_exec", Permissions.StorageSQL);
-      const request = Memory.fromString(JSON.stringify({ sql, params }));
+      const request = Memory.fromString(
+        JSON.stringify({ sql: String(sql), params: Array.from(params || []) }),
+      );
       return sqlResult(fns.owncast_sql_exec(request.offset));
     },
     query(sql, params = []) {
