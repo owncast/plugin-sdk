@@ -118,6 +118,9 @@ AMBIENT_FNS = [
     ("owncast_timer_clear", "timer_id: int"),
     ("owncast_config_get", "key: str", "str"),
     ("owncast_asset_read", "path: str", "str"),
+    ("owncast_log_info", "message: str"),
+    ("owncast_log_warning", "message: str"),
+    ("owncast_log_error", "message: str"),
 ]
 
 

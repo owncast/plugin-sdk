@@ -82,6 +82,16 @@ func main() {
 	env := &plugin.HostEnv{
 		KV:     store,
 		OnChat: dev.onPluginChat,
+		Log: func(pluginName string, level plugin.PluginLogLevel, message string) {
+			switch level {
+			case plugin.PluginLogWarning:
+				fmt.Fprintf(os.Stderr, "[warning from plugin %s] %s\n", pluginName, message)
+			case plugin.PluginLogError:
+				fmt.Fprintf(os.Stderr, "[error from plugin %s] %s\n", pluginName, message)
+			default:
+				fmt.Fprintf(os.Stderr, "[info from plugin %s] %s\n", pluginName, message)
+			}
+		},
 
 		// Read-only server/stream state. Sample values so a plugin that
 		// gates on them (server.read) has something plausible to work with.

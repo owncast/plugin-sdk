@@ -22,6 +22,13 @@ type EmittedEvent struct {
 	Payload   any
 }
 
+// RecordedLog captures one owncast.log call.
+type RecordedLog struct {
+	Plugin  string
+	Level   plugin.PluginLogLevel
+	Message string
+}
+
 // MockHost is a HostEnv implementation that records side effects in memory.
 // Each scenario gets its own MockHost so state is isolated.
 //
@@ -106,6 +113,7 @@ type MockHost struct {
 	chatSends         []string
 	chatActions       []string
 	chatSystems       []string
+	logs              []RecordedLog
 	emits             []EmittedEvent
 	httpFixtures      []HTTPFixture
 	httpRecords       []RecordedHTTPRequest
@@ -207,6 +215,11 @@ func (m *MockHost) HostEnv() *plugin.HostEnv {
 			default:
 				m.chatSends = append(m.chatSends, req.Text)
 			}
+		},
+		Log: func(pluginName string, level plugin.PluginLogLevel, message string) {
+			m.mu.Lock()
+			defer m.mu.Unlock()
+			m.logs = append(m.logs, RecordedLog{Plugin: pluginName, Level: level, Message: message})
 		},
 		Emit: func(_ context.Context, eventType string, payload any) {
 			m.mu.Lock()
@@ -466,6 +479,12 @@ func (m *MockHost) SetUsers(u []plugin.HostUser) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	m.users = append([]plugin.HostUser(nil), u...)
+}
+
+func (m *MockHost) Logs() []RecordedLog {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	return append([]RecordedLog(nil), m.logs...)
 }
 
 func (m *MockHost) UserModerations() []RecordedUserModeration {

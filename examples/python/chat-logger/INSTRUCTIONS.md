@@ -1,15 +1,16 @@
 # Chat Logger
 
-Writes a line to the Owncast **server log** for every chat message. A read-only example that needs no permissions.
+Writes a line to the Owncast server log for every chat message. A read-only example that needs no permissions.
 
 ## How to use it
 
 1. Enable the plugin in **Admin → Plugins**.
-2. Have someone post in chat.
-3. Each message shows up in the server's standard-error output, prefixed with `[chat-logger]`.
+2. Post a normal chat message to write an info entry.
+3. Post a message starting with `warning:` to write a warning entry.
+4. Post a message starting with `error:` to write an error entry.
 
-There is nothing to configure and no viewer-facing output. This is purely a server-side log. It's a good starting point for an analytics or archival plugin.
+Each line includes `plugin chat-logger:` so an operator can identify its source. There is nothing to configure and no viewer-facing output.
 
 ## Permissions
 
-None. A plugin can observe chat events through the message handler without declaring any permission. Permissions are only required to *act* (send, moderate, and so on).
+None. Plugins can observe chat events and write attributed server log entries without declaring a permission.

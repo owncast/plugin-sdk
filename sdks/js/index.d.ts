@@ -554,9 +554,16 @@ export interface CommandEvent {
   argString: string;
 }
 
-/** Typed wrappers around the Owncast host. Each method throws if the
- *  corresponding permission was not declared in plugin.manifest.json. */
+/** Typed wrappers around the Owncast host. Methods that require a permission
+ *  say so in their documentation and throw when it was not declared. */
 export const owncast: {
+  /** Write a plugin-attributed entry to Owncast's server log. No permission
+   *  is required. */
+  log: {
+    info(message: string): void;
+    warning(message: string): void;
+    error(message: string): void;
+  };
   chat: {
     /** Post as the plugin's own chat bot (display name = the plugin's name). */
     send(text: string): void;

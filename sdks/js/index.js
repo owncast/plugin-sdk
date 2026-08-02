@@ -430,8 +430,6 @@ function sqlRows(result) {
   });
 }
 
-// sqlQuery issues one query request. maxRows is deliberately not an author
-// parameter: it exists so queryRow can ask the host for a single row.
 function sqlQuery(sql, params, maxRows) {
   const fns = hostFns("owncast_sql_query", Permissions.StorageSQL);
   const payload = { sql: String(sql), params: Array.from(params || []) };
@@ -440,7 +438,24 @@ function sqlQuery(sql, params, maxRows) {
   return sqlResult(fns.owncast_sql_query(request.offset));
 }
 
+function logToHost(name, message) {
+  const fn = Host.getFunctions()[name];
+  if (!fn) throw new Error("owncast.log is unavailable in this host");
+  fn(Memory.fromString(String(message)).offset);
+}
+
 const owncast = {
+  log: {
+    info(message) {
+      logToHost("owncast_log_info", message);
+    },
+    warning(message) {
+      logToHost("owncast_log_warning", message);
+    },
+    error(message) {
+      logToHost("owncast_log_error", message);
+    },
+  },
   chat: {
     send(text) {
       const fns = hostFns("owncast_send_chat", Permissions.ChatSend);

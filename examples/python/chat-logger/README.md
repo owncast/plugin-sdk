@@ -1,5 +1,5 @@
 # chat-logger
 
-Logs every chat message to stderr with the poster's name. No permissions required: read-only via the event payload.
+Logs every chat message through Owncast's server log. Messages that start with `warning:` or `error:` use the matching level. Other messages use info. No permission is required.
 
-**Demonstrates:** the `@plugin.on_chat_message` notification handler, `print()` debugging (host stderr), the zero-permissions case (a plugin can react to events without declaring anything).
+**Demonstrates:** the `@plugin.on_chat_message` notification handler, `owncast.log.info/warning/error`, and a public host capability available with an empty permissions list.

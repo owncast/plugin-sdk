@@ -383,6 +383,23 @@ def _dispatch_command(event):
 # ---------------------------------------------------------------------------
 # owncast.* host facade.
 # ---------------------------------------------------------------------------
+class _Log:
+    def _write(self, name, message):
+        fn = _HOST.get(name)
+        if fn is None:
+            raise RuntimeError("owncast.log is unavailable in this host")
+        fn(str(message))
+
+    def info(self, message):
+        self._write("owncast_log_info", message)
+
+    def warning(self, message):
+        self._write("owncast_log_warning", message)
+
+    def error(self, message):
+        self._write("owncast_log_error", message)
+
+
 class _Chat:
     def send(self, text):
         _host("owncast_send_chat")(str(text))
@@ -732,6 +749,7 @@ class _Http:
 
 class _Owncast:
     http = _Http()
+    log = _Log()
     chat = _Chat()
     kv = _KV()
     storage = _Storage()

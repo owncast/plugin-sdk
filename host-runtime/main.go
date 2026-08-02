@@ -66,6 +66,16 @@ func main() {
 
 	env := &plugin.HostEnv{
 		KV: store,
+		Log: func(pluginName string, level plugin.PluginLogLevel, message string) {
+			switch level {
+			case plugin.PluginLogWarning:
+				fmt.Fprintf(os.Stderr, "[warning from plugin %s] %s\n", pluginName, message)
+			case plugin.PluginLogError:
+				fmt.Fprintf(os.Stderr, "[error from plugin %s] %s\n", pluginName, message)
+			default:
+				fmt.Fprintf(os.Stderr, "[info from plugin %s] %s\n", pluginName, message)
+			}
+		},
 		OnChat: func(req plugin.ChatSendRequest) {
 			// Identify the plugin in dev-host logs by display name when set,
 			// otherwise the slug. Bot.DisplayName drives what would show in
