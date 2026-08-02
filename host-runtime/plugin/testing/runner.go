@@ -507,7 +507,7 @@ func checkExpectations(res *Result, e *ScenarioExpect, mock *MockHost, pluginNam
 					res.Errors = append(res.Errors, fmt.Sprintf("uploads[%d].body:\n  want %q\n  got  %q", i, want.Body, string(g.Data)))
 				}
 				if want.BodyBase64 != nil {
-					wantData, err := base64.StdEncoding.DecodeString(*want.BodyBase64)
+					wantData, err := decodeScenarioBase64(*want.BodyBase64)
 					if err != nil {
 						res.Errors = append(res.Errors, fmt.Sprintf("uploads[%d].bodyBase64 is invalid: %v", i, err))
 					} else if !reflect.DeepEqual(wantData, g.Data) {
@@ -721,4 +721,12 @@ func normalizeJSON(v any) any {
 func asJSON(v any) string {
 	b, _ := json.Marshal(v)
 	return string(b)
+}
+
+func decodeScenarioBase64(value string) ([]byte, error) {
+	decoded, err := base64.StdEncoding.DecodeString(value)
+	if err == nil {
+		return decoded, nil
+	}
+	return base64.RawStdEncoding.DecodeString(value)
 }

@@ -301,3 +301,25 @@ func TestCheckExpectations_UserRegistrationEmptyScopes(t *testing.T) {
 		})
 	}
 }
+
+func TestCheckExpectationsAcceptsUnpaddedBase64(t *testing.T) {
+	bodyBase64 := "AQI"
+	expected := &ScenarioExpect{
+		Uploads: []ScenarioUploadExpect{{
+			Name:       "binary.dat",
+			BodyBase64: &bodyBase64,
+		}},
+	}
+	mock := NewMockHost()
+	mock.uploads = []RecordedUpload{{
+		Name: "binary.dat",
+		Data: []byte{1, 2},
+	}}
+	result := &Result{}
+
+	checkExpectations(result, expected, mock, "test", nil)
+
+	if len(result.Errors) != 0 {
+		t.Fatalf("unpadded base64 did not match: %v", result.Errors)
+	}
+}
