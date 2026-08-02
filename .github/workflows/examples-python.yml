@@ -40,14 +40,18 @@ jobs:
           cache-dependency-path: host-runtime/go.sum
 
       # Build owncast-plugin-test/serve from the current owncast runtime.
-      # A matching Owncast branch takes precedence over develop for stacked PRs.
+      # An open matching Owncast branch takes precedence over develop for
+      # stacked PRs. Merged branches are ignored because GitHub often retains
+      # them after the PR closes.
       - name: Build host binaries from source
         working-directory: host-runtime
         env:
           GOPRIVATE: github.com/owncast/owncast
+          GH_TOKEN: ${{ github.token }}
         run: |
           owncast_ref=develop
-          if [[ -n "${GITHUB_HEAD_REF:-}" ]] && git ls-remote --exit-code --heads https://github.com/owncast/owncast.git "refs/heads/${GITHUB_HEAD_REF}" >/dev/null; then
+          if [[ -n "${GITHUB_HEAD_REF:-}" ]] &&
+            [[ "$(gh api --method GET "repos/owncast/owncast/pulls?state=open&head=owncast:${GITHUB_HEAD_REF}" --jq 'length')" == "1" ]]; then
             owncast_ref="${GITHUB_HEAD_REF}"
           fi
           echo "Building against owncast@${owncast_ref}"
