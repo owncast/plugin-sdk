@@ -56,14 +56,19 @@ jobs:
 
       # Build owncast-plugin-test/serve from source and drop them into the
       # shared cache, replacing the released binaries postinstall fetched, so
-      # examples run against the current runtime. The runtime lives in owncast
-      # (services/plugins); GOPRIVATE + @develop matches release.yml.
+      # examples run against the current runtime. A matching branch in the
+      # Owncast repository takes precedence over develop for cross-repo stacks.
       - name: Build host binaries from source
         working-directory: host-runtime
         env:
           GOPRIVATE: github.com/owncast/owncast
         run: |
-          go get github.com/owncast/owncast@develop
+          owncast_ref=develop
+          if [[ -n "${GITHUB_HEAD_REF:-}" ]] && git ls-remote --exit-code --heads https://github.com/owncast/owncast.git "refs/heads/${GITHUB_HEAD_REF}" >/dev/null; then
+            owncast_ref="${GITHUB_HEAD_REF}"
+          fi
+          echo "Building against owncast@${owncast_ref}"
+          go get "github.com/owncast/owncast@${owncast_ref}"
           go build -o ../sdks/js/bin/.cache/owncast-plugin-test ./cmd/owncast-plugin-test
           go build -o ../sdks/js/bin/.cache/owncast-plugin-serve ./cmd/owncast-plugin-serve
 

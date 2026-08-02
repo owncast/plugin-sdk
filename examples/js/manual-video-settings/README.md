@@ -7,7 +7,7 @@ Admin-only form at `/plugins/manual-video-settings/admin/` for hand-editing the 
 ```json
 {
   "permissions": ["http.serve", "videoconfig.read", "videoconfig.write"],
-  "admin": { "pages": [{ "title": "Manual Video Settings", "path": "/admin" }] }
+  "admin": { "pages": { "/admin": { "title": "Manual Video Settings" } } }
 }
 ```
 

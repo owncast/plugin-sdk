@@ -12,10 +12,9 @@
   "extraPageContent": {
     "slug": "banner"
   },
-  "tabs": [
-    {
-      "title": "Stream Info",
-      "slug": "stream-info"
+  "tabs": {
+    "stream-info": {
+      "title": "Stream Info"
     }
-  ]
+  }
 }

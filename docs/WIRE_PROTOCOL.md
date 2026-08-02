@@ -269,7 +269,7 @@ the gate re-validate a session on each `/` page load and return
 ### `ui.modify`
 
 - Not a custom host function. Gates UI surfaces that place plugin-contributed elements inside Owncast's own chrome.
-- Required when the manifest declares `actions[]`, `styles[]`, `scripts[]`, `extraPageContent`, or `tabs[]`, and required at runtime by `owncast_add_actions` / `owncast_clear_actions`. Manifests that declare any of those fields without `ui.modify` are rejected at load. Runtime calls return a permission error.
+- Required when the manifest declares `actions[]`, `styles[]`, `scripts[]`, `extraPageContent`, or `tabs`, and required at runtime by `owncast_add_actions` / `owncast_clear_actions`. Manifests that declare any of those fields without `ui.modify` are rejected at load. Runtime calls return a permission error.
 - `owncast_add_actions(jsonPtr: PTR): u64`, append one or more `ActionButton` entries on top of `manifest.actions`. Argument is a JSON array. The host validates each entry with the same rules as the manifest (title required, exactly one of `url` / `html`, relative URLs and icons auto-prefixed to the plugin's namespace, cross-plugin paths rejected) and persists the merged set to the plugin's config. Returns the host call envelope (success indicator + optional error string).
 - `owncast_clear_actions(jsonPtr: PTR): u64`, drop every runtime addition. `manifest.actions` are untouched. Argument is an empty JSON object (`"{}"`) for API symmetry. Returns the host call envelope.
 
@@ -317,7 +317,7 @@ The plugin process is **not** involved in serving the connection, no wasm call i
 Host behavior:
 
 - Requires the `http.sse` permission, 404 otherwise.
-- A channel that matches a `manifest.admin.pages[]` glob is auth-gated like any other admin path (401 if not authenticated).
+- A channel that matches a `manifest.admin.pages` path glob is auth-gated like any other admin path (401 if not authenticated).
 - Connections are capped per-plugin (default 64). Over the cap returns 503.
 - Idle streams get a `: keep-alive` comment line every 15s so proxies don't drop them.
 - Delivery is best-effort: each client has a small send buffer, and frames are dropped for a client that can't keep up rather than blocking the publishing plugin.
@@ -356,9 +356,23 @@ Runtime additions go through `owncast_add_actions` / `owncast_clear_actions` (se
 
 The host exposes the merged list as `GET /api/plugins/actions` (public). The Owncast server is responsible for folding that into its existing `/api/externalactions` response.
 
-### `manifest.admin.pages[]`
+### `manifest.admin.pages`
 
-Glob-matched routes inside `/plugins/<name>/...` that the host auth-gates before reaching the plugin's `on_http_request`. See `manifest.go:AdminPage`.
+An object of plugin-relative path glob keys to admin-page definitions. The host auth-gates matching routes inside `/plugins/<name>/...` before they reach the plugin's `on_http_request`.
+
+```json
+{
+  "/admin": {
+    "title": "Settings",
+    "icon": "gear"
+  },
+  "/admin/*": {
+    "title": "Settings"
+  }
+}
+```
+
+Each key must start with `/`. Each value requires a non-empty `title` and may include `icon`. The host processes pages in lexicographic path order because JSON object order is not significant.
 
 ### `manifest.network.allowedHosts[]`
 
@@ -411,31 +425,35 @@ Validation:
 
 Each contribution is wrapped with an `<!-- plugin: <slug> — <file> -->\n` comment for in-page attribution. The admin's content goes through the markdown processor before plugin HTML is prepended. Plugin HTML is left raw so tags and attributes pass through as written.
 
-### `manifest.tabs[]`
+### `manifest.tabs`
 
-An array of viewer-page tabs the plugin contributes alongside the built-in tabs (Followers, About).
+An object of tab slug keys to viewer-page tab definitions. The tabs appear alongside the built-in tabs (Followers, About).
 
 ```json
 {
-  "title": "string (required, tab label)",
-  "slug": "string (required, stable identifier, passed to on_tab_content)",
-  "content": "string (optional, relative path to assets/<file>.html)"
+  "music": {
+    "title": "Music",
+    "content": "music.html"
+  },
+  "stream-info": {
+    "title": "Stream Info"
+  }
 }
 ```
 
 Validation:
 
 - `ui.modify` permission required.
-- `http.serve` is **not** required: each tab's HTML is inlined into the response, not served at a URL.
-- `title` must be non-empty. Unique within the plugin's tabs.
-- `slug` must be a valid slug. Unique within the plugin's tabs. Passed to `on_tab_content` so the plugin knows which tab to render.
-- When `content` is present, the same path rules as `manifest.extraPageContent.content` apply (must end in `.html`).
+- `http.serve` is **not** required. Each tab's HTML is inlined into the response, not served at a URL.
+- Each key must be a valid slug and is passed to `on_tab_content`.
+- `title` must be non-empty and unique within the plugin's tabs.
+- When `content` is present, the same path rules as `manifest.extraPageContent.content` apply. It must end in `.html`.
 
 **Static** (`content` present): the host reads the file from `assets/` and inlines its bytes.
 
 **Dynamic** (`content` absent): the host calls `on_tab_content` with `{ slug, user? }` and inlines the returned HTML string.
 
-The host emits the tab list on `GET /api/config` under `pluginTabs[]` as `[{slug, title, html}]` entries. The viewer page maps each entry to a tab whose body renders the inlined HTML. `slug` doubles as the React key so a tab only unmounts when the source plugin is disabled/removed.
+JSON object order is not significant. The host emits tabs in lexicographic slug order on `GET /api/config` under `pluginTabs[]` as `[{slug, title, html}]` entries. The viewer page maps each entry to a tab whose body renders the inlined HTML. The emitted `slug` is `<plugin-slug>/<tab-slug>` and doubles as the React key.
 
 ## Payload types
 

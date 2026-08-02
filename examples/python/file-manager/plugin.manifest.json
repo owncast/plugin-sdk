@@ -10,12 +10,11 @@
     "storage.fs"
   ],
   "admin": {
-    "pages": [
-      {
+    "pages": {
+      "/admin": {
         "title": "Files",
-        "path": "/admin",
         "icon": "folder"
       }
-    ]
+    }
   }
 }

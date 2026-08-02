@@ -654,7 +654,7 @@ Sends are fire-and-forget: the call returns immediately and never blocks, even i
 Notes:
 
 - Up to 64 simultaneous connections per plugin. Over that the endpoint returns 503. `EventSource` reconnects automatically.
-- If the channel matches one of your `admin.pages[]` globs it's auth-gated like any admin route, handy for an admin-only stats stream.
+- If the channel matches one of your `admin.pages` path globs, it is auth-gated like any admin route. This is useful for an admin-only stats stream.
 - The endpoint is host-owned and reserved: your `onHttpRequest` never sees `/_sse/...` requests, and you can't serve your own route there.
 
 ### Knowing who is connected
@@ -738,32 +738,33 @@ Prefer it over building a bespoke settings page and KV plumbing.
 
 ## Admin pages
 
-Plugins can register pages that appear in the Owncast admin UI for configuration. Declare them in the manifest:
+Plugins can register pages that appear in the Owncast admin UI for configuration. Each `pages` object key is a plugin-relative path glob:
 
 ```json
 {
   "permissions": ["http.serve"],
   "admin": {
-    "pages": [
-      { "title": "Settings", "path": "/admin", "icon": "gear" },
-      { "title": "Settings", "path": "/admin/*" }
-    ]
+    "pages": {
+      "/admin": { "title": "Settings", "icon": "gear" },
+      "/admin/*": { "title": "Settings" }
+    }
   }
 }
 ```
 
-- `path` is a glob (e.g. `"/admin"`, `"/admin/*"`). Requests under `/plugins/<your-slug>/<path>` that match any declared glob are **auth-gated by the host**, unauthenticated requests get `401` before your plugin code ever runs.
+- Each key is a path glob such as `"/admin"` or `"/admin/*"`. Requests under `/plugins/<your-slug>/<path>` that match any declared glob are **auth-gated by the host**. Unauthenticated requests get `401` before your plugin code runs.
 - Owncast's admin renders each declared page as a tab inside `/admin/plugins/configure?id=<your-slug>`, embedded as an iframe pointed at `/plugins/<your-slug>/<path>`. Each plugin gets its own bookmarkable URL plus a sidebar entry under **Plugins** in the admin nav.
 - Both static assets and dynamic endpoints under matched paths are auth-gated. You don't have to check `req.authenticated` yourself.
-- The host auto-injects an admin-themed stylesheet (`/styles/admin/plugin-iframe.css`) into HTML responses on admin paths so plain `<input>`/`<button>` controls match Owncast's look without you needing to ship CSS. Plugins that prefer their own styling can layer on top.
+- The host auto-injects an admin-themed stylesheet (`/styles/admin/plugin-iframe.css`) into HTML responses on admin paths so plain `<input>` and `<button>` controls match Owncast's look without you needing to ship CSS. Plugins that prefer their own styling can layer on top.
 - The iframe is sandboxed but permits what an admin page normally needs: your scripts, form submits, same-origin `fetch` to your own endpoints, popups, **file downloads** (a blob/data-URL `<a download>` clicked from script), and **`confirm()`/`alert()`/`prompt()`** dialogs. If a browser feature seems silently blocked, suspect the iframe sandbox first.
+- JSON object order is not significant. Owncast displays pages in lexicographic path order.
 
 Author flow:
 
-1. Put admin HTML/CSS/JS in `public/admin/index.html` (and friends)
-2. Expose admin APIs via `onHttpRequest` at `/admin/api/...`
-3. Declare both globs (or just `"/admin/*"`) in `manifest.admin.pages[].path`
-4. Visit `/admin/plugins/configure?id=<your-slug>` in the admin UI (or `/plugins/<your-slug>/admin/` directly). Owncast uses your existing admin login to gate the page. No extra prompt.
+1. Put admin HTML, CSS, and JavaScript in `public/admin/index.html` and related files.
+2. Expose admin APIs via `onHttpRequest` at `/admin/api/...`.
+3. Declare both path keys, or just `"/admin/*"`, in `manifest.admin.pages`.
+4. Visit `/admin/plugins/configure?id=<your-slug>` in the admin UI or `/plugins/<your-slug>/admin/` directly. Owncast uses your existing admin login to gate the page. No extra prompt.
 
 ## Viewer authentication gates
 
@@ -999,21 +1000,22 @@ The admin's extra page content goes through the markdown processor, but plugin H
 
 ## Viewer-page tabs
 
-Plugins can add tabs to the viewer page's tab row (alongside the built-in **About** and **Followers** tabs) with `manifest.tabs[]`. Each entry requires a `title` and a `slug`, and `content` is optional:
+Plugins can add tabs to the viewer page's tab row alongside the built-in **About** and **Followers** tabs with `manifest.tabs`. Each object key is the tab slug. Every value requires a `title`, and `content` is optional:
 
 ```json
 {
   "permissions": ["ui.modify"],
-  "tabs": [
-    { "title": "Music",       "slug": "music",       "content": "music.html" },
-    { "title": "Stream Info", "slug": "stream-info" }
-  ]
+  "tabs": {
+    "music": { "title": "Music", "content": "music.html" },
+    "stream-info": { "title": "Stream Info" }
+  }
 }
 ```
 
-- `slug`: required. Stable identifier, unique within the plugin's tabs. Passed to `onTabContent` so the handler knows which tab to render. Lowercase letters, digits, hyphens.
-- `title`: required. The label shown on the tab. Keep it short (~16 characters max for mobile).
+- Each key is the tab's required stable slug. It must be unique within the plugin and use lowercase letters, digits, and hyphens. Owncast passes it to `onTabContent` so the handler knows which tab to render.
+- `title`: required. The label shown on the tab. Keep it short, around 16 characters maximum for mobile.
 - `content`: optional. Relative path to a static HTML file in `assets/`. When omitted, the host calls `onTabContent`.
+- JSON object order is not significant. Owncast displays tabs in lexicographic slug order.
 
 **Static** (`content` present): the host reads the file from `assets/` and inlines it as the tab body. Path rules match `extraPageContent.content`.
 

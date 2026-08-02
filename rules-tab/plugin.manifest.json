@@ -11,19 +11,17 @@
     "storage.kv",
     "chat.send"
   ],
-  "tabs": [
-    {
-      "title": "Rules",
-      "slug": "rules"
+  "tabs": {
+    "rules": {
+      "title": "Rules"
     }
-  ],
+  },
   "admin": {
-    "pages": [
-      {
+    "pages": {
+      "/admin/*": {
         "title": "Rules",
-        "path": "/admin/*",
         "icon": "book"
       }
-    ]
+    }
   }
 }

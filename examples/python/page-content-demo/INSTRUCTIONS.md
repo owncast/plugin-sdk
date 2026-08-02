@@ -16,9 +16,9 @@ The manifest declares the two slots without `content` paths, which tells the hos
 {
   "permissions": ["ui.modify", "server.read"],
   "extraPageContent": { "slug": "banner" },
-  "tabs": [
-    { "title": "Stream Info", "slug": "stream-info" }
-  ]
+  "tabs": {
+    "stream-info": { "title": "Stream Info" }
+  }
 }
 ```
 

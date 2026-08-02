@@ -11,12 +11,11 @@
     "storage.kv"
   ],
   "admin": {
-    "pages": [
-      {
+    "pages": {
+      "/admin": {
         "title": "Themes",
-        "path": "/admin",
         "icon": "gear"
       }
-    ]
+    }
   }
 }
