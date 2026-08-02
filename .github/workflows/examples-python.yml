@@ -39,14 +39,19 @@ jobs:
           go-version-file: host-runtime/go.mod
           cache-dependency-path: host-runtime/go.sum
 
-      # Build owncast-plugin-test/serve from the current owncast runtime
-      # (services/plugins). GOPRIVATE + @develop matches release.yml.
+      # Build owncast-plugin-test/serve from the current owncast runtime.
+      # A matching Owncast branch takes precedence over develop for stacked PRs.
       - name: Build host binaries from source
         working-directory: host-runtime
         env:
           GOPRIVATE: github.com/owncast/owncast
         run: |
-          go get github.com/owncast/owncast@develop
+          owncast_ref=develop
+          if [[ -n "${GITHUB_HEAD_REF:-}" ]] && git ls-remote --exit-code --heads https://github.com/owncast/owncast.git "refs/heads/${GITHUB_HEAD_REF}" >/dev/null; then
+            owncast_ref="${GITHUB_HEAD_REF}"
+          fi
+          echo "Building against owncast@${owncast_ref}"
+          go get "github.com/owncast/owncast@${owncast_ref}"
           mkdir -p "$GITHUB_WORKSPACE/pytoolchain/bin" "$GITHUB_WORKSPACE/pytoolchain/share"
           go build -o "$GITHUB_WORKSPACE/pytoolchain/bin/owncast-plugin-test" ./cmd/owncast-plugin-test
           go build -o "$GITHUB_WORKSPACE/pytoolchain/bin/owncast-plugin-serve" ./cmd/owncast-plugin-serve
