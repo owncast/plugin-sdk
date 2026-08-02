@@ -384,14 +384,20 @@ def _dispatch_command(event):
 # owncast.* host facade.
 # ---------------------------------------------------------------------------
 class _Log:
+    def _write(self, name, message):
+        fn = _HOST.get(name)
+        if fn is None:
+            raise RuntimeError("owncast.log is unavailable in this host")
+        fn(str(message))
+
     def info(self, message):
-        _host("owncast_log_info")(str(message))
+        self._write("owncast_log_info", message)
 
     def warning(self, message):
-        _host("owncast_log_warning")(str(message))
+        self._write("owncast_log_warning", message)
 
     def error(self, message):
-        _host("owncast_log_error")(str(message))
+        self._write("owncast_log_error", message)
 
 
 class _Chat:

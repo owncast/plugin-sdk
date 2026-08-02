@@ -430,8 +430,6 @@ function sqlRows(result) {
   });
 }
 
-// sqlQuery issues one query request. maxRows is deliberately not an author
-// parameter: it exists so queryRow can ask the host for a single row.
 function sqlQuery(sql, params, maxRows) {
   const fns = hostFns("owncast_sql_query", Permissions.StorageSQL);
   const payload = { sql: String(sql), params: Array.from(params || []) };
