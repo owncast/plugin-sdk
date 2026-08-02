@@ -400,7 +400,7 @@ owncast.log.warning("provider response is incomplete")
 owncast.log.error("sync failed")
 ```
 
-`info`, `warning`, and `error` map directly to the same Owncast logrus levels. Every entry includes the calling plugin's slug, for example `plugin schedule-sync: sync started`. No permission is required. Prefer this API over `console.log` or `print` when the level and plugin identity need to reach the Owncast log reliably.
+`info`, `warning`, and `error` map directly to the same Owncast logrus levels. Every entry includes the calling plugin's slug, for example `plugin schedule-sync: sync started`. Owncast replaces control characters with spaces so each entry stays on one line, then truncates messages longer than 4 KiB. No permission is required. Prefer this API over `console.log` or `print` when the level and plugin identity need to reach the Owncast log reliably.
 
 ### SQL database
 
