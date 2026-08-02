@@ -245,11 +245,15 @@ type ScenarioUserModerationExpect struct {
 }
 
 // ScenarioUserRegistrationExpect asserts on one owncast.users.register call.
-// DisplayName and Scopes are checked only when set; AuthID is always checked.
+// AuthID is always checked. Optional fields are checked when present, including
+// empty strings, empty scopes, and false.
 type ScenarioUserRegistrationExpect struct {
 	AuthID      string   `json:"authId"`
-	DisplayName string   `json:"displayName,omitempty"`
+	DisplayName *string  `json:"displayName,omitempty"`
 	Scopes      []string `json:"scopes,omitempty"`
+	ProfileURL  *string  `json:"profileUrl,omitempty"`
+	Handle      *string  `json:"handle,omitempty"`
+	Public      *bool    `json:"public,omitempty"`
 }
 
 // ScenarioSessionGrantExpect asserts on one owncast.auth.grantSession call.
@@ -259,9 +263,12 @@ type ScenarioSessionGrantExpect struct {
 	TTL    int64  `json:"ttl,omitempty"`
 }
 
+// ScenarioUploadExpect asserts on one owncast.storage.upload call. Body is
+// checked when non-empty. BodyBase64 is checked when present, including "".
 type ScenarioUploadExpect struct {
-	Name string `json:"name"`
-	Body string `json:"body,omitempty"` // string form of bytes; for binary use base64, future
+	Name       string  `json:"name"`
+	Body       string  `json:"body,omitempty"`
+	BodyBase64 *string `json:"bodyBase64,omitempty"`
 }
 
 type ScenarioFediverseExpect struct {

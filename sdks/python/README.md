@@ -120,17 +120,23 @@ def fallback(req):
 |---|---|
 | `chat` | `send`, `send_action`, `system`, `send_to`, `reply_to`, `history`, `clients`, `delete_message`, `kick` |
 | `kv` | `get`, `set`, `get_json`, `set_json`, `delete` |
-| `storage` / `fs` | `storage.upload`, `fs.read_text`, `fs.write`, `fs.list`, `fs.delete`, `fs.exists` |
+| `storage` / `fs` | `storage.upload`, `fs.read`, `fs.read_text`, `fs.write`, `fs.list`, `fs.delete`, `fs.exists` |
 | `server` / `stream` | `server.info/socials/emotes/federation/tags`, `stream.current/broadcaster` |
 | `video_config` | `read`, `write` |
 | `notifications` | `discord`, `browser_push`, `fediverse` |
-| `users` | `list`, `get`, `set_enabled`, `ban_ip` |
+| `users` / `auth` | `users.list/get/set_enabled/ban_ip/register`, `auth.grant_session/end_session` |
 | `events` / `fediverse` / `sse` | `events.emit`, `fediverse.post`, `sse.send` |
 | `actions` | `add`, `clear` |
 | `timer` | `set_timeout`, `set_interval`, `clear` |
-| `config` / `assets` / `http` | `config.get`, `assets.read_text`, `http.fetch` (needs `network.fetch` + `network.allowedHosts`) |
+| `config` / `assets` / `http` | `config.get`, `assets.read`, `assets.read_text`, `http.fetch` (needs `network.fetch` + `network.allowedHosts`) |
 
 Return values that are JSON objects come back as the same attribute objects (`owncast.server.info().name`), and lists come back as Python lists.
+
+`storage.upload`, `fs.write`, `fs.read`, and `assets.read` preserve arbitrary
+bytes. Passing a string to `storage.upload` or `fs.write` UTF-8 encodes it.
+`fs.read_text` and `assets.read_text` decode UTF-8 and replace malformed byte
+sequences. Use `read` whenever the original bytes must survive exactly.
+
 
 The concepts (events, permissions, the `.ocpkg` format, the manifest) are shared with the JS SDK, so the **[Owncast Plugin Author Guide](https://github.com/owncast/plugin-sdk/blob/main/docs/PLUGIN_AUTHOR_GUIDE.md)** applies. Just read the API names as their Pythonic `snake_case` forms.
 

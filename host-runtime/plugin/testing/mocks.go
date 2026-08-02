@@ -70,6 +70,9 @@ type RecordedUserRegistration struct {
 	AuthID      string
 	DisplayName string
 	Scopes      []string
+	ProfileURL  string
+	Handle      string
+	Public      bool
 }
 
 // RecordedSessionGrant captures an owncast.auth.grantSession call.
@@ -325,6 +328,7 @@ func (m *MockHost) HostEnv() *plugin.HostEnv {
 			defer m.mu.Unlock()
 			m.userRegistrations = append(m.userRegistrations, RecordedUserRegistration{
 				AuthID: req.AuthID, DisplayName: req.DisplayName, Scopes: req.Scopes,
+				ProfileURL: req.ProfileURL, Handle: req.Handle, Public: req.Public,
 			})
 			// Deterministic synthetic user id so scenarios can predict what the
 			// plugin will hand to grantSession.

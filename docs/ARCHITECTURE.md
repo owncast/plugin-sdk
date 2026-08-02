@@ -46,7 +46,8 @@ file (see [build flow](#toolchain-and-build-flow)).
   enforces each plugin's **permissions at call time**: a host function resolves
   the calling plugin's identity (from a per-instance config value) and rejects
   the call if the plugin's manifest didn't grant the permission.
-- Everything crosses the boundary as JSON.
+- Pointer payloads carry JSON, UTF-8 text, or raw bytes. Some host imports use
+  scalar `I64` values.
 - Inbound Fediverse hooks are internal notify subscriptions. They are not
   external HTTP webhooks. Owncast verifies the HTTP signature and actor origin,
   then sends the raw activity to `onFediverse` / `on_fediverse` and also sends
@@ -115,9 +116,9 @@ the exact production code. Key files:
 
 `hostfns.go` is intentionally host-agnostic. A host function like
 `owncast_video_config_read` just calls `env.VideoConfig()`, a field on
-`HostEnv`. `BuildHostFunctions` assembles the host functions a plugin gets based
-on its declared permissions. **Whoever embeds the runtime fills in `HostEnv`**
-with real data. Four hosts do this today:
+`HostEnv`. `BuildHostFunctions` assembles the full host-function set and each
+call checks the plugin's declared permissions. **Whoever embeds the runtime
+fills in `HostEnv`** with real data. Four hosts do this today:
 
 | Host                          | `HostEnv` is backed by               | Used for                 |
 | ----------------------------- | ------------------------------------ | ------------------------ |
@@ -234,14 +235,20 @@ amd64/arm64 on every `v*` tag.
   passes in production.
 - **Go tests** cover the runtime packages (`manager`, `dispatcher`, `server`,
   `sse`, `testing`).
-- **Contract/drift tests** keep the Go/TS/snapshot representations aligned.
+- **Contract/drift tests** keep Owncast's contract snapshot and the shared
+  JavaScript and Python import declarations aligned. The host-runtime test
+  derives the stack ABI from `plugins.BuildHostFunctions`.
 
 ## Relationship to Owncast
 
 The runtime **lives in the Owncast repo** as `services/plugins/`, where Owncast
 wires `HostEnv` to its real services. This SDK's `host-runtime/` module imports
 it, so the dev CLIs run the exact production runtime. The API surface in
-`hostfns.go` is pinned by `services/plugins/plugin-contract.json` and its
-contract test, so it can't drift from the [Wire Protocol](./WIRE_PROTOCOL.md).
+`hostfns.go` has a `services/plugins/plugin-contract.json` snapshot for
+permission names, host-function names, and wire types.
+`host-runtime/host_function_contract_test.go` separately derives the current
+stack signatures from `BuildHostFunctions` and compares the JavaScript and
+Python shared engine declarations.
+
 The host-side integration details (wiring, the sync workflow) are documented in
 the Owncast repo at `docs/plugins.md`.

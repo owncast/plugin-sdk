@@ -186,3 +186,140 @@ func TestLoadScenarios_FilterExpectShapes(t *testing.T) {
 		t.Errorf("got reason %q", scenarios[1].Steps[0].Expect.Reason)
 	}
 }
+
+func TestExpectationOptionalFieldsPreservePresence(t *testing.T) {
+	path := writeScenarios(t, `[
+		{
+			"name": "presence-sensitive fields",
+			"events": [],
+			"expect": {
+				"userRegistrations": [
+					{
+						"authId": "with-fields",
+						"displayName": "",
+						"scopes": [],
+						"profileUrl": "",
+						"handle": "",
+						"public": false
+					},
+					{"authId": "without-fields"}
+				],
+				"uploads": [
+					{"name": "with-body.bin", "bodyBase64": ""},
+					{"name": "without-body.bin"}
+				]
+			}
+		}
+	]`)
+	scenarios, err := LoadScenarios(path)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	mock := NewMockHost()
+	mock.userRegistrations = []RecordedUserRegistration{
+		{
+			AuthID:      "with-fields",
+			DisplayName: "unexpected",
+			Scopes:      []string{"MODERATOR"},
+			ProfileURL:  "https://example.com/profile",
+			Handle:      "unexpected",
+			Public:      true,
+		},
+		{
+			AuthID:      "without-fields",
+			DisplayName: "ignored",
+			Scopes:      []string{"MODERATOR"},
+			ProfileURL:  "https://example.com/ignored",
+			Handle:      "ignored",
+			Public:      true,
+		},
+	}
+	mock.uploads = []RecordedUpload{
+		{Name: "with-body.bin", Data: []byte("unexpected")},
+		{Name: "without-body.bin", Data: []byte("ignored")},
+	}
+
+	result := &Result{}
+	checkExpectations(result, &scenarios[0].Expect, mock, "test", nil)
+
+	if len(result.Errors) != 6 {
+		t.Fatalf("got %d errors, want 6: %v", len(result.Errors), result.Errors)
+	}
+	got := strings.Join(result.Errors, "\n")
+	for _, field := range []string{"displayName", "scopes", "profileUrl", "handle", "public", "bodyBase64"} {
+		if !strings.Contains(got, field) {
+			t.Errorf("errors do not mention %s: %v", field, result.Errors)
+		}
+	}
+
+	mock.userRegistrations[0] = RecordedUserRegistration{
+		AuthID: "with-fields",
+		Scopes: []string{},
+	}
+	mock.uploads[0].Data = []byte{}
+	result = &Result{}
+	checkExpectations(result, &scenarios[0].Expect, mock, "test", nil)
+	if len(result.Errors) != 0 {
+		t.Fatalf("matching empty values failed: %v", result.Errors)
+	}
+}
+
+func TestCheckExpectations_UserRegistrationEmptyScopes(t *testing.T) {
+	expected := &ScenarioExpect{
+		UserRegistrations: []ScenarioUserRegistrationExpect{{
+			AuthID: "user",
+			Scopes: []string{},
+		}},
+	}
+	cases := []struct {
+		name       string
+		scopes     []string
+		wantErrors int
+	}{
+		{name: "omitted actual scopes match", scopes: nil, wantErrors: 0},
+		{name: "non-empty actual scopes mismatch", scopes: []string{"MODERATOR"}, wantErrors: 1},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			mock := NewMockHost()
+			mock.userRegistrations = []RecordedUserRegistration{{
+				AuthID: "user",
+				Scopes: tc.scopes,
+			}}
+			result := &Result{}
+
+			checkExpectations(result, expected, mock, "test", nil)
+
+			if len(result.Errors) != tc.wantErrors {
+				t.Fatalf("got %d errors, want %d: %v", len(result.Errors), tc.wantErrors, result.Errors)
+			}
+			if tc.wantErrors != 0 && !strings.Contains(result.Errors[0], "userRegistrations[0].scopes") {
+				t.Fatalf("unexpected error: %v", result.Errors)
+			}
+		})
+	}
+}
+
+func TestCheckExpectationsAcceptsUnpaddedBase64(t *testing.T) {
+	bodyBase64 := "AQI"
+	expected := &ScenarioExpect{
+		Uploads: []ScenarioUploadExpect{{
+			Name:       "binary.dat",
+			BodyBase64: &bodyBase64,
+		}},
+	}
+	mock := NewMockHost()
+	mock.uploads = []RecordedUpload{{
+		Name: "binary.dat",
+		Data: []byte{1, 2},
+	}}
+	result := &Result{}
+
+	checkExpectations(result, expected, mock, "test", nil)
+
+	if len(result.Errors) != 0 {
+		t.Fatalf("unpadded base64 did not match: %v", result.Errors)
+	}
+}

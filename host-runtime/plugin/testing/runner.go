@@ -2,6 +2,7 @@ package testing
 
 import (
 	"context"
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -453,11 +454,20 @@ func checkExpectations(res *Result, e *ScenarioExpect, mock *MockHost, pluginNam
 				if want.AuthID != g.AuthID {
 					res.Errors = append(res.Errors, fmt.Sprintf("userRegistrations[%d].authId: want %q got %q", i, want.AuthID, g.AuthID))
 				}
-				if want.DisplayName != "" && want.DisplayName != g.DisplayName {
-					res.Errors = append(res.Errors, fmt.Sprintf("userRegistrations[%d].displayName: want %q got %q", i, want.DisplayName, g.DisplayName))
+				if want.DisplayName != nil && *want.DisplayName != g.DisplayName {
+					res.Errors = append(res.Errors, fmt.Sprintf("userRegistrations[%d].displayName: want %q got %q", i, *want.DisplayName, g.DisplayName))
 				}
-				if want.Scopes != nil && !reflect.DeepEqual(want.Scopes, g.Scopes) {
+				if want.Scopes != nil && (len(want.Scopes) != 0 || len(g.Scopes) != 0) && !reflect.DeepEqual(want.Scopes, g.Scopes) {
 					res.Errors = append(res.Errors, fmt.Sprintf("userRegistrations[%d].scopes: want %v got %v", i, want.Scopes, g.Scopes))
+				}
+				if want.ProfileURL != nil && *want.ProfileURL != g.ProfileURL {
+					res.Errors = append(res.Errors, fmt.Sprintf("userRegistrations[%d].profileUrl: want %q got %q", i, *want.ProfileURL, g.ProfileURL))
+				}
+				if want.Handle != nil && *want.Handle != g.Handle {
+					res.Errors = append(res.Errors, fmt.Sprintf("userRegistrations[%d].handle: want %q got %q", i, *want.Handle, g.Handle))
+				}
+				if want.Public != nil && *want.Public != g.Public {
+					res.Errors = append(res.Errors, fmt.Sprintf("userRegistrations[%d].public: want %t got %t", i, *want.Public, g.Public))
 				}
 			}
 		}
@@ -495,6 +505,14 @@ func checkExpectations(res *Result, e *ScenarioExpect, mock *MockHost, pluginNam
 				}
 				if want.Body != "" && want.Body != string(g.Data) {
 					res.Errors = append(res.Errors, fmt.Sprintf("uploads[%d].body:\n  want %q\n  got  %q", i, want.Body, string(g.Data)))
+				}
+				if want.BodyBase64 != nil {
+					wantData, err := decodeScenarioBase64(*want.BodyBase64)
+					if err != nil {
+						res.Errors = append(res.Errors, fmt.Sprintf("uploads[%d].bodyBase64 is invalid: %v", i, err))
+					} else if !reflect.DeepEqual(wantData, g.Data) {
+						res.Errors = append(res.Errors, fmt.Sprintf("uploads[%d].bodyBase64: want %q got %q", i, *want.BodyBase64, base64.StdEncoding.EncodeToString(g.Data)))
+					}
 				}
 			}
 		}
@@ -703,4 +721,12 @@ func normalizeJSON(v any) any {
 func asJSON(v any) string {
 	b, _ := json.Marshal(v)
 	return string(b)
+}
+
+func decodeScenarioBase64(value string) ([]byte, error) {
+	decoded, err := base64.StdEncoding.DecodeString(value)
+	if err == nil {
+		return decoded, nil
+	}
+	return base64.RawStdEncoding.DecodeString(value)
 }

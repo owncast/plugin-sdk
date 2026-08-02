@@ -87,10 +87,15 @@ def callback(req):
     auth_id = "github:%s" % gh.get("id")
     display = gh.get("name") or gh.get("login") or auth_id
 
-    # Identity, then session. register() finds-or-creates the Owncast user for
-    # this GitHub identity (the host namespaces auth_id by our slug). The
-    # returned user_id is what grant_session() issues the cookie for.
-    result = owncast.users.register(auth_id, display_name=display)
+    # Register the provider identity and its verified profile metadata. Keep
+    # public false until the login UI offers an explicit visibility choice.
+    result = owncast.users.register(
+        auth_id,
+        display_name=display,
+        profile_url=gh.get("html_url") or "",
+        handle=gh.get("login") or "",
+        public=False,
+    )
     owncast.auth.grant_session(result.user_id)
 
     return {"status": 302, "headers": {"Location": return_to or "/"}}

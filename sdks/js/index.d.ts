@@ -193,13 +193,18 @@ export const Permissions: {
 
 /** Request for `owncast.users.register`. */
 export interface UserRegisterRequest {
-  /** Stable, provider-scoped external identity (e.g. `"github:583231"`). The
-   *  host namespaces it by the calling plugin's slug. */
+  /** Stable external identity within this plugin's provider namespace. */
   authId: string;
   /** Optional display name to seed on the user. */
   displayName?: string;
   /** Optional scopes to grant the user (e.g. `["MODERATOR"]`). */
   scopes?: string[];
+  /** Verified public profile URL. The host accepts only absolute HTTP(S) URLs. */
+  profileUrl?: string;
+  /** Label for the verified identity, such as a GitHub login or fediverse handle. */
+  handle?: string;
+  /** Surface the verified identity publicly only when the viewer opted in. */
+  public?: boolean;
 }
 
 /** Result of `owncast.users.register`: the resolved Owncast user ID. */
@@ -602,10 +607,10 @@ export const owncast: {
     setEnabled(id: string, enabled: boolean, reason?: string): void;
     /** Ban an IP address. Requires `users.moderate`. */
     banIP(ip: string): void;
-    /** Find-or-create an authenticated user for an external identity. `authId`
-     *  is the stable provider-scoped id (e.g. `"github:583231"`). The host
-     *  namespaces it by this plugin's slug so plugins can't collide on or spoof
-     *  each other's users. Returns `{ userId }`. Throws on host error.
+    /** Find or create an authenticated user for an external identity. The host
+     *  scopes `authId` to this plugin's slug. `profileUrl` and `handle`
+     *  describe a verified external profile, and `public` opts that identity
+     *  into public display. Returns `{ userId }`. Throws on host error.
      *  Requires `users.register`. */
     register(opts: UserRegisterRequest | string): UserRegisterResult;
   };
