@@ -144,13 +144,15 @@
           },
           "target": {
             "url": "https://demo.owncast.example/@demo/102"
-          }
+          },
+          "contentText": "Great stream",
+          "url": "https://social.example/@dana/quotes/102"
         }
       }
     ],
     "expect": {
       "discordPosts": [
-        "quote from @dana@social.example: https://demo.owncast.example/@demo/102"
+        "quote from @dana@social.example: Great stream\nhttps://social.example/@dana/quotes/102"
       ]
     }
   },

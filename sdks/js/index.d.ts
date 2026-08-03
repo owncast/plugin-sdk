@@ -147,6 +147,23 @@ export interface FediverseTargetedEngagement extends FediverseEngagement {
   target: { url: string };
 }
 
+/** An accepted quote request. `target` identifies the local post being quoted,
+ *  while `url` identifies the remote quote post. Content metadata is present
+ *  when the requesting server embeds the quote Note in its request. */
+export interface FediverseQuote extends FediverseTargetedEngagement {
+  content?: string; // HTML from the source instance
+  contentText?: string; // HTML stripped to plain text
+  url: string; // permalink to the remote quote post
+  postedAt?: string; // ISO-8601
+  inReplyTo?: string;
+  attachments?: {
+    url: string;
+    mediaType: string;
+    alt?: string;
+  }[];
+  language?: string;
+}
+
 /** Inbound fediverse post, a mention or reply that contains content the
  *  plugin can act on. Carries both the rendered content (which has the
  *  source instance's HTML) and a plain-text version (HTML stripped). */
@@ -446,8 +463,8 @@ export interface PluginDef {
   onFediverseLike?(event: FediverseTargetedEngagement): void | Promise<void>;
   /** Someone on the fediverse boosted (reposted) a streamer post. Requires `fediverse.inbound`. */
   onFediverseRepost?(event: FediverseTargetedEngagement): void | Promise<void>;
-  /** Someone on the fediverse quoted a locally authored post. `target.url` identifies that quoted post. Requires `fediverse.inbound`. */
-  onFediverseQuote?(event: FediverseTargetedEngagement): void | Promise<void>;
+  /** Someone on the fediverse quoted a locally authored post. `target.url` identifies the local post and `url` identifies the remote quote post. Requires `fediverse.inbound`. */
+  onFediverseQuote?(event: FediverseQuote): void | Promise<void>;
   /** Someone @-mentioned the streamer in a public post. Requires `fediverse.inbound`. */
   onFediverseMention?(post: FediverseInboundPost): void | Promise<void>;
   /** Someone replied to one of the streamer's federated posts. Requires `fediverse.inbound`. */
