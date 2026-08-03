@@ -352,16 +352,6 @@ function dispatchHttp(request) {
   };
 }
 
-// permError builds an actionable Error and logs it to stderr (which the
-// host runtime captures), so a plugin author running `owncast-plugin
-// serve` or hitting the host's logs sees exactly which permission to
-// add to their manifest. apiName is the SDK call the author wrote
-// (e.g. "owncast.actions.set"). perm is the manifest permission string.
-function permError(apiName, perm) {
-  const msg = `${apiName} requires the '${perm}' permission. Add it to your plugin.manifest.json's "permissions" array.`;
-  console.error(`[owncast-plugin] ${msg}`);
-  return new Error(msg);
-}
 
 // scheduleTimer registers a callback and asks the host to schedule it. The id
 // is guest-allocated and echoed back on "timer.fire". Throws if the host
@@ -384,9 +374,8 @@ function scheduleTimer(fn, ms, repeat) {
   return id;
 }
 
-// hostFns returns the host import table, throwing an actionable error if the
-// named function wasn't granted (the plugin's manifest is missing its
-// permission). This is the per-call guard every owncast.* method used to inline.
+// hostFns returns the complete host import table. Missing imports indicate an
+// incompatible host. Permission denials are reported by result-returning calls.
 function hostFns(name, perm) {
   const fns = Host.getFunctions();
   if (!fns[name]) throw new Error(`permission '${perm}' not granted`);

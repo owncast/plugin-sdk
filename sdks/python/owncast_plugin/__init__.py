@@ -435,18 +435,14 @@ class _Chat:
         return _wrap_list(_call_json("owncast_chat_clients"))
 
     def delete_message(self, message_id):
-        result = _operation_result(
+        _require_operation_result(
             "owncast_delete_message", "chat.delete_message failed", str(message_id)
         )
-        if result.get("error"):
-            raise RuntimeError(result["error"])
 
     def kick(self, client_id):
-        result = _operation_result(
+        _require_operation_result(
             "owncast_kick_client", "chat.kick failed", int(client_id)
         )
-        if result.get("error"):
-            raise RuntimeError(result["error"])
 
 
 class _KV:
@@ -455,11 +451,9 @@ class _KV:
         return val if val else None
 
     def set(self, key, value):
-        result = _operation_result(
+        _require_operation_result(
             "owncast_kv_set", "kv.set failed", str(key), str(value)
         )
-        if result.get("error"):
-            raise RuntimeError(result["error"])
 
     def get_json(self, key, fallback=None):
         raw = self.get(key)
@@ -487,6 +481,12 @@ class _Storage:
 def _operation_result(name, failure_message, *args):
     result = _call_json(name, *args)
     return result if isinstance(result, dict) else {"error": failure_message}
+
+def _require_operation_result(name, failure_message, *args):
+    result = _operation_result(name, failure_message, *args)
+    if "error" in result:
+        raise RuntimeError(result.get("error") or failure_message)
+    return result
 
 
 class _FS:
@@ -631,22 +631,18 @@ class _Users:
         return _wrap(_call_json("owncast_user_get", str(user_id)))
 
     def set_enabled(self, user_id, enabled, reason=""):
-        result = _operation_result(
+        _require_operation_result(
             "owncast_user_set_enabled",
             "users.set_enabled failed",
             str(user_id),
             1 if enabled else 0,
             str(reason),
         )
-        if result.get("error"):
-            raise RuntimeError(result["error"])
 
     def ban_ip(self, ip):
-        result = _operation_result(
+        _require_operation_result(
             "owncast_ban_ip", "users.ban_ip failed", str(ip)
         )
-        if result.get("error"):
-            raise RuntimeError(result["error"])
 
     def register(
         self,
@@ -720,20 +716,16 @@ class _Actions:
     def add(self, actions):
         if isinstance(actions, dict):
             actions = [actions]
-        result = _operation_result(
+        _require_operation_result(
             "owncast_add_actions",
             "owncast.actions.add failed",
             json.dumps(actions),
         )
-        if result.get("error"):
-            raise RuntimeError(result["error"])
 
     def clear(self):
-        result = _operation_result(
+        _require_operation_result(
             "owncast_clear_actions", "owncast.actions.clear failed"
         )
-        if result.get("error"):
-            raise RuntimeError(result["error"])
 
 
 class _Timer:
