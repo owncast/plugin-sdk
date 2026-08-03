@@ -41,12 +41,12 @@ HOST_FNS = {
         ("owncast_chat_clients", "", "str"),
     ],
     "chat.moderate": [
-        ("owncast_delete_message", "message_id: str"),
-        ("owncast_kick_client", "client_id: int"),
+        ("owncast_delete_message", "message_id: str", "str"),
+        ("owncast_kick_client", "client_id: int", "str"),
     ],
     "storage.kv": [
         ("owncast_kv_get", "key: str", "str"),
-        ("owncast_kv_set", "key: str, value: str"),
+        ("owncast_kv_set", "key: str, value: str", "str"),
     ],
     "storage.upload": [
         ("owncast_storage_upload", "name: str, data: bytes", "str"),
@@ -90,8 +90,8 @@ HOST_FNS = {
         ("owncast_user_get", "user_id: str", "str"),
     ],
     "users.moderate": [
-        ("owncast_user_set_enabled", "user_id: str, enabled: int, reason: str"),
-        ("owncast_ban_ip", "ip: str"),
+        ("owncast_user_set_enabled", "user_id: str, enabled: int, reason: str", "str"),
+        ("owncast_ban_ip", "ip: str", "str"),
     ],
     "users.register": [
         ("owncast_users_register", "request: str", "str"),
@@ -107,8 +107,8 @@ HOST_FNS = {
         ("owncast_sse_send", "channel: str, event: str, data: str"),
     ],
     "ui.modify": [
-        ("owncast_add_actions", "payload: str"),
-        ("owncast_clear_actions", ""),
+        ("owncast_add_actions", "payload: str", "str"),
+        ("owncast_clear_actions", "", "str"),
     ],
 }
 

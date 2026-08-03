@@ -127,15 +127,17 @@ func main() {
 			}
 			return plugin.HostUser{}, false
 		},
-		SetUserEnabled: func(plugin, userID string, enabled bool, reason string) {
+		SetUserEnabled: func(plugin, userID string, enabled bool, reason string) error {
 			state := "enabled"
 			if !enabled {
 				state = "disabled"
 			}
 			fmt.Printf("[users.setEnabled by %s] %s → %s (%s)\n", plugin, userID, state, reason)
+			return nil
 		},
-		BanIP: func(plugin, ip string) {
+		BanIP: func(plugin, ip string) error {
 			fmt.Printf("[users.banIP by %s] %s\n", plugin, ip)
+			return nil
 		},
 		ChatClients: func() []plugin.HostChatClient {
 			return nil // demo has no real chat-client connections

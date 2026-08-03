@@ -926,6 +926,10 @@ owncast.actions.clear();
 
 The host validates each entry with the same rules as `manifest.actions` (title required, exactly one of `url` / `html`, relative URLs and icons auto-prefixed, cross-plugin URLs/icons rejected) and persists the result in the plugin's config so the additions survive a reload. The next viewer `/api/config` request returns `manifest.actions` ++ the runtime list. Requires `ui.modify`.
 
+`owncast.actions.add` and `owncast.actions.clear` throw when the host rejects the
+operation. Action errors identify the invalid entry and rule. The entire batch is
+rejected, so no entries are added when any entry is invalid.
+
 A common pattern is an admin page that lets the streamer add a custom button (label + URL) on top of the plugin's defaults. The `action-buttons` example in the SDK ships a working version.
 
 ## Viewer-page injection

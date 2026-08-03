@@ -108,17 +108,18 @@ no custom `I32` host imports.
 
 ### `chat.moderate`
 
-- `owncast_delete_message(idPtr: PTR): void`. Input: `idPtr` is a UTF-8 message
-  ID. Output: none.
-- `owncast_kick_client(clientId: I64): void`. Input: `clientId` is the scalar
-  chat client ID. Output: none.
+- `owncast_delete_message(idPtr: PTR): PTR`. Input: `idPtr` is a UTF-8 message
+  ID. Output: JSON `{"error": string}` on failure or `{}` on success.
+- `owncast_kick_client(clientId: I64): PTR`. Input: `clientId` is the scalar
+  chat client ID. Output: JSON `{"error": string}` on failure or `{}` on success.
 
 ### `storage.kv`
 
 - `owncast_kv_get(keyPtr: PTR): PTR`. Input: `keyPtr` is a UTF-8 key. Output:
   a UTF-8 string, or 0 when the key is missing.
-- `owncast_kv_set(keyPtr: PTR, valPtr: PTR): void`. Inputs: both pointers
-  contain UTF-8 strings. Output: none.
+- `owncast_kv_set(keyPtr: PTR, valPtr: PTR): PTR`. Inputs: both pointers
+  contain UTF-8 strings. Output: JSON `{"error": string}` on failure or `{}`
+  on success.
 
 ### `storage.upload`
 
@@ -272,11 +273,12 @@ plugin should store values above `Number.MAX_SAFE_INTEGER` (2^53 - 1) as TEXT.
 
 ### `users.moderate`
 
-- `owncast_user_set_enabled(idPtr: PTR, enabled: I64, reasonPtr: PTR): void`.
+- `owncast_user_set_enabled(idPtr: PTR, enabled: I64, reasonPtr: PTR): PTR`.
   Inputs: `idPtr` is a UTF-8 user ID, `enabled` is scalar 0 or 1, and
-  `reasonPtr` is a UTF-8 reason. Output: none.
-- `owncast_ban_ip(ipPtr: PTR): void`. Input: `ipPtr` is a UTF-8 IP address.
-  Output: none.
+  `reasonPtr` is a UTF-8 reason. Output: JSON `{"error": string}` on failure or
+  `{}` on success.
+- `owncast_ban_ip(ipPtr: PTR): PTR`. Input: `ipPtr` is a UTF-8 IP address.
+  Output: JSON `{"error": string}` on failure or `{}` on success.
 
 ### `users.register`
 
@@ -349,14 +351,16 @@ This permission gates UI surfaces inside Owncast's chrome. A manifest that
 declares actions, styles, scripts, extra page content, or tabs without
 `ui.modify` is rejected at load.
 
-- `owncast_add_actions(actionsPtr: PTR): void`. Input: `actionsPtr` is JSON
-  `ActionButton[]`. Output: none. The host validates and appends the actions to
-  the plugin's runtime action list. Invalid input is logged.
-  Each action needs a title and exactly one of `url` or `html`. The host
-  rewrites relative URLs and icons into the plugin's namespace, rejects
-  cross-plugin paths, and persists the merged runtime list in plugin config.
-- `owncast_clear_actions(): void`. Input: none. Output: none. Clears runtime
-  actions without changing `manifest.actions`.
+- `owncast_add_actions(actionsPtr: PTR): PTR`. Input: `actionsPtr` is JSON
+  `ActionButton[]`. The host validates and appends the actions to the plugin's
+  runtime action list, returning JSON `{error?: string}`. A missing `error`
+  means success. Each action needs a title and exactly one of `url` or `html`.
+  The host rewrites relative URLs and icons into the plugin's namespace,
+  rejects cross-plugin paths, and persists the merged runtime list in plugin
+  config. The SDK throws when the host returns an error.
+- `owncast_clear_actions(): PTR`. Input: none. Output: JSON
+  `{"error": string}` on failure or `{}` on success. Clears runtime actions
+  without changing `manifest.actions`.
 
 ### `chat.filter`
 
