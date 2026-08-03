@@ -607,9 +607,11 @@ export const owncast: {
     /** Recent chat history (most recent last). Requires `chat.history`.
      *  Default limit is 50. Pass a smaller number to get fewer. */
     history(limit?: number): ChatMessage[];
-    /** Hide a chat message by ID. Requires `chat.moderate`. */
+    /** Hide a chat message by ID. Throws when the host rejects the operation.
+     *  Requires `chat.moderate`. */
     deleteMessage(messageId: string): void;
-    /** Disconnect a chat client by its numeric ID. Requires `chat.moderate`. */
+    /** Disconnect a chat client by its numeric ID. Throws when the host rejects
+     *  the operation. Requires `chat.moderate`. */
     kick(clientId: number | bigint): void;
     /** List currently-connected chat clients. Requires `chat.history`. */
     clients(): ChatClient[];
@@ -620,9 +622,11 @@ export const owncast: {
     list(): User[];
     /** Fetch one user by ID. Requires `users.read`. */
     get(id: string): User | null;
-    /** Enable/disable a user, with an optional reason. Requires `users.moderate`. */
+    /** Enable or disable a user, with an optional reason. Throws when the host
+     *  rejects the operation. Requires `users.moderate`. */
     setEnabled(id: string, enabled: boolean, reason?: string): void;
-    /** Ban an IP address. Requires `users.moderate`. */
+    /** Ban an IP address. Throws when the host rejects the operation. Requires
+     *  `users.moderate`. */
     banIP(ip: string): void;
     /** Find or create an authenticated user for an external identity. The host
      *  scopes `authId` to this plugin's slug. `profileUrl` and `handle`
@@ -712,6 +716,7 @@ export const owncast: {
   };
   kv: {
     get(key: string): string | null;
+    /** Store a value. Throws when the host rejects the operation. */
     set(key: string, value: string | number): void;
     /** Read a JSON value, parsed. Returns `fallback` (default `undefined`)
      *  when the key is unset or holds invalid JSON. Requires `storage.kv`. */
@@ -750,11 +755,11 @@ export const owncast: {
      *  entry is validated with the same rules as `manifest.actions`
      *  (title required, exactly one of `url` or `html`, relative URLs
      *  rewritten into this plugin's namespace, cross-plugin URLs
-     *  rejected). The next viewer `/api/config` request returns
-     *  `manifest.actions` ++ the runtime list. */
+     *  rejected). Throws when the host rejects the action list. */
     add(actions: ActionButton | ActionButton[]): void;
     /** Drop the runtime additions, so only `manifest.actions` remain on
-     *  the next viewer `/api/config` request. */
+     *  the next viewer `/api/config` request. Throws when the host rejects the
+     *  operation. */
     clear(): void;
   };
   sse: {

@@ -170,21 +170,25 @@ func main() {
 		// Side-effecting hooks: in a real Owncast these moderate users,
 		// kick clients, and send notifications. The dev server can't do any
 		// of that, so it logs the intent to stderr for the author to see.
-		DeleteMessage: func(pluginName, messageID string) {
+		DeleteMessage: func(pluginName, messageID string) error {
 			logHostCall("chat.delete", pluginName, "message %s", messageID)
+			return nil
 		},
-		KickClient: func(pluginName string, clientID uint64) {
+		KickClient: func(pluginName string, clientID uint64) error {
 			logHostCall("chat.kick", pluginName, "client %d", clientID)
+			return nil
 		},
-		SetUserEnabled: func(pluginName, userID string, enabled bool, reason string) {
+		SetUserEnabled: func(pluginName, userID string, enabled bool, reason string) error {
 			state := "enabled"
 			if !enabled {
 				state = "disabled"
 			}
 			logHostCall("users.setEnabled", pluginName, "%s → %s (%s)", userID, state, reason)
+			return nil
 		},
-		BanIP: func(pluginName, ip string) {
+		BanIP: func(pluginName, ip string) error {
 			logHostCall("users.banIP", pluginName, "%s", ip)
+			return nil
 		},
 		SendDiscord: func(pluginName, text string) {
 			logHostCall("notify.discord", pluginName, "%s", text)

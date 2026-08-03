@@ -352,16 +352,6 @@ function dispatchHttp(request) {
   };
 }
 
-// permError builds an actionable Error and logs it to stderr (which the
-// host runtime captures), so a plugin author running `owncast-plugin
-// serve` or hitting the host's logs sees exactly which permission to
-// add to their manifest. apiName is the SDK call the author wrote
-// (e.g. "owncast.actions.set"). perm is the manifest permission string.
-function permError(apiName, perm) {
-  const msg = `${apiName} requires the '${perm}' permission. Add it to your plugin.manifest.json's "permissions" array.`;
-  console.error(`[owncast-plugin] ${msg}`);
-  return new Error(msg);
-}
 
 // scheduleTimer registers a callback and asks the host to schedule it. The id
 // is guest-allocated and echoed back on "timer.fire". Throws if the host
@@ -384,9 +374,8 @@ function scheduleTimer(fn, ms, repeat) {
   return id;
 }
 
-// hostFns returns the host import table, throwing an actionable error if the
-// named function wasn't granted (the plugin's manifest is missing its
-// permission). This is the per-call guard every owncast.* method used to inline.
+// hostFns returns the complete host import table. Missing imports indicate an
+// incompatible host. Permission denials are reported by result-returning calls.
 function hostFns(name, perm) {
   const fns = Host.getFunctions();
   if (!fns[name]) throw new Error(`permission '${perm}' not granted`);
@@ -477,11 +466,15 @@ const owncast = {
     },
     deleteMessage(messageId) {
       const fns = hostFns("owncast_delete_message", Permissions.ChatModerate);
-      fns.owncast_delete_message(Memory.fromString(String(messageId)).offset);
+      const offset = fns.owncast_delete_message(
+        Memory.fromString(String(messageId)).offset,
+      );
+      requireOperationResult(offset, "chat.deleteMessage failed");
     },
     kick(clientId) {
       const fns = hostFns("owncast_kick_client", Permissions.ChatModerate);
-      fns.owncast_kick_client(BigInt(clientId));
+      const offset = fns.owncast_kick_client(BigInt(clientId));
+      requireOperationResult(offset, "chat.kick failed");
     },
     sendTo(clientId, text) {
       const fns = hostFns("owncast_send_chat_to", Permissions.ChatSend);
@@ -526,15 +519,17 @@ const owncast = {
     },
     setEnabled(id, enabled, reason) {
       const fns = hostFns("owncast_user_set_enabled", Permissions.UsersModerate);
-      fns.owncast_user_set_enabled(
+      const offset = fns.owncast_user_set_enabled(
         Memory.fromString(id).offset,
         enabled ? 1 : 0,
         Memory.fromString(reason || "").offset,
       );
+      requireOperationResult(offset, "users.setEnabled failed");
     },
     banIP(ip) {
       const fns = hostFns("owncast_ban_ip", Permissions.UsersModerate);
-      fns.owncast_ban_ip(Memory.fromString(ip).offset);
+      const offset = fns.owncast_ban_ip(Memory.fromString(ip).offset);
+      requireOperationResult(offset, "users.banIP failed");
     },
     // Find or create an authenticated Owncast user for an external identity.
     // profileUrl and handle describe a verified profile. public opts that
@@ -788,10 +783,11 @@ const owncast = {
     },
     set(key, value) {
       const fns = hostFns("owncast_kv_set", Permissions.StorageKV);
-      fns.owncast_kv_set(
+      const offset = fns.owncast_kv_set(
         Memory.fromString(key).offset,
         Memory.fromString(String(value)).offset,
       );
+      requireOperationResult(offset, "kv.set failed");
     },
     // getJSON/setJSON are convenience wrappers over the string-only store, so
     // plugins don't reimplement JSON.parse/stringify for every stored object.
@@ -852,28 +848,27 @@ const owncast = {
     },
   },
   actions: {
-    // Append one or more action buttons to the plugin's effective list
-    // (manifest.actions ++ runtime additions). Accepts a single button
-    // object or an array. The host validates each entry (title
-    // required, exactly one of url/html, relative URLs rewritten into
-    // this plugin's namespace, cross-plugin URLs rejected) and persists
-    // the result, so the next /api/config request returns the longer
-    // list. Requires 'ui.modify'.
+    // Append one or more action buttons to the plugin's effective list.
+    // The host validates and persists the list, returning { error? }.
     add(actions) {
-      const fns = Host.getFunctions();
-      if (!fns.owncast_add_actions)
-        throw permError("owncast.actions.add", Permissions.UIModify);
+      const fns = hostFns("owncast_add_actions", Permissions.UIModify);
       const list = Array.isArray(actions) ? actions : [actions];
-      fns.owncast_add_actions(Memory.fromString(JSON.stringify(list)).offset);
+      requireOperationResult(
+        fns.owncast_add_actions(
+          Memory.fromString(JSON.stringify(list)).offset,
+        ),
+        "owncast.actions.add failed",
+      );
     },
     // Drop the runtime additions so only manifest.actions remain in
     // the effective list on the next /api/config request. Requires
     // 'ui.modify'.
     clear() {
-      const fns = Host.getFunctions();
-      if (!fns.owncast_clear_actions)
-        throw permError("owncast.actions.clear", Permissions.UIModify);
-      fns.owncast_clear_actions();
+      const fns = hostFns("owncast_clear_actions", Permissions.UIModify);
+      requireOperationResult(
+        fns.owncast_clear_actions(),
+        "owncast.actions.clear failed",
+      );
     },
   },
   sse: {

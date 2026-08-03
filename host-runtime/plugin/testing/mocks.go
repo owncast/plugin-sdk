@@ -269,15 +269,17 @@ func (m *MockHost) HostEnv() *plugin.HostEnv {
 			}
 			return out
 		},
-		DeleteMessage: func(_, id string) {
+		DeleteMessage: func(_, id string) error {
 			m.mu.Lock()
 			defer m.mu.Unlock()
 			m.deletedMessages = append(m.deletedMessages, id)
+			return nil
 		},
-		KickClient: func(_ string, id uint64) {
+		KickClient: func(_ string, id uint64) error {
 			m.mu.Lock()
 			defer m.mu.Unlock()
 			m.kickedClients = append(m.kickedClients, id)
+			return nil
 		},
 		SendDiscord: func(_, text string) {
 			m.mu.Lock()
@@ -311,17 +313,19 @@ func (m *MockHost) HostEnv() *plugin.HostEnv {
 			}
 			return plugin.HostUser{}, false
 		},
-		SetUserEnabled: func(_, id string, enabled bool, reason string) {
+		SetUserEnabled: func(_, id string, enabled bool, reason string) error {
 			m.mu.Lock()
 			defer m.mu.Unlock()
 			m.userMods = append(m.userMods, RecordedUserModeration{
 				UserID: id, Enabled: enabled, Reason: reason,
 			})
+			return nil
 		},
-		BanIP: func(_, ip string) {
+		BanIP: func(_, ip string) error {
 			m.mu.Lock()
 			defer m.mu.Unlock()
 			m.bannedIPs = append(m.bannedIPs, ip)
+			return nil
 		},
 		RegisterUser: func(_ string, req plugin.UserRegisterRequest) (string, error) {
 			m.mu.Lock()

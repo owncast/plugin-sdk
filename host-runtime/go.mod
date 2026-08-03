@@ -5,7 +5,7 @@ go 1.26.2
 require (
 	github.com/extism/go-sdk v1.7.1
 	github.com/gobwas/glob v0.2.3
-	github.com/owncast/owncast v0.2.6-0.20260802053447-42ee66391bb1
+	github.com/owncast/owncast v0.2.6-0.20260803201111-10d12cba1ffb
 	modernc.org/sqlite v1.53.0
 )
 
