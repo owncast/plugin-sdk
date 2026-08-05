@@ -371,7 +371,7 @@ Each method requires the matching permission in your manifest:
 | `owncast.users.list()` / `.get(id)`                                             | `users.read`         |
 | `owncast.users.setEnabled(id, enabled, reason?)`                                | `users.moderate`     |
 | `owncast.users.banIP(ip)`                                                       | `users.moderate`     |
-| `owncast.users.register({authId, displayName?, scopes?, profileUrl?, handle?, public?})` | `users.register` |
+| `owncast.users.register({authId, displayName?: string \| null, scopes?, profileUrl?, handle?, public?})` | `users.register` |
 | `owncast.auth.grantSession({userId, ttl?})` / `owncast.auth.endSession()`       | `auth.gate`          |
 | `owncast.kv.get(key)` / `.set(key, value)` (+ `.getJSON` / `.setJSON`)          | `storage.kv`         |
 | `owncast.storage.upload(name, bytes)`, returns `{url}`                          | `storage.upload`     |
