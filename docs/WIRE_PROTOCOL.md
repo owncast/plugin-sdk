@@ -291,6 +291,9 @@ authentication gate uses this before granting a session.
   as the unmodified provider-specific ID. The host rejects administrative or
   otherwise disallowed scopes.
 
+  `displayName` is optional and nullable. When omitted or `null`, the host generates
+  the user's display name.
+
 ### `auth.gate`
 
 Only one `auth.gate` plugin can be enabled at a time. These calls are meaningful
@@ -745,7 +748,7 @@ type CommandEvent = {
 
 type UserRegisterRequest = {
   authId: string;
-  displayName?: string;
+  displayName?: string | null;
   scopes?: string[];
   profileUrl?: string;
   handle?: string;

@@ -834,11 +834,12 @@ return { status: 302, headers: { Location: returnTo } };
 
 `users.register` finds or creates an authenticated Owncast user for an external
 identity. The host scopes `authId` to your slug, so pass the provider's raw
-stable ID. `profileUrl` must be empty or an absolute HTTP(S) URL. Set `handle`
-to the verified provider label and set `public` true only after the viewer opts
-into public display. `grantSession` and `endSession` are meaningful only inside
-`onHttpRequest`, where the host attaches or clears the cookie after the handler
-returns.
+stable ID. `displayName` is optional. Omit it or pass `null` to generate a
+display name. `profileUrl` must be empty or an absolute HTTP(S) URL. Set
+`handle` to the verified provider label and set `public` true only after the
+viewer opts into public display. `grantSession` and `endSession` are meaningful
+only inside `onHttpRequest`, where the host attaches or clears the cookie after
+the handler returns.
 
 ### Re-validating sessions: `onAuthCheck`
 
