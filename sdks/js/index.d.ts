@@ -74,7 +74,7 @@ export interface StreamBroadcaster {
 /** Viewer autoplay behavior. */
 export type AutoplayMode = "off" | "always" | "sound-only";
 
-/** H.264 encoder names recognized by Owncast.
+/** H.264 encoder names accepted by Owncast video config writes.
  *  Hardware encoders must also be available in ffmpeg. */
 export type VideoCodec =
   | "libx264"
@@ -98,7 +98,8 @@ export interface StreamVariant {
 /** The current video/transcoding config returned by owncast.videoConfig.read(). */
 export interface VideoConfig {
   latencyLevel: number;
-  codec: VideoCodec;
+  /** The configured encoder. Reads may report a legacy or newer host value. */
+  codec: string;
   autoplay: AutoplayMode;
   variants: StreamVariant[];
 }

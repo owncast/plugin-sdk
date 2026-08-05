@@ -891,7 +891,7 @@ type StreamVariant = {
 
 type VideoConfig = {
   latencyLevel: number;
-  codec: VideoCodec;
+  codec: string;
   autoplay: AutoplayMode;
   variants: StreamVariant[];
 };
@@ -903,6 +903,9 @@ type VideoConfigUpdate = {
   variants?: StreamVariant[];
 };
 ```
+
+`VideoConfig.codec` can report a legacy value or an encoder added by a newer
+host. `VideoConfigUpdate.codec` accepts the `VideoCodec` values listed above.
 
 `cpuUsageLevel` accepts `0` through `4`, from lowest to highest CPU usage.
 Audio settings are not exposed. A variant update preserves the host's existing
