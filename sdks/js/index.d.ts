@@ -71,20 +71,35 @@ export interface StreamBroadcaster {
   bitrates?: number[];
 }
 
+/** Viewer autoplay behavior. */
+export type AutoplayMode = "off" | "always" | "sound-only";
+
+/** H.264 encoder names recognized by Owncast.
+ *  Hardware encoders must also be available in ffmpeg. */
+export type VideoCodec =
+  | "libx264"
+  | "h264_omx"
+  | "h264_vaapi"
+  | "h264_qsv"
+  | "h264_nvenc"
+  | "h264_v4l2m2m"
+  | "h264_videotoolbox";
+
 /** One configured output rendition, part of VideoConfig (owncast.videoConfig). */
 export interface StreamVariant {
   width: number;
   height: number;
   framerate: number;
   videoBitrate: number;
-  audioBitrate: number;
+  cpuUsageLevel: number;
   isPassthrough: boolean;
 }
 
 /** The current video/transcoding config returned by owncast.videoConfig.read(). */
 export interface VideoConfig {
   latencyLevel: number;
-  codec: string;
+  codec: VideoCodec;
+  autoplay: AutoplayMode;
   variants: StreamVariant[];
 }
 
@@ -92,7 +107,8 @@ export interface VideoConfig {
  *  are left unchanged. */
 export interface VideoConfigUpdate {
   latencyLevel?: number;
-  codec?: string;
+  codec?: VideoCodec;
+  autoplay?: AutoplayMode;
   variants?: StreamVariant[];
 }
 

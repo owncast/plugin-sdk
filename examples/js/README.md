@@ -19,7 +19,7 @@ One self-contained npm project per directory. Each has its own `README.md` with 
 | [overlay](./overlay/)                             | `http.serve`, static files from `public/` + dynamic JSON endpoint.                                      |
 | [stream-tracker](./stream-tracker/)               | Every typed lifecycle / chat-user handler + read APIs.                                                  |
 | [stream-ops](./stream-ops/)                       | Broadcast telemetry (`server.read`) + video config read/write (`videoconfig.read`/`videoconfig.write`). |
-| [manual-video-settings](./manual-video-settings/) | Admin form for the video config: latency, codec, and per-variant resolution / framerate / bitrate.      |
+| [manual-video-settings](./manual-video-settings/) | Admin form for video latency, codec, autoplay, and output variants.                                       |
 | [engagement-bot](./engagement-bot/)               | Discord + browser-push + fediverse notifier on stream / fediverse events, with a small inline spam filter.     |
 | [admin-demo](./admin-demo/)                       | `manifest.admin.pages`, host-gated admin routes.                                                        |
 | [file-manager](./file-manager/)                   | `storage.fs`, admin page to browse/upload/download/delete files in the plugin's private sandbox.        |

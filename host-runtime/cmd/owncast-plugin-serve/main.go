@@ -137,10 +137,11 @@ func main() {
 		VideoConfig: func() plugin.VideoConfig {
 			return plugin.VideoConfig{
 				LatencyLevel: 2,
-				Codec:        "h264",
+				Codec:        "libx264",
+				Autoplay:     "off",
 				Variants: []plugin.StreamVariant{
-					{Width: 1920, Height: 1080, Framerate: 30, VideoBitrate: 6000, AudioBitrate: 160},
-					{Width: 1280, Height: 720, Framerate: 30, VideoBitrate: 3000, AudioBitrate: 128},
+					{Width: 1920, Height: 1080, Framerate: 30, VideoBitrate: 6000, CPUUsageLevel: 2},
+					{Width: 1280, Height: 720, Framerate: 30, VideoBitrate: 3000, CPUUsageLevel: 2},
 				},
 			}
 		},

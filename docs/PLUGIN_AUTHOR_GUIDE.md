@@ -386,8 +386,8 @@ Each method requires the matching permission in your manifest:
 | `owncast.server.emotes()`, custom chat emotes `[{name, url}]`                    | `server.read`        |
 | `owncast.server.federation()`, `{enabled, username, isPrivate}`                 | `server.read`        |
 | `owncast.server.tags()`, `[string]`                                             | `server.read`        |
-| `owncast.videoConfig.read()`, `{latencyLevel, codec, variants}`                 | `videoconfig.read`   |
-| `owncast.videoConfig.write({latencyLevel?, codec?, variants?})`, partial update, throws on failure | `videoconfig.write`  |
+| `owncast.videoConfig.read()`, `{latencyLevel, codec, autoplay, variants}`       | `videoconfig.read`   |
+| `owncast.videoConfig.write({latencyLevel?, codec?, autoplay?, variants?})`, partial update, throws on failure | `videoconfig.write`  |
 | `owncast.notifications.discord(text)`                                           | `notifications.send` |
 | `owncast.notifications.browserPush({title, body, url?})`                        | `notifications.send` |
 | `owncast.notifications.fediverse({type, body, image?, link?})`                  | `notifications.send` |

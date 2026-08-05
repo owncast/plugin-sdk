@@ -248,7 +248,7 @@ plugin should store values above `Number.MAX_SAFE_INTEGER` (2^53 - 1) as TEXT.
 ### `videoconfig.read`
 
 - `owncast_video_config_read(): PTR`. Input: none. Output: JSON `VideoConfig`
-  with `latencyLevel`, `codec`, and `variants`.
+  with `latencyLevel`, `codec`, `autoplay`, and `variants`.
 
 ### `videoconfig.write`
 
@@ -869,27 +869,45 @@ type FederationInfo = {
   isPrivate?: boolean;
 };
 
+type AutoplayMode = "off" | "always" | "sound-only";
+
+type VideoCodec =
+  | "libx264"
+  | "h264_omx"
+  | "h264_vaapi"
+  | "h264_qsv"
+  | "h264_nvenc"
+  | "h264_v4l2m2m"
+  | "h264_videotoolbox";
+
 type StreamVariant = {
   width: number;
   height: number;
   framerate: number;
   videoBitrate: number;
-  audioBitrate: number;
+  cpuUsageLevel: number;
   isPassthrough: boolean;
 };
 
 type VideoConfig = {
   latencyLevel: number;
-  codec: string;
+  codec: VideoCodec;
+  autoplay: AutoplayMode;
   variants: StreamVariant[];
 };
 
 type VideoConfigUpdate = {
   latencyLevel?: number;
-  codec?: string;
+  codec?: VideoCodec;
+  autoplay?: AutoplayMode;
   variants?: StreamVariant[];
 };
 ```
+
+`cpuUsageLevel` accepts `0` through `4`, from lowest to highest CPU usage.
+Audio settings are not exposed. A variant update preserves the host's existing
+audio configuration for that output.
+Hardware codecs require the matching encoder in the host's ffmpeg build.
 
 ### Fediverse and notifications
 

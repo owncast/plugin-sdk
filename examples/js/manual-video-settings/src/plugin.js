@@ -14,7 +14,7 @@ function parseVariant(v) {
     height: Number(v.height) || 0,
     framerate: Number(v.framerate) || 0,
     videoBitrate: Number(v.videoBitrate) || 0,
-    audioBitrate: Number(v.audioBitrate) || 0,
+    cpuUsageLevel: Number(v.cpuUsageLevel) || 0,
     isPassthrough: Boolean(v.isPassthrough),
   };
 }
@@ -45,6 +45,9 @@ module.exports = definePlugin({
       }
       if (typeof parsed.codec === "string" && parsed.codec.length > 0) {
         update.codec = parsed.codec;
+      }
+      if (typeof parsed.autoplay === "string" && parsed.autoplay.length > 0) {
+        update.autoplay = parsed.autoplay;
       }
       if (Array.isArray(parsed.variants)) {
         update.variants = parsed.variants.map(parseVariant);
