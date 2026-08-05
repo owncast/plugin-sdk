@@ -212,8 +212,8 @@ export const Permissions: {
 export interface UserRegisterRequest {
   /** Stable external identity within this plugin's provider namespace. */
   authId: string;
-  /** Optional display name to seed on the user. */
-  displayName?: string;
+  /** Optional display name to seed on the user. Omit or pass `null` to generate one. */
+  displayName?: string | null;
   /** Optional scopes to grant the user (e.g. `["MODERATOR"]`). */
   scopes?: string[];
   /** Verified public profile URL. The host accepts only absolute HTTP(S) URLs. */

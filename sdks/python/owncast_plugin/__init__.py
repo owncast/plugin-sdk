@@ -655,10 +655,11 @@ class _Users:
     ):
         """Find or create an authenticated user for an external identity.
 
-        auth_id is the stable, provider-scoped ID. profile_url and handle
-        describe a verified external profile. Set public=True only when the
-        viewer agreed to show that identity publicly. Returns an object with
-        .user_id. Raises on host error. Requires 'users.register'.
+        auth_id is the stable, provider-scoped ID. Omit display_name or pass
+        None to have Owncast generate one. profile_url and handle describe a
+        verified external profile. Set public=True only when the viewer agreed
+        to show that identity publicly. Returns an object with .user_id. Raises
+        on host error. Requires 'users.register'.
         """
         req = {"authId": str(auth_id)}
         if display_name is not None:
