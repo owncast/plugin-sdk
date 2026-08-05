@@ -24,8 +24,8 @@ github.com/mattn/go-sqlite3 v1.14.47 h1:jOBI62gS7nKeZv+as1oGEy0+1qISgXwH/QBlR6Kb
 github.com/mattn/go-sqlite3 v1.14.47/go.mod h1:6JTjA44L93a0QCyJef5YvlPoKXntQPjzWv5gtm9sB6w=
 github.com/ncruces/go-strftime v1.0.0 h1:HMFp8mLCTPp341M/ZnA4qaf7ZlsbTc+miZjCLOFAw7w=
 github.com/ncruces/go-strftime v1.0.0/go.mod h1:Fwc5htZGVVkseilnfgOVb9mKy6w1naJmn9CehxcKcls=
-github.com/owncast/owncast v0.2.6-0.20260803201111-10d12cba1ffb h1:v28vfyeK0/0hsjLA4Xju/pkeu/2wyuGRfwnn+K+DomU=
-github.com/owncast/owncast v0.2.6-0.20260803201111-10d12cba1ffb/go.mod h1:/pBiqGTab5UMn37wapn4zzpQUG2476ayj/zlsyJMcgA=
+github.com/owncast/owncast v0.2.6-0.20260804005024-a1ee0743079c h1:RUnvkPsZ9PzQB/jhvtV/VezkpSETXRsfqHfYw1l9/Bo=
+github.com/owncast/owncast v0.2.6-0.20260804005024-a1ee0743079c/go.mod h1:/pBiqGTab5UMn37wapn4zzpQUG2476ayj/zlsyJMcgA=
 github.com/pmezard/go-difflib v1.0.0 h1:4DBwDE0NGyQoBHbLQYPwSUPoCMWR5BEzIk/f1lZbAQM=
 github.com/pmezard/go-difflib v1.0.0/go.mod h1:iKH77koFhYxTK1pcRnkKkqfTogsbg7gZNVY4sRDYZ/4=
 github.com/remyoudompheng/bigfft v0.0.0-20230129092748-24d4a6f8daec h1:W09IVJc94icq4NjY3clb7Lk8O1qJ8BdBEF8z0ibU0rE=
