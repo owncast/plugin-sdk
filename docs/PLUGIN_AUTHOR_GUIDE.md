@@ -1126,6 +1126,9 @@ on: {
 
 The name you pass to `emit` is a suffix and may contain dots for hierarchy.
 Subscribe using the sender's fully qualified `<plugin-slug>.<event>` name.
+If your slug plus the suffix would compose a built-in event name (a plugin
+slugged `chat` emitting `message.received`), the host drops the emit rather
+than deliver a forged core event.
 
 ## Testing
 

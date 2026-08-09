@@ -241,8 +241,10 @@ plugin should store values above `Number.MAX_SAFE_INTEGER` (2^53 - 1) as TEXT.
   `eventTypePtr` is a UTF-8 event-name suffix and `payloadPtr` is one JSON
   value. The host prefixes the suffix with the calling plugin's slug, which it
   resolves from the wasm call rather than trusting the guest, so a plugin can
-  only publish under `<its-own-slug>.` and can neither impersonate another
-  plugin nor forge a built-in event. Output: none.
+  only publish under `<its-own-slug>.` and cannot impersonate another plugin.
+  If the composed name would equal a built-in event (a plugin slugged `chat`
+  emitting `message.received`), the host drops the call instead of dispatching
+  a forged core event. Output: none.
 
 ### `server.read`
 
