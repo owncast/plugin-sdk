@@ -1,9 +1,9 @@
 [
   {
-    "name": "logs announcement.broadcast at info level",
+    "name": "logs relay.announcement.broadcast at info level",
     "events": [
       {
-        "event": "announcement.broadcast",
+        "event": "relay.announcement.broadcast",
         "payload": { "by": "alice", "text": "stream is live", "at": "2024-01-01T00:00:00Z" }
       }
     ],

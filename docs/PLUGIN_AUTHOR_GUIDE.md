@@ -1111,19 +1111,21 @@ The `tabs-demo` example ships two static tabs. `page-content-demo` demonstrates 
 
 ## Plugin-to-plugin events
 
-Plugins compose by emitting custom events:
+Plugins compose by emitting custom events. The host prefixes every emitted name
+with the emitting plugin's slug, so another plugin cannot impersonate it:
 
 ```js
-// Emitter (needs events.emit permission)
-owncast.events.emit("my-plugin.thing-happened", { id: 123 });
+// Emitter (relay, needs events.emit permission)
+owncast.events.emit("announcement.broadcast", { id: 123 });
 
 // Subscriber
 on: {
-  "my-plugin.thing-happened"(payload) { /* ... */ }
+  "relay.announcement.broadcast"(payload) { /* ... */ }
 }
 ```
 
-Use `<your-plugin>.<event>` namespacing. Event names are arbitrary strings.
+The name you pass to `emit` is a suffix and may contain dots for hierarchy.
+Subscribe using the sender's fully qualified `<plugin-slug>.<event>` name.
 
 ## Testing
 
@@ -1517,7 +1519,7 @@ module.exports = definePlugin({
 // announcer/src/plugin.js, no permissions needed
 module.exports = definePlugin({
   on: {
-    "announcement.broadcast"(payload) {
+    "relay.announcement.broadcast"(payload) {
       owncast.log.info(`Announcement from ${payload.by}: ${payload.text}`);
     },
   },

@@ -73,7 +73,13 @@ cd host-runtime && go run . ../plugins
 
 `tools/bootstrap.sh` compiles `owncast-plugin-test` and `owncast-plugin-serve` from `host-runtime/cmd/`. End users installing the published SDK get these as per-platform release-asset downloads via the postinstall instead, `bootstrap.sh` is for repo developers running against a not-yet-released checkout.
 
-You should see the chat stream flow through the filter chain (slow-mode, buggy-filter, profanity-filter), then fan out to notification subscribers (chat-logger, echo-bot, message-counter, relay), with relay re-emitting `announcement.broadcast` events that announcer handles.
+You should see the chat stream flow through the filter chain (slow-mode,
+buggy-filter, profanity-filter), then fan out to notification subscribers
+(chat-logger, echo-bot, message-counter, relay), with relay emitting
+`announcement.broadcast`. announcer subscribes to the host-namespaced
+`relay.announcement.broadcast`, so that leg stays silent until the
+`host-runtime` Owncast pin carries slug-prefixed custom events (see
+[Open items](#open-items--not-yet-done)).
 
 ## Run all example tests
 
@@ -199,3 +205,12 @@ See **[examples/js/README.md](./examples/js/README.md)** for the full catalog of
 - **Action button HTML sanitization**: action buttons with an `html` field ship the HTML verbatim. The Owncast frontend renders trusted external-action HTML today; once these come from plugins, server-side sanitization (or a tighter allowlist) is worth considering.
 - **Additional language SDKs**: `sdks/go/` and `sdks/python/` are planned. They'll implement the same wire protocol and consume the shared scenario test corpus and release binaries.
 - **Drop-a-JS-file authoring**: the eventual dream is for the host to embed the JS-to-wasm compiler so authors can ship `.js` directly. Today the build step is mandatory.
+- **Host-namespaced custom events need a pin bump**: `host-runtime/go.mod` pins
+  `github.com/owncast/owncast` at a build predating slug-prefixed custom events,
+  so `owncast-plugin test`, `owncast-plugin serve`, and the demo host still
+  dispatch the raw suffix. Until the pin moves to a release carrying the fix,
+  `examples/{js,python}/relay/__tests__/relay.test.json` expects the unprefixed
+  `announcement.broadcast`, and the relay to announcer round-trip does not fire
+  locally because announcer subscribes to `relay.announcement.broadcast`. Bump
+  the pin, flip both scenario expectations to the prefixed name, then re-run the
+  example suite.

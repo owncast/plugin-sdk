@@ -567,6 +567,12 @@ class _SQL:
 
 class _Events:
     def emit(self, event_type, payload):
+        """Emit a custom event.
+
+        The host prefixes ``event_type`` with this plugin's slug, so
+        subscribers receive ``<your-slug>.<event_type>`` and no other plugin
+        can emit under your namespace. Requires the ``events.emit`` permission.
+        """
         _host("owncast_emit_event")(str(event_type), json.dumps(payload))
 
 

@@ -21,6 +21,6 @@ module.exports = definePlugin({
   //   filterChatMessage(msg) { return filter.pass(); /* or filter.modify(...) / filter.drop(reason) */ }
   //   onChatUserJoined(user) { ... }
   //   onStreamStarted(info) { ... }
-  //   on: { "your.custom.event"(payload) { ... } }
+  //   on: { "other-plugin.their-event"(payload) { ... } }
   //   onHttpRequest(req) { return { status: 200, body: "..." }; }
 });

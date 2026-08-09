@@ -27,7 +27,7 @@ def greet(msg):
 #   @plugin.on_stream_started
 #   def live(info): ...
 #
-#   @plugin.on("your.custom.event")
+#   @plugin.on("other-plugin.their-event")
 #   def handle(payload): ...
 #
 #   @plugin.get("/api/hello")

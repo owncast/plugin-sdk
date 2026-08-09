@@ -535,8 +535,9 @@ export interface PluginDef {
    *  Requires `ui.modify`. */
   onPageScripts?(): string | null | void;
 
-  /** Handlers for plugin-emitted custom events. The key is the event type
-   *  string (e.g. "announcement.broadcast"). Notifications only, to filter
+  /** Handlers for plugin-emitted custom events. The key is the sender's fully
+   *  qualified event type, `<emitter-slug>.<event>` (e.g.
+   *  "relay.announcement.broadcast"). Notifications only, to filter
    *  custom events, additional API will be needed. */
   on?: { [eventType: string]: (payload: any) => void | Promise<void> };
 
@@ -761,6 +762,10 @@ export const owncast: {
     readText(path: string): string | null;
   };
   events: {
+    /** Emit a custom event. The host prefixes `eventType` with this plugin's
+     *  slug before dispatching, so subscribers receive
+     *  `<your-slug>.<eventType>` and no other plugin can emit under your
+     *  namespace. Requires `events.emit`. */
     emit(eventType: string, payload: unknown): void;
   };
   /** Control over the viewer action buttons this plugin contributes.

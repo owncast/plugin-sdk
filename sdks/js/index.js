@@ -834,6 +834,8 @@ const owncast = {
     },
   },
   events: {
+    // The host prefixes eventType with this plugin's slug, so subscribers see
+    // "<slug>.<eventType>" and a plugin can't emit under another's namespace.
     emit(eventType, payload) {
       const fns = hostFns("owncast_emit_event", Permissions.EventsEmit);
       fns.owncast_emit_event(

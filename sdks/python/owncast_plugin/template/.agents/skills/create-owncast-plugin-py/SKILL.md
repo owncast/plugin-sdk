@@ -210,7 +210,7 @@ Several rows combine for richer plugins.
 | Post publicly to the fediverse (high-trust)     | (any)                                               | `owncast.fediverse.post(text)`                 | `fediverse.post`                       |
 | React to any verified inbound fediverse activity | `@plugin.on_fediverse` gets a non-subscriptable `_Obj` attribute view. Use `payload.raw` for the underlying dictionary and keys like `@context`. Specialized handlers: `@plugin.on_fediverse_follow/like/repost/quote/mention/reply` | none | `fediverse.inbound` |
 | Read/change video/transcoding config            | (any)                                               | `owncast.video_config.read/write`              | `videoconfig.read` / `videoconfig.write` |
-| Compose with other plugins via custom events    | emit: `owncast.events.emit`, receive: `@plugin.on(...)` | `owncast.events.emit(type, payload)`       | `events.emit` (emitter only)           |
+| Compose with other plugins via custom events    | emit: `owncast.events.emit`, receive: `@plugin.on(...)` | `owncast.events.emit(suffix, payload)`, delivered as `<your-slug>.<suffix>` | `events.emit` (emitter only)           |
 | Gate the site behind a member login (paywall) | `@plugin.on_http_request` (login flow) + `@plugin.on_auth_check` (re-validation) | `owncast.users.register` + `owncast.auth.grant_session/end_session` | `auth.gate` + `users.register` (+ `http.serve`); model on `examples/python/github-auth` |
 
 **Golden rule:** the `permissions` array must contain exactly the permissions
@@ -246,7 +246,10 @@ from which handlers exist. Decorators: `@plugin.on_chat_message`,
 `_disconnect`, `@plugin.on_tab_content("slug")`, `@plugin.on_page_content("slug")`,
 `@plugin.on_page_styles`, `@plugin.on_page_scripts`,
 HTTP routes (`@plugin.get/post/put/delete/patch(path)`, `@plugin.route`,
-`@plugin.on_http_request`), and `@plugin.on("namespace.event")` for custom events.
+`@plugin.on_http_request`), and `@plugin.on("emitter-slug.event")` for custom
+events. The host prefixes every emitted name with the emitter's slug, so
+subscribe using the sender's slug and pass only the suffix to
+`owncast.events.emit`.
 
 Important shape/behavior notes:
 
