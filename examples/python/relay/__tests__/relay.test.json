@@ -1,6 +1,6 @@
 [
   {
-    "name": "emits announcement.broadcast on /announce prefix",
+    "name": "emits to announcer.announcement.broadcast on /announce prefix",
     "events": [
       {
         "event": "chat.message.received",
@@ -10,7 +10,7 @@
     "expect": {
       "emits": [
         {
-          "eventType": "announcement.broadcast",
+          "eventType": "announcer.announcement.broadcast",
           "payload": { "text": "stream is live", "by": "alice" }
         }
       ]

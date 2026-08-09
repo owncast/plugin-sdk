@@ -1,6 +1,6 @@
 const { definePlugin, owncast } = require("@owncast/plugin-sdk");
 
-const ANNOUNCEMENT_BROADCAST = "announcement.broadcast";
+const ANNOUNCEMENT_BROADCAST = "announcer.announcement.broadcast";
 
 module.exports = definePlugin({
   onChatMessage(msg) {

@@ -535,9 +535,10 @@ export interface PluginDef {
    *  Requires `ui.modify`. */
   onPageScripts?(): string | null | void;
 
-  /** Handlers for plugin-emitted custom events. The key is the event type
-   *  string (e.g. "announcement.broadcast"). Notifications only, to filter
-   *  custom events, additional API will be needed. */
+  /** Handlers for custom events owned by this plugin. Keys are local hook names
+   *  such as "announcement.broadcast". The host registers each hook as
+   *  `<your-slug>.<hook>`, which emitters use as the target event type.
+   *  Notifications only. Filtering custom events requires additional API. */
   on?: { [eventType: string]: (payload: any) => void | Promise<void> };
 
   /** Filter chain priority (lower = earlier). Applies to every filter*
@@ -761,6 +762,8 @@ export const owncast: {
     readText(path: string): string | null;
   };
   events: {
+    /** Emit to a custom hook using its fully qualified
+     *  `<recipient-plugin-slug>.<hook>` name. Requires `events.emit`. */
     emit(eventType: string, payload: unknown): void;
   };
   /** Control over the viewer action buttons this plugin contributes.

@@ -214,9 +214,9 @@ module.exports = definePlugin({
     return { status: 200, body: "ok" };
   },
 
-  // Plugin-emitted custom events
+  // Local custom hook, owned as <your-slug>.something
   on: {
-    "another-plugin.something"(payload) {
+    "something"(payload) {
       /* ... */
     },
   },
@@ -589,7 +589,7 @@ in the built-in help listing.
 | `storage.fs`         | `owncast.fs.*`, private sandboxed disk under `data/plugin-storage/<slug>/files/` (server-side only, never served over HTTP). `write` and `delete` return `{}` on success or `{error}` on failure. |
 | `storage.sql`        | `owncast.sql.*`, private per-plugin SQLite database under `data/plugin-storage/<slug>/db/`, separate from the `storage.fs` sandbox and not included in Owncast backups |
 | `network.fetch`      | Outbound HTTP, also requires `network.allowedHosts` (see below)                                                                                   |
-| `events.emit`        | Emit custom events for other plugins to subscribe to                                                                                              |
+| `events.emit`        | Send a custom event to another plugin's `<recipient-slug>.<hook>`                                                                                |
 | `http.serve`         | Serve HTTP at `/plugins/<your-name>/*`                                                                                                            |
 | `http.sse`           | Push realtime events to browsers via `owncast.sse.send` + the `/_sse/` endpoint                                                                   |
 | `server.read`        | Read stream state, server config, and read-only broadcast telemetry (`stream.broadcaster`)                                                        |
@@ -1111,19 +1111,22 @@ The `tabs-demo` example ships two static tabs. `page-content-demo` demonstrates 
 
 ## Plugin-to-plugin events
 
-Plugins compose by emitting custom events:
+Each plugin owns its custom event hooks. Declare a local hook name. The host
+registers it as `<your-plugin-slug>.<hook>`, so another plugin cannot claim the
+same fully qualified name. Emitters target that qualified name:
 
 ```js
+// Subscriber plugin with slug "my-plugin"
+on: {
+  "thing-happened"(payload) { /* ... */ }
+}
+
 // Emitter (needs events.emit permission)
 owncast.events.emit("my-plugin.thing-happened", { id: 123 });
-
-// Subscriber
-on: {
-  "my-plugin.thing-happened"(payload) { /* ... */ }
-}
 ```
 
-Use `<your-plugin>.<event>` namespacing. Event names are arbitrary strings.
+Built-in event subscriptions keep their canonical names. A custom hook that
+would compose a built-in name is rejected when the plugin loads.
 
 ## Testing
 
@@ -1498,14 +1501,15 @@ Messages from this plugin appear in chat from the `stream-tracker` bot account, 
 
 ### Plugin composition
 
-`relay` watches for `/announce` in chat and emits a custom event. `announcer` subscribes.
+`relay` watches for `/announce` in chat and targets a custom hook owned by
+`announcer`.
 
 ```js
 // relay/src/plugin.js, needs events.emit
 module.exports = definePlugin({
   onChatMessage(msg) {
     if (!msg.body.startsWith("/announce ")) return;
-    owncast.events.emit("announcement.broadcast", {
+    owncast.events.emit("announcer.announcement.broadcast", {
       text: msg.body.substring(10),
       by: msg.user?.displayName,
     });
@@ -1517,6 +1521,7 @@ module.exports = definePlugin({
 // announcer/src/plugin.js, no permissions needed
 module.exports = definePlugin({
   on: {
+    // The host registers this as announcer.announcement.broadcast.
     "announcement.broadcast"(payload) {
       owncast.log.info(`Announcement from ${payload.by}: ${payload.text}`);
     },

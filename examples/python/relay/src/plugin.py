@@ -4,7 +4,7 @@
 # outgrow this.
 from owncast_plugin import plugin, owncast
 
-ANNOUNCEMENT_BROADCAST = "announcement.broadcast"
+ANNOUNCEMENT_BROADCAST = "announcer.announcement.broadcast"
 
 
 @plugin.on_chat_message

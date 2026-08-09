@@ -38,14 +38,21 @@ Every plugin must export these functions:
 derives at runtime:
 
 - **`subscriptions`**: `{ notify: [{event}], filter: [{event, priority?}] }`,
-  derived from the plugin's ordinary handlers. The host validates these against
-  the sidecar manifest's permissions.
+  derived from the plugin's ordinary handlers. Built-in names stay unchanged.
+  The host prefixes each custom notification hook with the declaring plugin's
+  slug, rejects a resulting built-in-name collision, and validates
+  permission-gated subscriptions against the sidecar manifest.
 - **`commands`**:
   `[{ name, prefix, description?, usage?, aliases?, modOnly?, caseSensitive?, cooldownMs? }]`.
   The host matches accepted human chat messages against every loaded plugin's
   declarations. Duplicate commands all run. Moderator failures, cooldown
   rejections, and unknown commands are silent. The same metadata builds the
   built-in `!help` response.
+
+After matching a qualified custom hook, the host removes the declaring
+plugin's slug from `Envelope.eventType` before calling that plugin's
+`on_event`. The SDK therefore dispatches to the local hook key the author
+declared.
 
 Matched declarations receive an internal `chat.command` envelope through
 `on_event`. Its payload is
@@ -238,8 +245,9 @@ plugin should store values above `Number.MAX_SAFE_INTEGER` (2^53 - 1) as TEXT.
 ### `events.emit`
 
 - `owncast_emit_event(eventTypePtr: PTR, payloadPtr: PTR): void`. Inputs:
-  `eventTypePtr` is a UTF-8 event name and `payloadPtr` is one JSON value.
-  Output: none.
+  `eventTypePtr` is the fully qualified `<recipient-slug>.<hook>` name for a
+  custom hook and `payloadPtr` is one JSON value. The host passes the event name
+  to the dispatcher unchanged. Output: none.
 
 ### `server.read`
 
