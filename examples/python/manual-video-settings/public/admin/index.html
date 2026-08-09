@@ -60,8 +60,8 @@
     <h1>Manual Video Settings</h1>
     <p class="lead">
       Edit the host's live transcoding config: HLS latency level, output codec,
-      and each output variant's resolution / framerate / video bitrate. Changes
-      are applied via <code>owncast.videoConfig.write</code>.
+      autoplay, and each output variant's resolution / framerate / video bitrate
+      / CPU usage. Changes are applied via <code>owncast.videoConfig.write</code>.
     </p>
 
     <form id="form">
@@ -89,6 +89,14 @@
             <option value="h264_videotoolbox">h264_videotoolbox (macOS)</option>
           </select>
         </label>
+        <label>
+          <span>Autoplay</span>
+          <select name="autoplay">
+            <option value="off">Never</option>
+            <option value="always">Always</option>
+            <option value="sound-only">Only if sound is available</option>
+          </select>
+        </label>
       </fieldset>
 
       <fieldset>
@@ -100,6 +108,7 @@
               <th>Height</th>
               <th>FPS</th>
               <th>Video kbps</th>
+              <th>CPU usage</th>
               <th>Passthrough</th>
               <th class="row-actions"></th>
             </tr>
@@ -125,15 +134,12 @@
 
       function variantRow(v) {
         const tr = document.createElement("tr");
-        // Audio bitrate is part of the host's variant shape but isn't
-        // exposed in this form. Stash it on the row so save() echoes it
-        // back instead of clobbering it with 0.
-        tr.dataset.audioBitrate = String(v.audioBitrate ?? 0);
         tr.innerHTML = `
           <td><input type="number" name="width" min="0" value="${v.width ?? 0}" /></td>
           <td><input type="number" name="height" min="0" value="${v.height ?? 0}" /></td>
           <td><input type="number" name="framerate" min="0" value="${v.framerate ?? 0}" /></td>
           <td><input type="number" name="videoBitrate" min="0" value="${v.videoBitrate ?? 0}" /></td>
+          <td><input type="number" name="cpuUsageLevel" min="0" max="4" value="${v.cpuUsageLevel ?? 0}" /></td>
           <td><input type="checkbox" name="isPassthrough" ${v.isPassthrough ? "checked" : ""} /></td>
           <td class="row-actions">
             <button type="button" class="danger" data-action="remove">Remove</button>
@@ -149,12 +155,13 @@
           height: Number(row.querySelector("[name=height]").value) || 0,
           framerate: Number(row.querySelector("[name=framerate]").value) || 0,
           videoBitrate: Number(row.querySelector("[name=videoBitrate]").value) || 0,
-          audioBitrate: Number(row.dataset.audioBitrate) || 0,
+          cpuUsageLevel: Number(row.querySelector("[name=cpuUsageLevel]").value) || 0,
           isPassthrough: row.querySelector("[name=isPassthrough]").checked,
         }));
         return {
           latencyLevel: Number(data.get("latencyLevel")),
           codec: data.get("codec"),
+          autoplay: data.get("autoplay"),
           variants,
         };
       }
@@ -164,6 +171,7 @@
         if ([...latency.options].some((o) => o.value === String(config.latencyLevel))) {
           latency.value = String(config.latencyLevel);
         }
+        form.querySelector("[name=autoplay]").value = config.autoplay || "off";
         const codec = form.querySelector("[name=codec]");
         if (![...codec.options].some((o) => o.value === config.codec) && config.codec) {
           // Show a custom codec if the host reports something the dropdown

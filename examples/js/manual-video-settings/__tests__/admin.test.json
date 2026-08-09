@@ -30,9 +30,10 @@
       "videoConfig": {
         "latencyLevel": 2,
         "codec": "libx264",
+        "autoplay": "sound-only",
         "variants": [
-          { "width": 1920, "height": 1080, "framerate": 30, "videoBitrate": 6000, "audioBitrate": 160, "isPassthrough": false },
-          { "width": 1280, "height": 720, "framerate": 30, "videoBitrate": 3000, "audioBitrate": 128, "isPassthrough": false }
+          { "width": 1920, "height": 1080, "framerate": 30, "videoBitrate": 6000, "cpuUsageLevel": 3, "isPassthrough": false },
+          { "width": 1280, "height": 720, "framerate": 30, "videoBitrate": 3000, "cpuUsageLevel": 2, "isPassthrough": false }
         ]
       }
     },
@@ -45,7 +46,7 @@
           "expect": {
             "status": 200,
             "headers": { "content-type": "application/json" },
-            "body": "{\"latencyLevel\":2,\"codec\":\"libx264\",\"variants\":[{\"width\":1920,\"height\":1080,\"framerate\":30,\"videoBitrate\":6000,\"audioBitrate\":160,\"isPassthrough\":false},{\"width\":1280,\"height\":720,\"framerate\":30,\"videoBitrate\":3000,\"audioBitrate\":128,\"isPassthrough\":false}]}"
+            "body": "{\"latencyLevel\":2,\"codec\":\"libx264\",\"autoplay\":\"sound-only\",\"variants\":[{\"width\":1920,\"height\":1080,\"framerate\":30,\"videoBitrate\":6000,\"cpuUsageLevel\":3,\"isPassthrough\":false},{\"width\":1280,\"height\":720,\"framerate\":30,\"videoBitrate\":3000,\"cpuUsageLevel\":2,\"isPassthrough\":false}]}"
           }
         }
       }
@@ -90,7 +91,7 @@
           "method": "POST",
           "path": "/admin/api/config",
           "headers": { "content-type": "application/json" },
-          "body": "{\"latencyLevel\":2,\"codec\":\"libx264\",\"variants\":[{\"width\":1920,\"height\":1080,\"framerate\":30,\"videoBitrate\":6000,\"audioBitrate\":160,\"isPassthrough\":false},{\"width\":1280,\"height\":720,\"framerate\":30,\"videoBitrate\":3000,\"audioBitrate\":128,\"isPassthrough\":false}]}",
+          "body": "{\"latencyLevel\":2,\"codec\":\"libx264\",\"autoplay\":\"sound-only\",\"variants\":[{\"width\":1920,\"height\":1080,\"framerate\":30,\"videoBitrate\":6000,\"cpuUsageLevel\":3,\"isPassthrough\":false},{\"width\":1280,\"height\":720,\"framerate\":30,\"videoBitrate\":3000,\"cpuUsageLevel\":2,\"isPassthrough\":false}]}",
           "authenticated": true,
           "expect": { "status": 204 }
         }
@@ -101,9 +102,10 @@
         {
           "latencyLevel": 2,
           "codec": "libx264",
+          "autoplay": "sound-only",
           "variants": [
-            { "width": 1920, "height": 1080, "framerate": 30, "videoBitrate": 6000, "audioBitrate": 160, "isPassthrough": false },
-            { "width": 1280, "height": 720, "framerate": 30, "videoBitrate": 3000, "audioBitrate": 128, "isPassthrough": false }
+            { "width": 1920, "height": 1080, "framerate": 30, "videoBitrate": 6000, "cpuUsageLevel": 3, "isPassthrough": false },
+            { "width": 1280, "height": 720, "framerate": 30, "videoBitrate": 3000, "cpuUsageLevel": 2, "isPassthrough": false }
           ]
         }
       ]

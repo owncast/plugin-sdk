@@ -40,14 +40,15 @@
     "given": {
       "videoConfig": {
         "latencyLevel": 2,
-        "codec": "h264",
+        "codec": "libx264",
+        "autoplay": "off",
         "variants": [
           {
             "width": 1920,
             "height": 1080,
             "framerate": 30,
             "videoBitrate": 6000,
-            "audioBitrate": 160,
+            "cpuUsageLevel": 3,
             "isPassthrough": false
           },
           {
@@ -55,7 +56,7 @@
             "height": 720,
             "framerate": 30,
             "videoBitrate": 3000,
-            "audioBitrate": 128,
+            "cpuUsageLevel": 2,
             "isPassthrough": false
           }
         ]
@@ -77,7 +78,7 @@
     ],
     "expect": {
       "chatSends": [
-        "latency 2, codec h264, 2 variant(s)"
+        "latency 2, codec libx264, 2 variant(s)"
       ]
     }
   }

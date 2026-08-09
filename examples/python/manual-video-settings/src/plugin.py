@@ -17,7 +17,7 @@ def parse_variant(v):
         "height": int(v.get("height") or 0),
         "framerate": int(v.get("framerate") or 0),
         "videoBitrate": int(v.get("videoBitrate") or 0),
-        "audioBitrate": int(v.get("audioBitrate") or 0),
+        "cpuUsageLevel": int(v.get("cpuUsageLevel") or 0),
         "isPassthrough": bool(v.get("isPassthrough")),
     }
 
@@ -47,6 +47,9 @@ def set_config(req):
     codec = parsed.get("codec")
     if isinstance(codec, str) and len(codec) > 0:
         update["codec"] = codec
+    autoplay = parsed.get("autoplay")
+    if isinstance(autoplay, str) and len(autoplay) > 0:
+        update["autoplay"] = autoplay
     if isinstance(parsed.get("variants"), list):
         update["variants"] = [parse_variant(v) for v in parsed["variants"]]
 

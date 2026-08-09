@@ -7,8 +7,9 @@ A hand-edit form for the Owncast transcoding pipeline. Use it when you want to t
 Opening **Manual Video Settings** under the admin sidebar shows a single form with:
 
 - **Latency level**: `0` (lowest) through `4` (highest). Lower means viewers see the stream sooner but rebuffer more on flaky networks.
-- **Codec**: the FFmpeg encoder Owncast invokes (`libx264` software, plus the usual hardware variants: `h264_vaapi`, `h264_nvenc`, `h264_qsv`, `h264_omx`, `h264_v4l2m2m`, `h264_videotoolbox`). If your live config uses something not in the dropdown, this plugin shows it as a `(current)` option so saving doesn't silently overwrite it.
-- **Output variants**: one row per HLS rendition, with editable **width**, **height**, **FPS**, **video kbps**, and a **passthrough** checkbox. Add or remove rows from the form. Each variant's audio bitrate is preserved across saves (it's part of the host's data model, just not surfaced here).
+- **Codec**: the FFmpeg encoder Owncast invokes (`libx264` software, plus `h264_vaapi`, `h264_nvenc`, `h264_qsv`, `h264_omx`, `h264_v4l2m2m`, and `h264_videotoolbox`). Hardware encoders must be available in the host's ffmpeg build.
+- **Autoplay**: `off`, `always`, or `sound-only`.
+- **Output variants**: one row per HLS rendition, with editable **width**, **height**, **FPS**, **video kbps**, **CPU usage**, and a **passthrough** checkbox. Add or remove rows from the form.
 
 ## How to use it
 
@@ -17,7 +18,7 @@ Opening **Manual Video Settings** under the admin sidebar shows a single form wi
 3. Edit fields, then click **Save**. The status line confirms `Saved.` or shows the host's error message if a setting was rejected.
 4. **Reload** discards in-form edits and re-fetches the live config.
 
-Changes apply on the next stream segment Owncast encodes. An active broadcast does not need to be restarted, but viewers may see a brief quality switch.
+Changes apply when the next stream starts. The host does not restart an active broadcast.
 
 ## Safety notes
 
