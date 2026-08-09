@@ -549,10 +549,7 @@ const owncast = {
       const offset = fns.owncast_users_register(
         Memory.fromString(JSON.stringify(req)).offset,
       );
-      if (offset == 0) throw new Error("users.register failed");
-      const result = JSON.parse(Memory.find(offset).readString());
-      if (result.error) throw new Error(result.error);
-      return result; // { userId }
+      return requireOperationResult(offset, "users.register failed"); // { userId }
     },
   },
   // Viewer-authentication gate. Only a plugin holding `auth.gate` (and enabled by
@@ -570,9 +567,7 @@ const owncast = {
       const offset = fns.owncast_auth_grant_session(
         Memory.fromString(JSON.stringify(req)).offset,
       );
-      if (offset == 0) throw new Error("auth.grantSession failed");
-      const result = JSON.parse(Memory.find(offset).readString());
-      if (result.error) throw new Error(result.error);
+      requireOperationResult(offset, "auth.grantSession failed");
     },
     // Clear the current viewer's gate session (logout). The plugin still owns the
     // response/redirect. Requires `auth.gate`.

@@ -398,7 +398,18 @@ Each method requires the matching permission in your manifest:
 | `owncast.config.get(key, fallback?)`, read manifest-declared config             | none (ambient)       |
 | `owncast.log.info/warning/error(message)`, write to the Owncast server log      | none (ambient)       |
 
-Calling a permission-gated API without its permission throws a clear error.
+A call without its permission never reaches Owncast. The host logs the denial
+and hands the SDK an empty result, and what you see depends on the kind of
+call. Mutating calls that report an outcome raise (`chat.deleteMessage`,
+`chat.kick`, `users.setEnabled`, `users.banIP`, `users.register`,
+`auth.grantSession`, `kv.set`, `videoConfig.write`, `owncast.actions.add`,
+`owncast.actions.clear`, and every `owncast.sql` method). Readers return empty
+or null. Calls that return nothing become silent no-ops. The three exceptions
+are `fs.write`, `fs.delete`, and `storage.upload`, which report failure in
+their return value instead of raising, so check what they hand back.
+
+The rule is the same in both SDKs: JavaScript throws an `Error` and Python
+raises a `RuntimeError`, carrying the host's message when it sent one.
 
 ### Server logging
 

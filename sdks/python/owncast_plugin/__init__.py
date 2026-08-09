@@ -672,10 +672,11 @@ class _Users:
             req["handle"] = str(handle)
         if public is not None:
             req["public"] = bool(public)
-        result = _call_json("owncast_users_register", json.dumps(req)) or {}
-        if isinstance(result, dict) and result.get("error"):
-            raise RuntimeError(result["error"])
-        return _Obj(result)
+        return _Obj(
+            _require_operation_result(
+                "owncast_users_register", "users.register failed", json.dumps(req)
+            )
+        )
 
 
 class _Auth:
@@ -692,9 +693,9 @@ class _Auth:
         req = {"userId": str(user_id)}
         if ttl:
             req["ttl"] = int(ttl)
-        result = _call_json("owncast_auth_grant_session", json.dumps(req)) or {}
-        if isinstance(result, dict) and result.get("error"):
-            raise RuntimeError(result["error"])
+        _require_operation_result(
+            "owncast_auth_grant_session", "auth.grant_session failed", json.dumps(req)
+        )
 
     def end_session(self):
         """Clear the current viewer's gate session (logout). The plugin still

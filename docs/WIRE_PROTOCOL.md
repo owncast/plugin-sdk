@@ -69,6 +69,14 @@ and checks its manifest permission on every call. A denied call logs the
 denial and returns 0 for a `PTR` or `I64` result. A denied `void` call has no
 observable result.
 
+Both SDKs map that empty result onto one rule: an import whose output is an
+operation-result envelope (`{}` or `{"error": string}`) raises when the
+envelope is missing or carries an error, so a denial surfaces as a thrown
+`Error` / `RuntimeError` rather than a silent success. Imports that return
+data yield empty or null instead. `owncast_fs_write`, `owncast_fs_delete`, and
+`owncast_storage_upload` are the deliberate exceptions: the SDKs hand their
+envelope back to the author instead of raising.
+
 ### ABI types and pointer payloads
 
 The signatures below are the exact stack-based host ABI:
