@@ -70,9 +70,8 @@ jobs:
             [[ "$(gh api --method GET "repos/owncast/owncast/pulls?state=open&head=owncast:${GITHUB_HEAD_REF}" --jq 'length')" == "1" ]]; then
             owncast_ref="${GITHUB_HEAD_REF}"
           fi
-          owncast_sha=$(gh api "repos/owncast/owncast/commits/${owncast_ref}" --jq .sha)
-          echo "Building against owncast@${owncast_ref} (${owncast_sha})"
-          go get "github.com/owncast/owncast@${owncast_sha}"
+          echo "Building against owncast@${owncast_ref}"
+          go get "github.com/owncast/owncast@${owncast_ref}"
           go test ./...
           go build -o ../sdks/js/bin/.cache/owncast-plugin-test ./cmd/owncast-plugin-test
           go build -o ../sdks/js/bin/.cache/owncast-plugin-serve ./cmd/owncast-plugin-serve
