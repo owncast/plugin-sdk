@@ -1,6 +1,6 @@
 # Announcer
 
-A receiver-side demo. It listens for a custom `announcement.broadcast` event that the **relay** example plugin emits, and logs each one to the server. The event type is a plugin-defined string, not a built-in Owncast event.
+A receiver-side demo. It declares the local custom hook `announcement.broadcast`. The host registers it as `announcer.announcement.broadcast`, which the **relay** example targets.
 
 ## How to use it
 
@@ -8,10 +8,10 @@ This plugin does nothing on its own. It's one half of a pair.
 
 1. Install and enable **both** this plugin and the **relay** plugin.
 2. In chat, type `/announce <text>` (that command is handled by relay).
-3. relay emits an `announcement.broadcast` event. This plugin receives it and writes an info entry to the Owncast server log through `owncast.log.info`.
+3. relay emits `announcer.announcement.broadcast`. The host routes it to this plugin's local `announcement.broadcast` handler, which writes an info entry through `owncast.log.info`.
 
 There is no viewer-facing output. Watch the Owncast server logs to see it fire.
 
 ## Permissions
 
-None. Receiving a custom event requires no permission. Only *emitting* one does (that's relay's `events.emit`).
+None. Declaring a custom hook requires no permission. Only emitting to one does (that's relay's `events.emit`).

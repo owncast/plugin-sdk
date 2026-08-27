@@ -1,9 +1,10 @@
 // @owncast/plugin-sdk runtime, bundled into every plugin.
 //
 // Authors define typed handlers (onChatMessage, filterChatMessage, ...) plus
-// an `on: { [customEvent]: handler }` object for plugin-emitted events. The
+// an `on: { [localCustomHook]: handler }` object for plugin-owned events. The
 // SDK derives the manifest's subscriptions from which handlers are present
-// and returns them via register(). Authors don't maintain a duplicate list.
+// and returns them via register(). The host qualifies custom hooks with the
+// declaring plugin's slug.
 
 let registered = null;
 

@@ -204,7 +204,7 @@ combine for richer plugins.
 | Post publicly to the fediverse (high-trust)     | (any)                                        | `owncast.fediverse.post(text)`            | `fediverse.post`                       |
 | React to any verified inbound fediverse activity | `onFediverse(activity)` for raw JSON, plus `onFediverseFollow/Like/Repost/Quote/Mention/Reply` for specialized payloads | none | `fediverse.inbound` |
 | Read/change video/transcoding config            | (any)                                        | `owncast.videoConfig.read/write`          | `videoconfig.read` / `videoconfig.write` |
-| Compose with other plugins via custom events    | emit: `owncast.events.emit`, receive: `on:{}`| `owncast.events.emit(type, payload)`      | `events.emit` (emitter only)           |
+| Compose with other plugins via custom events    | own local hooks with `on:{}`, emit to `<recipient-slug>.<hook>` | `owncast.events.emit(type, payload)` | `events.emit` (emitter only) |
 | Gate the site behind a member login (paywall) | `onHttpRequest` (login flow) + `onAuthCheck` (re-validation) | `owncast.users.register` + `owncast.auth.grantSession/endSession` | `auth.gate` + `users.register` (+ `http.serve`); model on `examples/js/github-auth` |
 
 **Golden rule:** the `permissions` array must contain exactly the permissions
@@ -240,7 +240,8 @@ which handlers exist. Full list of handlers: `onChatMessage`,
 `onStreamTitleChanged`, `onFediverse`, `onFediverseFollow/Like/Repost/Quote/Mention/Reply`,
 `onHttpRequest`, `onTick`, `onSseConnect/Disconnect`, `onTabContent`,
 `onPageContent`, `onPageStyles`, `onPageScripts`, and
-`on: { "namespace.event"() {} }` for custom events.
+`on: { "event"() {} }` for local custom hooks. The host registers each as
+`<your-plugin-slug>.event`, which emitters use as the target.
 
 Important shape/behavior notes:
 

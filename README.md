@@ -44,7 +44,9 @@ Layout mirrors the planned future repo split: `sdks/<lang>/` for author-facing S
 
 - **Manifest is the source of truth**, `plugin.manifest.json` declares display name, slug (the canonical identifier), version, subscriptions (notify/filter), and permissions. The host compares it against the plugin's runtime `register()` output at load; mismatches on slug, version, or permissions are rejected.
 - **Typed handlers per event**, instead of one `onEvent(event)` with a string switch, plugins define methods like `onChatMessage(msg)` and `filterChatMessage(msg)`. The SDK derives the manifest's subscriptions from which methods are present, so the author maintains a single source of truth.
-- **`on: { ... }` for custom events**, plugin-emitted events (e.g. `"announcement.broadcast"`) are subscribed to via a keyed object. Authors define their own constants for these strings.
+- **`on: { ... }` for custom events**, declare local hook names such as
+  `"announcement.broadcast"`. The host owns the fully qualified
+  `<plugin-slug>.<hook>` subscription. Emitters target that name.
 - **Notifications vs filters**:
   - `on*` handlers, fire-and-forget, plugins run in parallel
   - `filter*` handlers, sequential, priority-ordered, return `filter.pass()` / `.modify(payload)` / `.drop(reason)`. Errors **fail open**.
@@ -73,7 +75,7 @@ cd host-runtime && go run . ../plugins
 
 `tools/bootstrap.sh` compiles `owncast-plugin-test` and `owncast-plugin-serve` from `host-runtime/cmd/`. End users installing the published SDK get these as per-platform release-asset downloads via the postinstall instead, `bootstrap.sh` is for repo developers running against a not-yet-released checkout.
 
-You should see the chat stream flow through the filter chain (slow-mode, buggy-filter, profanity-filter), then fan out to notification subscribers (chat-logger, echo-bot, message-counter, relay), with relay re-emitting `announcement.broadcast` events that announcer handles.
+You should see the chat stream flow through the filter chain (slow-mode, buggy-filter, profanity-filter), then fan out to notification subscribers (chat-logger, echo-bot, message-counter, relay), with relay targeting announcer's `announcer.announcement.broadcast` hook.
 
 ## Run all example tests
 
@@ -176,8 +178,7 @@ module.exports = definePlugin({
   filterChatMessage(msg) {
     return msg.body.includes("spam") ? filter.drop("spam") : filter.pass();
   },
-
-  // Custom plugin-emitted events.
+  // Local custom hook, owned as <your-slug>.announcement.broadcast.
   on: {
     "announcement.broadcast"(payload) {
       console.log(`announcement from ${payload.by}: ${payload.text}`);
@@ -193,6 +194,10 @@ See **[examples/js/README.md](./examples/js/README.md)** for the full catalog of
 ## Open items / not yet done
 
 - **Owncast integration**: the host runtime in `host-runtime/` is PoC scaffolding. The real home is the Owncast server repo; the wire interface in [`docs/WIRE_PROTOCOL.md`](./docs/WIRE_PROTOCOL.md) is the contract between the two repos.
+- **Host-namespaced custom hooks need a pin bump**: `host-runtime/go.mod` still
+  pins an Owncast build that keeps custom subscriptions literal. The CI workflow
+  tests this branch against the matching Owncast branch, but the pin must move
+  to the released runtime before this SDK change merges.
 - **Manager persistence**: the enabled-plugin set and per-plugin approved-permission snapshots are stored at `<pluginsDir>/.enabled.json` for the PoC's standalone demo binary. Owncast already wires a config-store-backed implementation; the file-backed default exists only for the demo.
 - **Typed plugin config from the admin**: `manifest.config` schema is parsed but no host function exposes config values to plugin code. Intent is typed config values per plugin, editable from the Owncast admin UI (today plugins persist their own state via `owncast.kv.{get,set}`).
 - **Strike system for notifications + HTTP**: the filter chain auto-disables a plugin after consecutive failures. The notification and HTTP handler paths have per-call timeouts but don't count strikes, a permanently-broken `onChatMessage` keeps getting called forever.

@@ -160,6 +160,8 @@ class _Plugin:
         return deco
 
     def on(self, event_type):
+        """Handle a local custom event hook. The host registers it as
+        ``<your-slug>.<event_type>`` for emitters to target."""
         def deco(fn):
             _CUSTOM[event_type] = fn
             return fn
@@ -567,6 +569,7 @@ class _SQL:
 
 class _Events:
     def emit(self, event_type, payload):
+        """Emit to a fully qualified ``<recipient-slug>.<hook>`` event type."""
         _host("owncast_emit_event")(str(event_type), json.dumps(payload))
 
 

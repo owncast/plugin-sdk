@@ -13,8 +13,8 @@ One self-contained npm project per directory. Each has its own `README.md` with 
 | [profanity-filter](./profanity-filter/)           | `filter.modify(payload)`, rewrites flagged words to asterisks.                                          |
 | [slow-mode](./slow-mode/)                         | `filter.drop(reason)`, rate-limits per user, with plugin-config-backed state.                           |
 | [buggy-filter](./buggy-filter/)                   | Always throws, exercises the host's fail-open + strike system.                                          |
-| [relay](./relay/)                                 | Emits a custom `announcement.broadcast` event (plugin → plugin).                                        |
-| [announcer](./announcer/)                         | Subscribes to `announcement.broadcast` via the `on: { ... }` map.                                       |
+| [relay](./relay/)                                 | Targets announcer's fully qualified `announcer.announcement.broadcast` custom hook.                     |
+| [announcer](./announcer/)                         | Owns the local `announcement.broadcast` hook through the `on: { ... }` map.                              |
 | [ip-bot](./ip-bot/)                               | Outbound HTTP via `owncast.http.fetch`, mocked in tests.                                                |
 | [overlay](./overlay/)                             | `http.serve`, static files from `public/` + dynamic JSON endpoint.                                      |
 | [stream-tracker](./stream-tracker/)               | Every typed lifecycle / chat-user handler + read APIs.                                                  |

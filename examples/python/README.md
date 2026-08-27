@@ -13,8 +13,8 @@ One self-contained plugin per directory, authored in Python and compiled to wasm
 | [profanity-filter](./profanity-filter/)           | `filter.modify(payload)`, rewrites flagged words to asterisks.                                          |
 | [slow-mode](./slow-mode/)                         | `filter.drop(reason)`, rate-limits per user, with in-memory state.                                      |
 | [buggy-filter](./buggy-filter/)                   | Always raises, exercises the host's fail-open + strike system.                                          |
-| [relay](./relay/)                                 | Emits a custom `announcement.broadcast` event (plugin → plugin).                                        |
-| [announcer](./announcer/)                         | Subscribes to `announcement.broadcast` via `@plugin.on(...)`.                                            |
+| [relay](./relay/)                                 | Targets announcer's fully qualified `announcer.announcement.broadcast` custom hook.                     |
+| [announcer](./announcer/)                         | Owns the local `announcement.broadcast` hook through `@plugin.on(...)`.                                  |
 | [ip-bot](./ip-bot/)                               | Outbound HTTP via `owncast.http.fetch`, mocked in tests.                                                |
 | [overlay](./overlay/)                             | `http.serve`, static files from `public/` + dynamic JSON endpoint.                                      |
 | [stream-tracker](./stream-tracker/)               | Every typed lifecycle / chat-user handler + read APIs.                                                  |
