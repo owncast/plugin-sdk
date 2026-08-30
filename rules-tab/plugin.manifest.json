@@ -2,7 +2,7 @@
   "api": "1",
   "name": "Rules",
   "slug": "rules-tab",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Adds configurable community rules, a !rules chat command, and an optional viewer acceptance prompt.",
   "category": "viewer-ui",
   "permissions": [

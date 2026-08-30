@@ -1,6 +1,6 @@
 {
   "name": "@owncast/plugin-sdk",
-  "version": "0.10.1",
+  "version": "0.11.0",
   "description": "SDK for authoring Owncast plugins in JavaScript",
   "license": "MIT",
   "author": "Owncast",
