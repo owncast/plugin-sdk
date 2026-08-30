@@ -65,6 +65,8 @@ jobs:
           CGO_ENABLED: "0"
           GOPRIVATE: github.com/owncast/owncast
         run: |
+          git config --global gc.auto 0
+          git config --global maintenance.auto false
           go get github.com/owncast/owncast@develop
           suffix="${GOOS}-${GOARCH}"
           mkdir -p "${GITHUB_WORKSPACE}/dist"

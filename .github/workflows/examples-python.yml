@@ -55,6 +55,8 @@ jobs:
             owncast_ref="${GITHUB_HEAD_REF}"
           fi
           echo "Building against owncast@${owncast_ref}"
+          git config --global gc.auto 0
+          git config --global maintenance.auto false
           go get "github.com/owncast/owncast@${owncast_ref}"
           mkdir -p "$GITHUB_WORKSPACE/pytoolchain/bin" "$GITHUB_WORKSPACE/pytoolchain/share"
           go build -o "$GITHUB_WORKSPACE/pytoolchain/bin/owncast-plugin-test" ./cmd/owncast-plugin-test
