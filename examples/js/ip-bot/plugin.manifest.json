@@ -2,7 +2,7 @@
   "api": "1",
   "name": "Example IP Bot",
   "slug": "ip-bot",
-  "version": "0.3.2",
+  "version": "0.3.3",
   "description": "Responds to !ip in chat by fetching the server's public IP. This example was written in JavaScript.",
   "category": "chat-bots",
   "permissions": [

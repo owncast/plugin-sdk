@@ -2,7 +2,7 @@
   "api": "1",
   "name": "Example Slow Mode",
   "slug": "slow-mode",
-  "version": "0.3.2",
+  "version": "0.3.3",
   "description": "Drops messages from users posting faster than 2s apart. Rate-limit state lives in plugin memory. This example was written in Python.",
   "category": "chat-filters",
   "permissions": [
