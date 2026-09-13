@@ -28,6 +28,7 @@ const FilterAction = Object.freeze({
 const Events = Object.freeze({
   // Chat events
   ChatMessageReceived: "chat.message.received",
+  ChatMessageBroadcast: "chat.message.broadcast",
   ChatUserJoined: "chat.user.joined",
   ChatUserParted: "chat.user.parted",
   ChatUserRenamed: "chat.user.renamed",
@@ -134,6 +135,10 @@ const HANDLERS = Object.freeze({
   // Chat
   onChatMessage: {
     event: Events.ChatMessageReceived,
+    kind: HandlerKind.Notify,
+  },
+  onChatMessageBroadcast: {
+    event: Events.ChatMessageBroadcast,
     kind: HandlerKind.Notify,
   },
   filterChatMessage: {

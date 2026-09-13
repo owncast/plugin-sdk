@@ -2,7 +2,7 @@
   "api": "1",
   "name": "Example Chat Overlay",
   "slug": "overlay",
-  "version": "0.3.4",
+  "version": "0.3.5",
   "description": "Streams chat messages to a static HTML overlay page through Server-Sent Events, with recent history at /plugins/overlay/api/messages. This example was written in Python.",
   "category": "overlays",
   "permissions": ["http.serve", "http.sse", "chat.history", "ui.modify"],

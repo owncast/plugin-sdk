@@ -70,7 +70,8 @@ Each decorator subscribes to one event, and the SDK derives the manifest subscri
 
 | Decorator | Fires on |
 |---|---|
-| `@plugin.on_chat_message` | a chat message (notify) |
+| `@plugin.on_chat_message` | a raw user-authored chat message (notify); bot/system output is excluded to prevent reply loops |
+| `@plugin.on_chat_message_broadcast` | every viewer-visible chat message, including bot/system/action output; `msg.body` is sanitized rendered HTML and this handler is passive |
 | `@plugin.filter_chat_message` | a chat message, **before broadcast** (return a `filter` result, requires `chat.filter`) |
 | `@plugin.on_chat_user_joined` / `_parted` / `_renamed` | chat presence |
 | `@plugin.on_message_moderated` | a message hidden/restored |

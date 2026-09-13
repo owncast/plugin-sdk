@@ -1,9 +1,9 @@
-// overlay plugin: serves recent chat history and streams new messages to its
-// static HTML overlay through the host-owned Server-Sent Events endpoint.
+// overlay plugin: serves recent chat history and streams the complete
+// viewer-visible chat, including bot/system/action messages, to its static
+// HTML overlay through the host-owned Server-Sent Events endpoint.
 const { definePlugin, owncast } = require("@owncast/plugin-sdk");
-
 module.exports = definePlugin({
-  onChatMessage(message) {
+  onChatMessageBroadcast(message) {
     owncast.sse.send("overlay", "chat", message);
   },
 

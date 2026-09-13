@@ -17,6 +17,16 @@ export interface ChatMessage {
   timestamp: string;
 }
 
+/** A viewer-visible chat message. `body` is sanitized rendered HTML. */
+export interface ChatMessageBroadcast {
+  id: string;
+  type: string;
+  user?: User;
+  senderName?: string;
+  body: string;
+  timestamp: string;
+}
+
 /** Payload of `chat.user.renamed`, the same user changing their name. */
 export interface ChatUserRename {
   user: User;
@@ -127,6 +137,7 @@ export type FilterResult =
 
 export const Events: {
   readonly ChatMessageReceived: "chat.message.received";
+  readonly ChatMessageBroadcast: "chat.message.broadcast";
   readonly ChatUserJoined: "chat.user.joined";
   readonly ChatUserParted: "chat.user.parted";
   readonly ChatUserRenamed: "chat.user.renamed";
@@ -437,9 +448,11 @@ export interface PluginDef {
   /** Match command names case-sensitively. Default false. */
   commandsCaseSensitive?: boolean;
 
-  /** Notification handler for chat messages. Fire-and-forget. */
+  /** Notification handler for raw user-authored chat messages. */
   onChatMessage?(msg: ChatMessage): void | Promise<void>;
-
+  /** Viewer-visible chat, including bot/system/action output. `body` is sanitized rendered HTML.
+   * This is passive: do not declare `chat.send` with this handler. */
+  onChatMessageBroadcast?(msg: ChatMessageBroadcast): void | Promise<void>;
   /** Filter handler for chat messages. Return filter.pass() / .modify() / .drop().
    *  Errors are treated as filter.pass() (fail-open). */
   filterChatMessage?(msg: ChatMessage): FilterResult;

@@ -733,6 +733,15 @@ type ChatMessage = {
   timestamp: string;
 };
 
+type HostChatMessageBroadcast = {
+  id: string;
+  type: "CHAT" | "SYSTEM" | "CHAT_ACTION";
+  user?: User;
+  senderName?: string;
+  body: string; // sanitized rendered HTML
+  timestamp: string;
+};
+
 type ChatClient = {
   id: number;
   userId?: string;
@@ -1055,6 +1064,7 @@ all of them as `number`, which loses integer precision above
 | Event | `Envelope.payload` |
 | --- | --- |
 | `chat.message.received` | `ChatMessage` |
+| `chat.message.broadcast` | `HostChatMessageBroadcast` |
 | `chat.user.joined`, `chat.user.parted` | `User` |
 | `chat.user.renamed` | `ChatUserRename` |
 | `chat.message.moderated` | `ChatMessageModeration` |

@@ -96,6 +96,12 @@ class ChatMessage(_Obj):
         return _wrap(self._get("user"))
 
 
+
+class ChatMessageBroadcast(_Obj):
+    @property
+    def user(self):
+        return _wrap(self._get("user"))
+
 # ---------------------------------------------------------------------------
 # Handler registry + decorators.
 # ---------------------------------------------------------------------------
@@ -103,6 +109,7 @@ class ChatMessage(_Obj):
 _HANDLERS = {
     "on_chat_message": ("chat.message.received", "notify", ChatMessage),
     "on_chat_user_joined": ("chat.user.joined", "notify", _Obj),
+    "on_chat_message_broadcast": ("chat.message.broadcast", "notify", ChatMessageBroadcast),
     "on_chat_user_parted": ("chat.user.parted", "notify", _Obj),
     "on_chat_user_renamed": ("chat.user.renamed", "notify", _Obj),
     "on_message_moderated": ("chat.message.moderated", "notify", _Obj),

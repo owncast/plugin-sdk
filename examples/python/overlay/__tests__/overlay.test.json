@@ -65,15 +65,28 @@
     ]
   },
   {
-    "name": "streams received chat messages to overlay subscribers",
+    "name": "streams complete viewer-visible chat to overlay subscribers",
     "events": [
       {
-        "event": "chat.message.received",
+        "event": "chat.message.broadcast",
         "payload": {
           "id": "m-live",
+          "type": "CHAT",
           "user": { "id": "u-alice", "displayName": "alice" },
-          "body": "hello live",
+          "senderName": "alice",
+          "body": "<p>hello <strong>live</strong></p>",
           "timestamp": "2024-01-01T00:00:00Z"
+        }
+      },
+      {
+        "event": "chat.message.broadcast",
+        "payload": {
+          "id": "m-bot",
+          "type": "CHAT",
+          "user": { "displayName": "helper", "isBot": true },
+          "senderName": "helper",
+          "body": "<p>response</p>",
+          "timestamp": "2024-01-01T00:00:01Z"
         }
       }
     ],
@@ -82,7 +95,12 @@
         {
           "channel": "overlay",
           "event": "chat",
-          "data": "{\"id\": \"m-live\", \"user\": {\"id\": \"u-alice\", \"displayName\": \"alice\", \"displayColor\": 0}, \"body\": \"hello live\", \"timestamp\": \"2024-01-01T00:00:00Z\"}"
+          "data": "{\"body\": \"<p>hello <strong>live</strong></p>\", \"id\": \"m-live\", \"senderName\": \"alice\", \"timestamp\": \"2024-01-01T00:00:00Z\", \"type\": \"CHAT\", \"user\": {\"displayName\": \"alice\", \"id\": \"u-alice\"}}"
+        },
+        {
+          "channel": "overlay",
+          "event": "chat",
+          "data": "{\"body\": \"<p>response</p>\", \"id\": \"m-bot\", \"senderName\": \"helper\", \"timestamp\": \"2024-01-01T00:00:01Z\", \"type\": \"CHAT\", \"user\": {\"displayName\": \"helper\", \"isBot\": true}}"
         }
       ]
     }

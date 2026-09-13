@@ -18,6 +18,10 @@
         font-weight: 600;
         color: #7cf;
       }
+      .body p {
+        display: inline;
+        margin: 0;
+      }
     </style>
   </head>
   <body>
@@ -30,11 +34,18 @@
         if (message.id) shown.add(message.id);
         const row = document.createElement("div");
         row.className = "msg";
-        const user = document.createElement("span");
-        user.className = "user";
-        user.textContent = `${message.user?.displayName || "Guest"}:`;
-        row.append(user, ` ${message.body}`);
-        messages.append(row);
+        const sender = message.user?.displayName || message.senderName;
+        if (sender) {
+          const user = document.createElement("span");
+          user.className = "user";
+          user.textContent = `${sender}:`;
+          row.append(user, " ");
+        }
+        const body = document.createElement("span");
+        body.className = "body";
+        // The host sanitizes broadcast/history bodies before exposing them.
+        body.innerHTML = message.body;
+        row.append(body);
       }
 
       fetch("./api/messages")

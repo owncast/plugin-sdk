@@ -154,6 +154,9 @@ module.exports = definePlugin({
   onChatMessage(msg) {
     /* msg: ChatMessage */
   },
+  onChatMessageBroadcast(message) {
+    /* message: viewer-visible ChatMessageBroadcast, rendered HTML body */
+  },
   onChatUserJoined(user) {
     /* user: User */
   },
@@ -240,6 +243,7 @@ interface ChatMessage {
   timestamp: string; // ISO-8601, nanosecond precision
 }
 
+
 interface User {
   id: string;
   displayName: string;
@@ -252,6 +256,11 @@ interface User {
   scopes?: string[]; // e.g. ["MODERATOR"]
 }
 ```
+
+`onChatMessageBroadcast(message)` receives every viewer-visible chat event,
+including bot, system, and action messages. Its `message.body` is sanitized
+rendered HTML. It is intended for passive consumers such as overlays; use
+`onChatMessage` for raw user input and replies.
 
 `user` carries the **full sender identity**, so do per-user state off the stable
 `user.id` and gate moderator-only commands on `user.scopes.includes("MODERATOR")`.
@@ -674,14 +683,17 @@ You do **not** open or hold the connection yourself. Your `onHttpRequest` handle
 
 ```js
 // src/plugin.js
-export function onChatMessage(msg) {
-  // Notify every browser watching the "overlay" stream.
-  owncast.sse.send("overlay", "chat", {
-    from: msg.user?.displayName,
-    body: msg.body,
-  });
-}
+module.exports = definePlugin({
+  onChatMessageBroadcast(message) {
+    // Includes human, bot, system, and action messages.
+    owncast.sse.send("overlay", "chat", message);
+  },
+});
 ```
+
+`message.body` is sanitized rendered HTML. Insert it as HTML only when
+reproducing Owncast's chat rendering; use `textContent` for other untrusted
+values. Use `onChatMessage` when the plugin needs raw user input and may reply.
 
 `send(channel, event, data)`:
 
@@ -698,8 +710,14 @@ Sends are fire-and-forget: the call returns immediately and never blocks, even i
 <script>
   const events = new EventSource("/plugins/my-plugin/_sse/overlay");
   events.addEventListener("chat", (e) => {
-    const { from, body } = JSON.parse(e.data);
-    document.getElementById("feed").textContent = `${from}: ${body}`;
+    const message = JSON.parse(e.data);
+    const row = document.createElement("div");
+    const sender = message.user?.displayName || message.senderName;
+    if (sender) row.append(`${sender}: `);
+    const body = document.createElement("span");
+    body.innerHTML = message.body; // host-sanitized rendered HTML
+    row.append(body);
+    document.getElementById("feed").append(row);
   });
 </script>
 ```
