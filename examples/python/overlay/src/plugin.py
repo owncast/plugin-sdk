@@ -1,9 +1,13 @@
-# overlay plugin: ships a static HTML overlay (public/index.html) and a
-# dynamic JSON API at /api/messages that reads recent chat history from
-# Owncast. The page polls the API to render messages live.
+# overlay plugin: serves recent chat history and streams new messages to its
+# static HTML overlay through the host-owned Server-Sent Events endpoint.
 import json
 
 from owncast_plugin import plugin, owncast
+
+
+@plugin.on_chat_message
+def stream_message(message):
+    owncast.sse.send("overlay", "chat", message.raw)
 
 
 @plugin.get("/api/messages")

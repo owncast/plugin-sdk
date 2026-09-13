@@ -696,6 +696,10 @@ func (r *recordingResponseWriter) WriteHeader(code int) {
 	r.ResponseWriter.WriteHeader(code)
 }
 
+func (r *recordingResponseWriter) Flush() {
+	r.ResponseWriter.(http.Flusher).Flush()
+}
+
 func writeJSON(w http.ResponseWriter, status int, body any) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(status)

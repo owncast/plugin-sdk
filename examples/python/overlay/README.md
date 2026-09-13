@@ -1,7 +1,7 @@
 # overlay
 
-Serves a chat-overlay web page at `/plugins/overlay/`. Combines a static HTML page (`public/index.html`) with a dynamic JSON endpoint at `/plugins/overlay/api/messages` that returns recent chat history. The page polls the endpoint to render messages live.
+Serves a chat-overlay web page at `/plugins/overlay/`. It fetches recent history from `/plugins/overlay/api/messages`, then streams new messages through `/plugins/overlay/_sse/overlay`.
 
 The manifest declares a `Chat Overlay` action button (`"url": "/"`, auto-prefixed by the host to `/plugins/overlay/`), so the Owncast UI surfaces a button that opens the overlay directly while this plugin is enabled. Because action buttons place UI inside Owncast's chrome, the manifest also declares the `ui.modify` permission.
 
-**Demonstrates:** the `http.serve` permission, static-asset serving from the `public/` directory, dynamic HTTP handlers via `@plugin.get(...)`, `owncast.chat.history(limit)` for reading messages, `manifest.actions[]` for surfacing plugin UI as an action button, the `ui.modify` opt-in permission.
+**Demonstrates:** `http.serve`, static-asset serving from `public/`, dynamic HTTP handlers via `@plugin.get(...)`, `owncast.chat.history(limit)`, realtime `owncast.sse.send(...)` from `@plugin.on_chat_message`, and the `http.sse` permission.
