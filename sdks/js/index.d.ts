@@ -451,7 +451,7 @@ export interface PluginDef {
   /** Notification handler for raw user-authored chat messages. */
   onChatMessage?(msg: ChatMessage): void | Promise<void>;
   /** Viewer-visible chat, including bot/system/action output. `body` is sanitized rendered HTML.
-   * This is passive: do not declare `chat.send` with this handler. */
+   * Calling `chat.send` from this callback can feed the callback again. */
   onChatMessageBroadcast?(msg: ChatMessageBroadcast): void | Promise<void>;
   /** Filter handler for chat messages. Return filter.pass() / .modify() / .drop().
    *  Errors are treated as filter.pass() (fail-open). */
