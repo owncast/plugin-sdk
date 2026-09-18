@@ -342,9 +342,10 @@ interface OutgoingHttpResponse {
 
 Endpoints are public by default. Gate admin features with `req.authenticated`.
 
-Response strings are sent as UTF-8. In JavaScript, set the response `body` to a
-`Uint8Array`. In Python, return `bytes` or `bytearray` directly or use either
-as a dictionary body. Set the appropriate `Content-Type` header for the client.
+Response strings are sent as UTF-8. In JavaScript, return an object and set its
+`body` to a string for text or a `Uint8Array` for arbitrary bytes. In Python,
+you may return `bytes` or `bytearray` directly or use either as a dictionary
+body. Set the appropriate `Content-Type` header for the client.
 
 Byte response bodies require Owncast v0.3.1 or later. Older hosts return an
 empty body.
@@ -669,7 +670,7 @@ my-plugin/
 
 A request to `/plugins/my-plugin/` serves `public/index.html` automatically.
 
-For dynamic endpoints (JSON APIs, webhooks, generated files, etc.) write an `onHttpRequest`. Return a string body for UTF-8 text or a byte body for arbitrary content. Path traversal is blocked, response headers are filtered through an allowlist (allowed: `Content-Type`, `Cache-Control`, `Set-Cookie`, `Location`, `ETag`, `Last-Modified`, `Vary`, `Link`, and CORS headers, with host-owned things like `Server`, CSP, and HSTS blocked), and body sizes are capped at 1 MB request / 10 MB response. Cookies you set default to a `Path` scoped to your plugin's namespace.
+For dynamic endpoints (JSON APIs, webhooks, generated files, etc.) write an `onHttpRequest`. In JavaScript, return `{ status, headers, body }` and put either a string or `Uint8Array` in `body`. In Python, you may return a string/bytes value directly or return a response dictionary. Path traversal is blocked, response headers are filtered through an allowlist (allowed: `Content-Type`, `Cache-Control`, `Set-Cookie`, `Location`, `ETag`, `Last-Modified`, `Vary`, `Link`, and CORS headers, with host-owned things like `Server`, CSP, and HSTS blocked), and body sizes are capped at 1 MB request / 10 MB response. Cookies you set default to a `Path` scoped to your plugin's namespace.
 
 ## Realtime updates (Server-Sent Events)
 
