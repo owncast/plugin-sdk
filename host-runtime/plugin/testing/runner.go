@@ -1,6 +1,7 @@
 package testing
 
 import (
+	"bytes"
 	"context"
 	"encoding/base64"
 	"encoding/json"
@@ -345,6 +346,15 @@ func runHTTPStep(server *plugin.Server, pluginName string, h *HTTPStep) error {
 	}
 	if h.Expect.BodyContains != "" && !strings.Contains(rec.Body.String(), h.Expect.BodyContains) {
 		return fmt.Errorf("http body does not contain %q\n  body: %q", h.Expect.BodyContains, rec.Body.String())
+	}
+	if h.Expect.BodyBase64 != nil {
+		want, err := decodeScenarioBase64(*h.Expect.BodyBase64)
+		if err != nil {
+			return fmt.Errorf("http bodyBase64 is invalid: %w", err)
+		}
+		if !bytes.Equal(want, rec.Body.Bytes()) {
+			return fmt.Errorf("http bodyBase64: want %q got %q", *h.Expect.BodyBase64, base64.StdEncoding.EncodeToString(rec.Body.Bytes()))
+		}
 	}
 	return nil
 }

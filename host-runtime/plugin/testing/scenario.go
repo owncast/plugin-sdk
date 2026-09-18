@@ -124,6 +124,7 @@ type HTTPExpect struct {
 	Headers      map[string]string `json:"headers,omitempty"`
 	Body         string            `json:"body,omitempty"`
 	BodyContains string            `json:"bodyContains,omitempty"`
+	BodyBase64   *string           `json:"bodyBase64,omitempty"`
 }
 
 // ContentStep invokes the plugin's on_tab_content or on_page_content export.

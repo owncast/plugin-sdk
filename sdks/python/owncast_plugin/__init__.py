@@ -25,6 +25,7 @@ try:
 except ImportError:  # pragma: no cover - dev machine, not wasm
     extism = None
 
+import base64
 import json
 
 __all__ = ["plugin", "owncast", "filter", "auth_check", "CommandContext"]
@@ -884,9 +885,18 @@ def _dispatch_filter(envelope):
 
 def _http_response(resp):
     if isinstance(resp, dict):
-        return resp
+        out = dict(resp)
+        body = out.get("body")
+        if isinstance(body, (bytes, bytearray)):
+            del out["body"]
+            out["bodyBase64"] = base64.b64encode(bytes(body)).decode("ascii")
+        elif "body" in out:
+            out.pop("bodyBase64", None)
+        return out
     if resp is None:
         return {"status": 204}
+    if isinstance(resp, (bytes, bytearray)):
+        return {"status": 200, "bodyBase64": base64.b64encode(bytes(resp)).decode("ascii")}
     return {"status": 200, "body": str(resp)}
 
 
