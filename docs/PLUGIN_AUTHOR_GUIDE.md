@@ -336,11 +336,19 @@ interface IncomingHttpRequest {
 interface OutgoingHttpResponse {
   status?: number; // default 200
   headers?: Record<string, string>;
-  body?: string;
+  body?: string | Uint8Array;
 }
 ```
 
 Endpoints are public by default. Gate admin features with `req.authenticated`.
+
+Response strings are sent as UTF-8. In JavaScript, return an object and set its
+`body` to a string for text or a `Uint8Array` for arbitrary bytes. In Python,
+you may return `bytes` or `bytearray` directly or use either as a dictionary
+body. Set the appropriate `Content-Type` header for the client.
+
+Byte response bodies require Owncast v0.3.1 or later. Older hosts return an
+empty body.
 
 `req.user` is the chat user the request came from, if Owncast could identify
 one. The host resolves it from the visitor's chat identity cookie, which is set
@@ -632,7 +640,7 @@ The host enforces these caps per plugin. They're generous for normal use. Size p
 | `on_filter` output | 1 MiB | the (modified) message a filter returns |
 | HTTP request body delivered to your handler | 1 MB | inbound `onHttpRequest` body |
 | HTTP response body | 10 MB | what `onHttpRequest` returns |
-| `on_http_request` envelope output | 12 MiB | the full encoded response envelope |
+| `on_http_request` envelope output | 16 MiB | the full encoded response envelope |
 | Pending timers | 64 | `owncast.timer.setTimeout`/`setInterval` outstanding at once |
 | Timer delay | 100 ms to 24 h | clamped into this range |
 | SSE connections | 64 | concurrent browser clients on your event stream |
@@ -662,7 +670,7 @@ my-plugin/
 
 A request to `/plugins/my-plugin/` serves `public/index.html` automatically.
 
-For dynamic endpoints (JSON APIs, webhooks, etc.) write an `onHttpRequest`. Path traversal is blocked, response headers are filtered through an allowlist (allowed: `Content-Type`, `Cache-Control`, `Set-Cookie`, `Location`, `ETag`, `Last-Modified`, `Vary`, `Link`, and CORS headers, with host-owned things like `Server`, CSP, and HSTS blocked), and body sizes are capped at 1 MB request / 10 MB response. Cookies you set default to a `Path` scoped to your plugin's namespace.
+For dynamic endpoints (JSON APIs, webhooks, generated files, etc.) write an `onHttpRequest`. In JavaScript, return `{ status, headers, body }` and put either a string or `Uint8Array` in `body`. In Python, you may return a string/bytes value directly or return a response dictionary. Path traversal is blocked, response headers are filtered through an allowlist (allowed: `Content-Type`, `Cache-Control`, `Set-Cookie`, `Location`, `ETag`, `Last-Modified`, `Vary`, `Link`, and CORS headers, with host-owned things like `Server`, CSP, and HSTS blocked), and body sizes are capped at 1 MB request / 10 MB response. Cookies you set default to a `Path` scoped to your plugin's namespace.
 
 ## Realtime updates (Server-Sent Events)
 
@@ -1177,7 +1185,7 @@ Point your `test` script at that one entry (`node __tests__/index.test.js`) inst
 
 - `event: "<type>"`, fire-and-forget notification dispatch
 - `filter: "<type>"`, filter chain. Inline `expect: {action, payload?, reason?}` checks the FilterResult
-- `http: { method, path, headers?, body?, user?, authenticated?, expect: {status, headers?, body?, bodyContains?} }`, sends an HTTP request through your plugin server
+- `http: { method, path, headers?, body?, user?, authenticated?, expect: {status, headers?, body?, bodyContains?, bodyBase64?} }`, sends an HTTP request through your plugin server. Use `bodyBase64` to compare arbitrary response bytes.
 - `tabContent: { slug, user?, expect: {body?, bodyContains?} }`, calls `onTabContent` directly and asserts on the returned HTML
 - `pageContent: { slug, user?, expect: {body?, bodyContains?} }`, calls `onPageContent` directly and asserts on the returned HTML
 - `pageStyles: { expect: {body?, bodyContains?} }`, calls `onPageStyles` directly and asserts on the returned CSS

@@ -110,7 +110,7 @@ def fallback(req):
 - `@plugin.get/post/put/delete/patch(path)` and `@plugin.route(path, methods=[...])` for method-specific routes, and `@plugin.on_http_request(path)` for any method.
 - Paths are exact and **plugin-relative** (e.g. `/api/messages`), excluding the query string. Read query params from `req.query`.
 - A request whose path matches a route but not its method gets an automatic **405**. An unmatched path falls through to the bare catch-all, else **404**.
-- A handler returns a `dict` (`{status, body, headers}`), a `str` (→ 200), or `None` (→ 204).
+- A handler returns a `dict` (`{status, body, headers}`), a `str`, `bytes`, or `bytearray` (→ 200), or `None` (→ 204). A dictionary body may also be `bytes` or `bytearray`.
 
 ### The `owncast` host API
 

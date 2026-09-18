@@ -48,7 +48,14 @@ module.exports = definePlugin({
   onFediverseMention() {},
   onFediverseReply() {},
   // Requires http.serve.
-  onHttpRequest: () => ({ status: 204 }),
+  onHttpRequest: (req) =>
+    req.path === "/binary-response"
+      ? {
+          status: 200,
+          headers: { "Content-Type": "application/octet-stream" },
+          body: new Uint8Array([0xff, 0x00, 0x80]),
+        }
+      : { status: 204 },
   // Requires auth.gate.
   onAuthCheck: () => authCheck.ok(),
   // Require ui.modify.

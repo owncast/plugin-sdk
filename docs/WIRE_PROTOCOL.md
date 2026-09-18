@@ -807,6 +807,7 @@ type OutgoingHttpResponse = {
   status?: number;
   headers?: { [key: string]: string };
   body?: string;
+  bodyBase64?: string;
 };
 
 type ContentRequest = {
@@ -826,7 +827,15 @@ type AuthCheckResult =
 
 The host always supplies every non-optional `IncomingHttpRequest` key. It
 omits `user` for anonymous viewers and admin-only authentication. A missing or
-zero response status defaults to 200.
+zero response status defaults to 200. `body` contains UTF-8 text.
+`bodyBase64` contains arbitrary response bytes encoded as standard base64.
+Responses must not contain both fields. The JavaScript SDK uses `bodyBase64`
+internally when a response's `body` is a `Uint8Array`. The Python SDK uses it
+when a handler returns `bytes` or `bytearray` directly or sets its dictionary
+body to either type.
+
+Byte response bodies require Owncast v0.3.1 or later. Older hosts ignore
+`bodyBase64` and return an empty body.
 
 ### Stream and server data
 
