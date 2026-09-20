@@ -347,8 +347,8 @@ Response strings are sent as UTF-8. In JavaScript, return an object and set its
 you may return `bytes` or `bytearray` directly or use either as a dictionary
 body. Set the appropriate `Content-Type` header for the client.
 
-Byte response bodies require Owncast v0.3.1 or later. Older hosts return an
-empty body.
+Byte response bodies require Owncast v0.3.1 or later. Older hosts do not
+support them.
 
 `req.user` is the chat user the request came from, if Owncast could identify
 one. The host resolves it from the visitor's chat identity cookie, which is set

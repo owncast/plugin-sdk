@@ -834,8 +834,8 @@ internally when a response's `body` is a `Uint8Array`. The Python SDK uses it
 when a handler returns `bytes` or `bytearray` directly or sets its dictionary
 body to either type.
 
-Byte response bodies require Owncast v0.3.1 or later. Older hosts ignore
-`bodyBase64` and return an empty body.
+Byte response bodies require Owncast v0.3.1 or later. Older hosts do not
+support `bodyBase64`.
 
 ### Stream and server data
 
