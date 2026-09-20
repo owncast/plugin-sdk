@@ -338,6 +338,38 @@ function dispatchFilter(envelope) {
   return filter.pass();
 }
 
+function encodeBase64(bytes) {
+  const alphabet =
+    "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+  const chunks = [];
+  let chunk = "";
+  let i = 0;
+  for (; i + 2 < bytes.length; i += 3) {
+    const value = (bytes[i] << 16) | (bytes[i + 1] << 8) | bytes[i + 2];
+    chunk +=
+      alphabet[(value >> 18) & 63] +
+      alphabet[(value >> 12) & 63] +
+      alphabet[(value >> 6) & 63] +
+      alphabet[value & 63];
+    if (chunk.length >= 16384) {
+      chunks.push(chunk);
+      chunk = "";
+    }
+  }
+  if (i < bytes.length) {
+    const value =
+      (bytes[i] << 16) |
+      (i + 1 < bytes.length ? bytes[i + 1] << 8 : 0);
+    chunk +=
+      alphabet[(value >> 18) & 63] +
+      alphabet[(value >> 12) & 63] +
+      (i + 1 < bytes.length ? alphabet[(value >> 6) & 63] : "=") +
+      "=";
+  }
+  chunks.push(chunk);
+  return chunks.join("");
+}
+
 // dispatchHttp routes incoming HTTP requests to the user's onHttpRequest
 // handler. Returns a default 404 if the plugin doesn't define one.
 function dispatchHttp(request) {
@@ -346,11 +378,16 @@ function dispatchHttp(request) {
   }
   const out = registered.onHttpRequest(request);
   if (!out) return { status: 200, headers: {}, body: "" };
-  return {
+  const response = {
     status: out.status || 200,
     headers: out.headers || {},
-    body: out.body == null ? "" : String(out.body),
   };
+  if (out.body instanceof Uint8Array) {
+    response.bodyBase64 = encodeBase64(out.body);
+  } else {
+    response.body = out.body == null ? "" : String(out.body);
+  }
+  return response;
 }
 
 

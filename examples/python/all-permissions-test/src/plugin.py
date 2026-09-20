@@ -134,7 +134,7 @@ def on_http_request(req):
     owncast.fs.write("invalid-utf8.bin", data)
     stored = owncast.fs.read("invalid-utf8.bin")
     owncast.storage.upload("invalid-utf8.bin", stored)
-    return {"status": 200, "body": base64.b64encode(stored).decode("ascii")}
+    return {"status": 200, "body": stored}
 
 
 # Requires auth.gate.

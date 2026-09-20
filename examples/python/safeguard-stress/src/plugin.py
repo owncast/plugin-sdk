@@ -15,10 +15,10 @@ def huge_string(num_bytes):
 # Sized just over each cap so the handler can serialize and return the
 # payload within the per-call timeout. The tests want the *size* check to
 # fire, not the timeout. (MaxFilterOutputBytes = 1 MiB, we send 1.1 MiB.
-# MaxHTTPHandlerOutputBytes = 12 MiB, HTTP test has a 5s call cap so 13 MiB
+# MaxHTTPHandlerOutputBytes = 16 MiB, HTTP test has a 5s call cap so 17 MiB
 # is fine there.)
 HUGE_FILTER_BODY = huge_string(1126400)  # ~1.075 MiB, > 1 MiB cap
-HUGE_HTTP_BODY = huge_string(13 * 1024 * 1024)
+HUGE_HTTP_BODY = huge_string(17 * 1024 * 1024)
 
 
 @plugin.filter_chat_message

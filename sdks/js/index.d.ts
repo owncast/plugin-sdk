@@ -398,7 +398,8 @@ export interface IncomingHttpRequest {
 export interface OutgoingHttpResponse {
   status?: number;
   headers?: Record<string, string>;
-  body?: string;
+  /** Text is sent as UTF-8. Uint8Array preserves arbitrary response bytes. */
+  body?: string | Uint8Array;
 }
 
 /** Request context passed to `onTabContent` and `onPageContent` handlers. */

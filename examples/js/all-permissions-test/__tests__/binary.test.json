@@ -1,0 +1,14 @@
+[
+  {
+    "name": "invalid UTF-8 is returned as raw HTTP bytes",
+    "events": [
+      {
+        "http": {
+          "method": "GET",
+          "path": "/binary-response",
+          "expect": { "status": 200, "bodyBase64": "/wCA" }
+        }
+      }
+    ]
+  }
+]
