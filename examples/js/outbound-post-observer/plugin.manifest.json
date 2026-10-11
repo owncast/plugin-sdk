@@ -1,0 +1,15 @@
+{
+  "api": "1",
+  "name": "Outbound Post Observer",
+  "slug": "outbound-post-observer",
+  "version": "0.1.0",
+  "description": "Posts an Owncast chat notice only for public Create(Note) outbound activities, checking activity and object audiences. This example was written in JavaScript.",
+  "category": "integrations",
+  "permissions": [
+    "chat.send",
+    "fediverse.outbound"
+  ],
+  "bot": {
+    "displayName": "Outbound Observer"
+  }
+}

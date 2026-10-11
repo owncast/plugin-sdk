@@ -88,7 +88,7 @@ def on_tick(_event):
     pass
 
 
-# The seven fediverse handlers require fediverse.inbound.
+# The seven inbound handlers require fediverse.inbound.
 @plugin.on_fediverse
 def on_fediverse(_activity):
     pass
@@ -121,6 +121,12 @@ def on_fediverse_mention(_post):
 
 @plugin.on_fediverse_reply
 def on_fediverse_reply(_post):
+    pass
+
+
+# Requires fediverse.outbound.
+@plugin.on_fediverse_outbound
+def on_fediverse_outbound(_activity):
     pass
 
 

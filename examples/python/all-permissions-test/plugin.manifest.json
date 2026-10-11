@@ -25,6 +25,7 @@
     "users.register",
     "auth.gate",
     "fediverse.inbound",
+    "fediverse.outbound",
     "fediverse.post",
     "videoconfig.read",
     "videoconfig.write",

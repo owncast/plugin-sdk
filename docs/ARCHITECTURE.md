@@ -53,6 +53,12 @@ file (see [build flow](#toolchain-and-build-flow)).
   then sends the raw activity to `onFediverse` / `on_fediverse` and also sends
   any matching specialized follow, like, repost, quote, mention, or reply event.
   The `fediverse.inbound` manifest permission gates all seven subscriptions.
+- Outbound Fediverse hooks are internal notify subscriptions gated by
+  `fediverse.outbound`. They deliver the raw ActivityPub activity once after
+  successful local persistence, not once per recipient or retry. Ordinary
+  private activities are included. The event does not promise remote delivery
+  success or durable replay, and authentication messages containing one-time
+  codes are excluded.
 
 ## Repository layout
 

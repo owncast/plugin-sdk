@@ -203,6 +203,11 @@ module.exports = definePlugin({
     /* raw ActivityPub JSON object */
   },
 
+  // Locally persisted outgoing ActivityPub activity, as raw JSON
+  onFediverseOutbound(activity) {
+    /* raw ActivityPub JSON object */
+  },
+
   // Filter chain (sequential, can mutate or drop)
   filterChatMessage(msg) {
     return filter.pass();
@@ -225,7 +230,11 @@ module.exports = definePlugin({
 
 Only define the handlers you actually need. Missing handlers = no subscription.
 
-All seven Fediverse handlers require `fediverse.inbound`: `onFediverse`, `onFediverseFollow`, `onFediverseLike`, `onFediverseRepost`, `onFediverseQuote`, `onFediverseMention`, and `onFediverseReply`. These are internal plugin event subscriptions, not external HTTP webhooks. `fediverse.post` is a separate permission for publishing outbound posts.
+All seven inbound Fediverse handlers require `fediverse.inbound`: `onFediverse`,
+`onFediverseFollow`, `onFediverseLike`, `onFediverseRepost`, `onFediverseQuote`,
+`onFediverseMention`, and `onFediverseReply`. These are internal plugin event
+subscriptions, not external HTTP webhooks. `fediverse.post` separately permits
+publishing outbound posts.
 
 ### Chat message shape
 
@@ -286,7 +295,39 @@ interface FediverseQuote {
 
 `onFediverse` receives the verified inbound ActivityPub activity after the host validates the HTTP signature and actor origin. In JavaScript, the payload is the raw JSON object. It fires in addition to a specialized handler when one applies. It also fires for verified activity types that have no specialized handler.
 
-Python exposes the same hooks as `@plugin.on_fediverse`, `@plugin.on_fediverse_follow`, `@plugin.on_fediverse_like`, `@plugin.on_fediverse_repost`, `@plugin.on_fediverse_quote`, `@plugin.on_fediverse_mention`, and `@plugin.on_fediverse_reply`. Python notify payloads are non-subscriptable `_Obj` attribute views. Read normal fields as attributes, or use `.raw` for the underlying dictionary and keys that are not valid Python attributes, such as `payload.raw["@context"]`.
+Python exposes the inbound hooks as `@plugin.on_fediverse`,
+`@plugin.on_fediverse_follow`, `@plugin.on_fediverse_like`,
+`@plugin.on_fediverse_repost`, `@plugin.on_fediverse_quote`,
+`@plugin.on_fediverse_mention`, and `@plugin.on_fediverse_reply`, and the
+outbound hook as `@plugin.on_fediverse_outbound`. Python notify payloads are
+non-subscriptable `_Obj` attribute views. Read normal fields as attributes, or
+use `.raw` for the underlying dictionary and keys that are not valid Python
+attributes, such as `payload.raw["@context"]`.
+
+### Outbound Fediverse activity
+
+`onFediverseOutbound` receives raw ActivityPub JSON after an outbound activity
+has been successfully persisted locally. It fires once per activity, even when
+there are no followers. It is not a per-recipient or network-retry callback and
+does not promise remote delivery success. There is no durable plugin
+notification or replay promise. It covers posts, go-live and stream-status
+activities, profile updates, follows and their undo/accept/reject responses,
+and quote responses. Ordinary private activities are included. Authentication
+messages containing one-time codes are excluded by the producer.
+
+Before crossposting, check both `activity.type` and `activity.object.type`,
+then verify that the activity and object audiences (`to` / `cc`) identify the
+ActivityStreams Public collection. `fediverse.outbound` is a separate
+permission from `fediverse.post` and grants access to ordinary private
+activities, so only trusted plugins should receive it. Python receives the
+same payload as an `_Obj`. Use its attributes or `.raw`.
+
+JavaScript can also subscribe with `on: { "fediverse.outbound": handler }`.
+Python can use `@plugin.on("fediverse.outbound")`. The named handlers are the
+dedicated first-class form.
+
+See the [JavaScript example](../examples/js/outbound-post-observer/) and
+[Python example](../examples/python/outbound-post-observer/).
 
 ### Fediverse inbound posts
 
@@ -597,6 +638,7 @@ in the built-in help listing.
 | `videoconfig.write`  | `owncast.videoConfig.write()`, change video config, high-trust. Changes apply on the next stream start (the host does not restart a live stream). |
 | `notifications.send` | `owncast.notifications.discord`, `.browserPush`                                                                                                   |
 | `fediverse.inbound`  | Subscribe to `fediverse.activity`, `fediverse.follow`, `fediverse.like`, `fediverse.repost`, `fediverse.quote`, `fediverse.mention`, and `fediverse.reply` through `onFediverse` and the six specialized handlers. Required for any plugin that declares one of those handlers. |
+| `fediverse.outbound` | Subscribe to `fediverse.outbound` through `onFediverseOutbound`. Includes ordinary private activities, so grant only to trusted plugins. |
 | `fediverse.post`     | `owncast.fediverse.post(text)`, high-trust (posts under the streamer's handle), admin should grant sparingly.                                       |
 | `ui.modify`          | Place UI inside Owncast's own chrome. Required for `manifest.actions`, `manifest.styles`, `manifest.scripts`, and `manifest.extraPageContent`.    |
 
@@ -1134,11 +1176,12 @@ Tests live in `__tests__/*.test.js`. They drive your built plugin through the re
 
 Before any scenario runs, the test runner load-checks the plugin: the same
 install-time path a real Owncast server runs, covering manifest validity, a
-healthy `register()`, and permission-gated subscriptions (a chat filter
-without `chat.filter`, or a fediverse handler without `fediverse.inbound`,
-fails right there with the same error the server gives at install). The check
-runs even when a plugin ships no tests. `package` runs it too, and a plugin
-that would be rejected at install refuses to package.
+healthy `register()`, and permission-gated subscriptions: a chat filter without
+`chat.filter`, an inbound Fediverse handler without `fediverse.inbound`, or
+`onFediverseOutbound` without `fediverse.outbound` fails with the same error
+the server gives at install. The check runs even when a plugin ships no tests.
+`package` runs it too, and a plugin that would be rejected at install refuses
+to package.
 
 ```js
 const { runScenarios } = require("@owncast/plugin-sdk/testing");

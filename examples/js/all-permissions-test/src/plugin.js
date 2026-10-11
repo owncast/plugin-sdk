@@ -39,7 +39,7 @@ module.exports = definePlugin({
   onSseConnect() {},
   onSseDisconnect() {},
   onTick() {},
-  // The seven fediverse handlers require fediverse.inbound.
+  // The seven inbound handlers require fediverse.inbound.
   onFediverse() {},
   onFediverseFollow() {},
   onFediverseLike() {},
@@ -47,6 +47,8 @@ module.exports = definePlugin({
   onFediverseQuote() {},
   onFediverseMention() {},
   onFediverseReply() {},
+  // Requires fediverse.outbound.
+  onFediverseOutbound() {},
   // Requires http.serve.
   onHttpRequest: () => ({ status: 204 }),
   // Requires auth.gate.

@@ -52,10 +52,11 @@ Ask the user, in plain language:
 Then map their description to capabilities using the **Capability map** below.
 That tells you which handler(s) to write, which `owncast.*` calls to make, and
 which permissions the manifest must declare. If a request needs a high-trust
-permission (`fediverse.post`, `videoconfig.write`, `users.moderate`,
-`network.fetch` to arbitrary hosts, or `auth.gate`, which lets the host require
-the plugin's login for operator-selected viewer resources), note it back to the
-user. The server admin will have to approve it.
+permission (`fediverse.post`, `fediverse.outbound` because it can read ordinary
+private activities, `videoconfig.write`, `users.moderate`, `network.fetch` to
+arbitrary hosts, or `auth.gate`, which lets the host require the plugin's login
+for operator-selected viewer resources), note it back to the user. The server
+admin will have to approve it.
 
 Keep it small. Build the simplest plugin that does what they asked. You can
 always add handlers later.
@@ -151,8 +152,9 @@ npm run package
 
 `package` first load-checks the plugin — the same install-time path a real
 Owncast server runs. A handler whose gating permission isn't declared in the
-manifest (a chat filter without `chat.filter`, a fediverse handler without
-`fediverse.inbound`) aborts packaging with the exact error the server would
+manifest (a chat filter without `chat.filter`, an inbound fediverse handler
+without `fediverse.inbound`, or `onFediverseOutbound` without
+`fediverse.outbound`) aborts packaging with the exact error the server would
 give at install. Fix the manifest, don't work around the check.
 
 This produces **`<slug>.ocpkg`** in the project directory, a single self-contained
@@ -203,6 +205,7 @@ combine for richer plugins.
 | Send Discord / browser-push / fediverse notice  | (any)                                        | `owncast.notifications.*`                 | `notifications.send`                   |
 | Post publicly to the fediverse (high-trust)     | (any)                                        | `owncast.fediverse.post(text)`            | `fediverse.post`                       |
 | React to any verified inbound fediverse activity | `onFediverse(activity)` for raw JSON, plus `onFediverseFollow/Like/Repost/Quote/Mention/Reply` for specialized payloads | none | `fediverse.inbound` |
+| Observe outbound Fediverse activities | `onFediverseOutbound(activity)` for raw JSON. Check activity/object types and audiences before crossposting | none | `fediverse.outbound` (includes ordinary private activities) |
 | Read/change video/transcoding config            | (any)                                        | `owncast.videoConfig.read/write`          | `videoconfig.read` / `videoconfig.write` |
 | Compose with other plugins via custom events    | own local hooks with `on:{}`, emit to `<recipient-slug>.<hook>` | `owncast.events.emit(type, payload)` | `events.emit` (emitter only) |
 | Gate the site behind a member login (paywall) | `onHttpRequest` (login flow) + `onAuthCheck` (re-validation) | `owncast.users.register` + `owncast.auth.grantSession/endSession` | `auth.gate` + `users.register` (+ `http.serve`); model on `examples/js/github-auth` |
@@ -238,7 +241,7 @@ which handlers exist. Full list of handlers: `onChatMessage`,
 `filterChatMessage`, `onChatUserJoined`, `onChatUserParted`,
 `onChatUserRenamed`, `onMessageModerated`, `onStreamStarted`, `onStreamStopped`,
 `onStreamTitleChanged`, `onFediverse`, `onFediverseFollow/Like/Repost/Quote/Mention/Reply`,
-`onHttpRequest`, `onTick`, `onSseConnect/Disconnect`, `onTabContent`,
+`onFediverseOutbound`, `onHttpRequest`, `onTick`, `onSseConnect/Disconnect`, `onTabContent`,
 `onPageContent`, `onPageStyles`, `onPageScripts`, and
 `on: { "event"() {} }` for local custom hooks. The host registers each as
 `<your-plugin-slug>.event`, which emitters use as the target.

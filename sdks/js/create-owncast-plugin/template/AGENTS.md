@@ -80,6 +80,7 @@ the plugin. Admins judge trust by the declared list, so don't over-declare.
 | Discord / push / fediverse notification         | (any)                                        | `owncast.notifications.*`                 | `notifications.send`                   |
 | Post publicly to the fediverse (high-trust)     | (any)                                        | `owncast.fediverse.post(text)`            | `fediverse.post`                       |
 | React to any verified inbound fediverse activity | `onFediverse(activity)` for raw JSON, plus `onFediverseFollow/Like/Repost/Quote/Mention/Reply` for specialized payloads | none | `fediverse.inbound` |
+| Observe outbound Fediverse activities | `onFediverseOutbound(activity)` for raw JSON. Check activity/object types and audiences before crossposting | none | `fediverse.outbound` (includes ordinary private activities, grant only to trusted plugins) |
 | Read/change video config                        | (any)                                        | `owncast.videoConfig.read/write`          | `videoconfig.read` / `videoconfig.write` |
 | Compose with other plugins                      | own local hooks with `on:{}`, emit to `<recipient-slug>.<hook>` | `owncast.events.emit(type, payload)` | `events.emit` (emitter only) |
 | Gate the site behind a member login (paywall) | `onHttpRequest` (login flow) + `onAuthCheck` (re-validation) | `owncast.users.register` + `owncast.auth.grantSession/endSession` | `auth.gate` + `users.register` (+ `http.serve`) |

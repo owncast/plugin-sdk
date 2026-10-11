@@ -113,6 +113,7 @@ _HANDLERS = {
     "on_sse_disconnect": ("sse.disconnect", "notify", _Obj),
     "on_tick": ("tick", "notify", _Obj),
     "on_fediverse": ("fediverse.activity", "notify", _Obj),
+    "on_fediverse_outbound": ("fediverse.outbound", "notify", _Obj),
     "on_fediverse_follow": ("fediverse.follow", "notify", _Obj),
     "on_fediverse_like": ("fediverse.like", "notify", _Obj),
     "on_fediverse_repost": ("fediverse.repost", "notify", _Obj),
