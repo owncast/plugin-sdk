@@ -49,6 +49,7 @@ const Events = Object.freeze({
   FediverseQuote: "fediverse.quote",
   FediverseMention: "fediverse.mention",
   FediverseReply: "fediverse.reply",
+  FediverseOutbound: "fediverse.outbound",
 });
 
 const InternalEvents = Object.freeze({
@@ -78,6 +79,7 @@ const Permissions = Object.freeze({
   AuthGate: "auth.gate",
   FediversePost: "fediverse.post",
   FediverseInbound: "fediverse.inbound",
+  FediverseOutbound: "fediverse.outbound",
   HttpSSE: "http.sse",
   VideoConfigRead: "videoconfig.read",
   VideoConfigWrite: "videoconfig.write",
@@ -187,6 +189,11 @@ const HANDLERS = Object.freeze({
     kind: HandlerKind.Notify,
   },
   onFediverseReply: { event: Events.FediverseReply, kind: HandlerKind.Notify },
+  // Outbound ActivityPub activity (raw JSON)
+  onFediverseOutbound: {
+    event: Events.FediverseOutbound,
+    kind: HandlerKind.Notify,
+  },
 });
 
 const isFn = (x) => typeof x === "function";

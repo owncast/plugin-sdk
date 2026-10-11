@@ -1,0 +1,74 @@
+[
+  {
+    "name": "observes a public Create(Note)",
+    "events": [
+      {
+        "event": "fediverse.outbound",
+        "payload": {
+          "type": "Create",
+          "to": "https://www.w3.org/ns/activitystreams#Public",
+          "cc": ["https://example.com/users/streamer/followers"],
+          "object": {
+            "type": "Note",
+            "to": ["https://www.w3.org/ns/activitystreams#Public"],
+            "cc": "https://example.com/users/streamer/followers",
+            "content": "Hello from the stream"
+          }
+        }
+      }
+    ],
+    "expect": {
+      "chatSends": ["Observed a public Fediverse post."]
+    }
+  },
+  {
+    "name": "ignores a private Create(Note)",
+    "events": [
+      {
+        "event": "fediverse.outbound",
+        "payload": {
+          "type": "Create",
+          "to": ["https://example.com/users/streamer/followers"],
+          "object": {
+            "type": "Note",
+            "to": "https://example.com/users/streamer/followers",
+            "content": "A private post"
+          }
+        }
+      }
+    ],
+    "expect": {
+      "chatSends": []
+    }
+  },
+  {
+    "name": "ignores non-Note and non-Create activities",
+    "events": [
+      {
+        "event": "fediverse.outbound",
+        "payload": {
+          "type": "Create",
+          "to": ["https://www.w3.org/ns/activitystreams#Public"],
+          "object": {
+            "type": "Article",
+            "to": ["https://www.w3.org/ns/activitystreams#Public"]
+          }
+        }
+      },
+      {
+        "event": "fediverse.outbound",
+        "payload": {
+          "type": "Update",
+          "to": ["https://www.w3.org/ns/activitystreams#Public"],
+          "object": {
+            "type": "Note",
+            "to": ["https://www.w3.org/ns/activitystreams#Public"]
+          }
+        }
+      }
+    ],
+    "expect": {
+      "chatSends": []
+    }
+  }
+]

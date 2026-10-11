@@ -144,7 +144,11 @@ export const Events: {
   readonly FediverseQuote: "fediverse.quote";
   readonly FediverseMention: "fediverse.mention";
   readonly FediverseReply: "fediverse.reply";
+  readonly FediverseOutbound: "fediverse.outbound";
 };
+
+/** Raw local ActivityPub JSON received by `onFediverseOutbound`. */
+export type FediverseOutboundActivity = Record<string, unknown>;
 
 /** Payload shape for fediverse engagement events. */
 export interface FediverseActor {
@@ -219,6 +223,7 @@ export const Permissions: {
   readonly AuthGate: "auth.gate";
   readonly FediversePost: "fediverse.post";
   readonly FediverseInbound: "fediverse.inbound";
+  readonly FediverseOutbound: "fediverse.outbound";
   readonly HttpSSE: "http.sse";
   readonly VideoConfigRead: "videoconfig.read";
   readonly VideoConfigWrite: "videoconfig.write";
@@ -473,6 +478,8 @@ export interface PluginDef {
 
   /** A verified inbound ActivityPub activity as its raw JSON object. Requires `fediverse.inbound`. */
   onFediverse?(activity: Record<string, unknown>): void | Promise<void>;
+  /** A locally persisted outgoing ActivityPub activity as raw JSON. Requires `fediverse.outbound`. */
+  onFediverseOutbound?(activity: FediverseOutboundActivity): void | Promise<void>;
 
   /** Someone on the fediverse followed the streamer's account. Requires `fediverse.inbound`. */
   onFediverseFollow?(event: FediverseEngagement): void | Promise<void>;

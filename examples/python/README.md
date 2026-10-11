@@ -25,6 +25,7 @@ One self-contained plugin per directory, authored in Python and compiled to wasm
 | [file-manager](./file-manager/)                   | `storage.fs`, admin page to browse/upload/download/delete files in the plugin's private sandbox.        |
 | [action-buttons](./action-buttons/)               | `manifest.actions` + runtime `owncast.actions.add` (ui.modify), with an admin page that adds buttons.   |
 | [fediverse-chat-bridge](./fediverse-chat-bridge/) | Inbound fediverse mentions → HTML chat system messages with avatars.                                    |
+| [outbound-post-observer](./outbound-post-observer/) | `@plugin.on_fediverse_outbound`: observe outbound activities, accept only public `Create(Note)`, and ignore private or non-Note activities. |
 | [safeguard-stress](./safeguard-stress/)           | Test fixture, misbehaves on demand to verify host sandbox caps.                                         |
 | [all-permissions-test](./all-permissions-test/)   | Build/load canary: every permission + every handler as no-ops, trips on subscription-gate / load-rule drift. |
 | [styles-demo](./styles-demo/)                     | `manifest.styles[]`, CSS inlined into the viewer page's customStyles.                                   |

@@ -405,6 +405,20 @@ remote quote post. Content fields are present when the `QuoteRequest` embeds
 the quote `Note`. Mentions and replies are verified public `Create(Note)`
 activities tied to the local account or a locally authored post.
 
+### `fediverse.outbound`
+
+This permission gates the notify subscription `fediverse.outbound`. Its payload
+is the raw ActivityPub JSON for a locally authored outbound activity. The
+notification fires once after successful local persistence, even when there
+are no followers. It is not emitted per recipient or for network retries, and
+it does not promise successful remote delivery or durable notification/replay.
+
+The hook covers outbound posts, go-live and stream-status activities, profile
+updates, follows and their undo/accept/reject responses, and quote responses.
+Ordinary private activities are included. Authentication messages containing
+one-time codes are excluded by the producer. A plugin that republishes content
+must check the activity and object types and their `to`/`cc` audiences first.
+
 ### ambient (no permission)
 
 These imports are available to every plugin:
@@ -1065,6 +1079,7 @@ all of them as `number`, which loses integer precision above
 | `tick` | `TickEvent` |
 | `timer.fire` | `TimerFireEvent` |
 | `fediverse.activity` | `JSONValue` |
+| `fediverse.outbound` | `JSONValue` |
 | `fediverse.follow`, `fediverse.like`, `fediverse.repost`, `fediverse.quote` | `FediverseEngagement` |
 | `fediverse.mention`, `fediverse.reply` | `FediverseInboundPost` |
 | Custom event name | `JSONValue` |
